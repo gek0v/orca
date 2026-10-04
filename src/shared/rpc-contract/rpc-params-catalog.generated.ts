@@ -47,7 +47,8 @@ import {
 } from './ai-vault-params'
 import {
   AntigravityAccountMutationParams,
-  AntigravityAccountTargetParams
+  AntigravityAccountTargetParams,
+  AntigravityAccountUpdateParams
 } from './antigravity-accounts-params'
 import { ArtifactsDeleteParams, ListOptions, SourceRequest, WriteRequest } from './artifacts-params'
 import {
@@ -570,6 +571,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'accounts.antigravityList': AntigravityAccountTargetParams,
   'accounts.antigravityRemove': AntigravityAccountMutationParams,
   'accounts.antigravitySelect': AntigravityAccountMutationParams,
+  'accounts.antigravityUpdate': AntigravityAccountUpdateParams,
   'accounts.consumeCodexResetCredit': ConsumeCodexResetCreditParams,
   'accounts.list': ListAccountsParams,
   'accounts.listData': null,
