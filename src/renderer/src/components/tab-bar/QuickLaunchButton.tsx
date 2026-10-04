@@ -264,6 +264,7 @@ function QuickLaunchAgentMenuItemsInner({
           const accounts = antigravityState?.accounts ?? []
           const activeAccount = antigravityState?.currentAccount
           const activeId = antigravityState?.activeAccountId
+          const activeSummary = accounts.find((a) => a.id === activeId)
           return (
             <DropdownMenuSub key={agent}>
               <DropdownMenuSubTrigger
@@ -283,19 +284,28 @@ function QuickLaunchAgentMenuItemsInner({
                 {accounts.length > 0 ? (
                   accounts.map((acc) => {
                     const isActive = acc.id === activeId
+                    const dotColor = acc.color?.trim() || '#3b82f6'
+                    const displayLabel = acc.alias?.trim()
+                      ? `${acc.alias.trim()} (${acc.email ?? acc.subject ?? ''})`
+                      : (acc.email ??
+                        acc.subject ??
+                        translate('accounts.antigravity.saved', 'Saved Google account'))
                     return (
                       <DropdownMenuItem
                         key={acc.id}
                         onSelect={() => void launchAntigravity(acc.id)}
                         className="justify-between"
                       >
-                        <span className="truncate">
-                          {acc.email ??
-                            acc.subject ??
-                            translate('accounts.antigravity.saved', 'Saved Google account')}
+                        <span className="flex items-center gap-2 truncate">
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: dotColor }}
+                            data-account-color={dotColor}
+                          />
+                          <span className="truncate">{displayLabel}</span>
                         </span>
                         {isActive ? (
-                          <Check className="size-3.5 shrink-0 text-muted-foreground" />
+                          <Check className="size-3.5 shrink-0 text-muted-foreground ml-2" />
                         ) : null}
                       </DropdownMenuItem>
                     )
@@ -305,11 +315,19 @@ function QuickLaunchAgentMenuItemsInner({
                     onSelect={() => void launchAntigravity()}
                     className="justify-between"
                   >
-                    <span className="truncate">
-                      {activeAccount?.email ??
-                        translate('accounts.antigravity.openCurrent', 'Current account')}
+                    <span className="flex items-center gap-2 truncate">
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: activeSummary?.color?.trim() || '#3b82f6' }}
+                      />
+                      <span className="truncate">
+                        {activeSummary?.alias?.trim()
+                          ? `${activeSummary.alias.trim()} (${activeAccount?.email ?? ''})`
+                          : (activeAccount?.email ??
+                            translate('accounts.antigravity.openCurrent', 'Current account'))}
+                      </span>
                     </span>
-                    <Check className="size-3.5 shrink-0 text-muted-foreground" />
+                    <Check className="size-3.5 shrink-0 text-muted-foreground ml-2" />
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
