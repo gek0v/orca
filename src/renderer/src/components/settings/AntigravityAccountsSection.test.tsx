@@ -165,4 +165,22 @@ describe('native Antigravity Accounts', () => {
     expect(screen.queryByText('Native account')).toBeNull()
     expect(screen.getByText(/The native account changed/)).toBeTruthy()
   })
+
+  it('allows editing an account alias and color preset, calling Update RPC', async () => {
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+    await screen.findByText('Native account')
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const input = await screen.findByPlaceholderText('Account alias')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Personal')
+    await userEvent.click(screen.getByTestId('color-emerald'))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(callAntigravityAccounts).toHaveBeenCalledWith(
+      owner,
+      target,
+      'Update',
+      expect.objectContaining({ accountId: 'a', alias: 'Personal', color: '#10b981' })
+    )
+  })
 })

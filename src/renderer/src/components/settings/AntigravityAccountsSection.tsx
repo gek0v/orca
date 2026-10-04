@@ -6,11 +6,13 @@ import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-
 import { callRuntimeRpc, type RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
 import type {
   AntigravityAccountState,
+  AntigravityAccountSummary,
   AntigravityAccountTarget
 } from '../../../../shared/antigravity-account-types'
 import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate-limit-types'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
+import { AntigravityAccountEditDialog } from './AntigravityAccountEditDialog'
 
 export function AntigravityAccountsSection({
   owner,
@@ -34,6 +36,7 @@ export function AntigravityAccountsSection({
       : null
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<AntigravityAccountSummary | null>(null)
   const pending = useRef(false)
   const mounted = useRef(true)
   const ownerKind = owner.kind
@@ -138,6 +141,27 @@ export function AntigravityAccountsSection({
     }
   }
 
+  async function handleUpdateMetadata(
+    accountId: string,
+    metadata: { alias?: string | null; color?: string | null }
+  ) {
+    setError(null)
+    try {
+      const next = await callAntigravityAccounts(owner, target, 'Update', {
+        accountId,
+        alias: metadata.alias,
+        color: metadata.color
+      })
+      if (mounted.current) {
+        setState(next)
+      }
+    } catch (cause) {
+      if (mounted.current) {
+        setError(cause instanceof Error ? cause.message : 'Could not update account metadata.')
+      }
+    }
+  }
+
   return (
     <section id="accounts-antigravity" className="space-y-4 scroll-mt-6">
       <div className="space-y-1">
@@ -236,9 +260,21 @@ export function AntigravityAccountsSection({
               className="flex items-center justify-between gap-3 rounded-md border p-3"
             >
               <div className="space-y-1">
-                <p className="text-xs font-medium">
-                  {account.email ?? translate('accounts.antigravity.saved', 'Saved Google account')}
-                </p>
+                <div className="flex items-center gap-2">
+                  {account.color ? (
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: account.color }}
+                      data-account-color={account.color}
+                    />
+                  ) : null}
+                  <p className="text-xs font-medium">
+                    {account.alias
+                      ? `${account.alias} (${account.email ?? ''})`
+                      : (account.email ??
+                        translate('accounts.antigravity.saved', 'Saved Google account'))}
+                  </p>
+                </div>
                 {state.activeAccountId === account.id && (
                   <Badge variant="secondary">
                     {translate('accounts.antigravity.nativeActive', 'Native account')}
@@ -246,6 +282,14 @@ export function AntigravityAccountsSection({
                 )}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => setEditingAccount(account)}
+                >
+                  {translate('accounts.antigravity.edit', 'Edit')}
+                </Button>
                 <Button
                   size="xs"
                   variant="outline"
@@ -279,6 +323,16 @@ export function AntigravityAccountsSection({
           'Selection applies to new agy sessions on this host. Existing sessions may keep their previous account.'
         )}
       </p>
+      <AntigravityAccountEditDialog
+        account={editingAccount}
+        open={editingAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingAccount(null)
+          }
+        }}
+        onSave={handleUpdateMetadata}
+      />
     </section>
   )
 }
