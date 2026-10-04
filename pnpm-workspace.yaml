@@ -9,6 +9,7 @@
 # binding.gyp mid-rebuild on Windows CI. A workspace link is resolved once instead.
 packages:
   - native/windows-registry
+  - native/windows-credentials
 
 minimumReleaseAge: 4320
 shamefullyHoist: true
@@ -48,6 +49,7 @@ allowBuilds:
   sherpa-onnx: true
   ssh2: false
   '@orca/windows-registry': false
+  '@orca/windows-credentials': false
 
 overrides:
   monaco-editor>dompurify: 3.4.16

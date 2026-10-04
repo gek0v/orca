@@ -19,6 +19,7 @@ const source = new Map(
 const paths = [
   'node_modules/.pnpm/node-pty@*/node_modules/node-pty/build',
   'native/windows-registry/build',
+  'native/windows-credentials/build',
   'node_modules/.pnpm/@vscode+windows-process-tre*/node_modules/@vscode/windows-process-tree/build'
 ]
 
@@ -107,7 +108,11 @@ describe('CI native cache ownership', () => {
       'native/windows-registry/src/addon.cc',
       'native/windows-registry/binding.gyp',
       'native/windows-registry/package.json',
-      'native/windows-registry/index.js'
+      'native/windows-registry/index.js',
+      'native/windows-credentials/src/addon.cc',
+      'native/windows-credentials/binding.gyp',
+      'native/windows-credentials/package.json',
+      'native/windows-credentials/index.js'
     ])
     expect(inputs).not.toContain(installerPath)
     for (const file of inputs) {

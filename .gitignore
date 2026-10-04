@@ -32,6 +32,9 @@ native/windows-cli-launcher/target/
 # node-gyp output for the vendored Windows registry addon; generated per host and ABI.
 native/windows-registry/build/
 native/windows-registry/bin/
+native/windows-credentials/build/
+native/windows-credentials/bin/
+
 
 # pnpm
 .pnpm-store/

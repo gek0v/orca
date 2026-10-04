@@ -6,6 +6,10 @@ import {
   readAntigravityMacOSCredential,
   writeAntigravityMacOSCredential
 } from './native-macos-credentials'
+import {
+  readAntigravityWindowsCredential,
+  writeAntigravityWindowsCredential
+} from './native-windows-credentials'
 import type { AntigravityCredentialBackend } from './native-account-service'
 
 const CONFLICT =
@@ -56,9 +60,19 @@ export function createAntigravityFileCredentialBackend(path: string): Antigravit
 
 export function createAntigravityHostCredentialBackend(home: string): AntigravityCredentialBackend {
   if (process.platform === 'win32') {
-    throw new Error(
-      'Native Antigravity account switching is not supported on this host yet. Windows credential storage and private file permissions need a verified adapter.'
-    )
+    return {
+      read: () => readAntigravityWindowsCredential(),
+      async write(contents, expected) {
+        parseAntigravityNativeCredential(contents)
+        if ((await readAntigravityWindowsCredential())?.contents !== (expected ?? undefined)) {
+          throw new Error(CONFLICT)
+        }
+        await writeAntigravityWindowsCredential(contents)
+        if ((await readAntigravityWindowsCredential())?.contents !== contents) {
+          throw new Error(CONFLICT)
+        }
+      }
+    }
   }
   const root = join(home, '.gemini', 'antigravity-cli')
   const file = createAntigravityFileCredentialBackend(join(root, 'antigravity-oauth-token'))

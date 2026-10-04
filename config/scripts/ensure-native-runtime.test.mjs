@@ -110,12 +110,13 @@ describe('ensure-native-runtime', () => {
         const log = readFileSync(logPath, 'utf8')
         expect(
           log.split('\n').filter((line) => line === `node-gyp rebuild --arch=${process.arch}`)
-        ).toHaveLength(2)
+        ).toHaveLength(3)
         expect(
           log.split('\n').filter((line) => line === `trackFileAccess=${tracking}`)
-        ).toHaveLength(2)
+        ).toHaveLength(3)
         expect(log).toContain(join('node_modules', 'node-pty'))
         expect(log).toContain(join('node_modules', '@orca', 'windows-registry'))
+        expect(log).toContain(join('node_modules', '@orca', 'windows-credentials'))
       } finally {
         rmSync(projectDir, { recursive: true, force: true })
       }
@@ -404,6 +405,16 @@ function writeFakeWindowsRegistry(projectDir, { requiresMarker = false } = {}) {
   writeFileSync(
     join(registryDir, 'index.js'),
     `exports.HK = { CU: 0x80000001 }; exports.getRegistryKey = () => { ${markerGate}; return {} }\n`
+  )
+  const credentialsDir = join(projectDir, 'node_modules', '@orca', 'windows-credentials')
+  mkdirSync(credentialsDir, { recursive: true })
+  writeFileSync(
+    join(credentialsDir, 'package.json'),
+    '{"name":"@orca/windows-credentials","version":"1.0.0","main":"index.js"}\n'
+  )
+  writeFileSync(
+    join(credentialsDir, 'index.js'),
+    `exports.readCredential = () => { ${markerGate}; return null }\n`
   )
   const processTreeDir = join(projectDir, 'node_modules', '@vscode', 'windows-process-tree')
   mkdirSync(processTreeDir, { recursive: true })

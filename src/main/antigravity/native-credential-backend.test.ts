@@ -13,6 +13,14 @@ vi.mock('./native-macos-credentials', () => ({
   readAntigravityMacOSCredential: vi.fn(),
   writeAntigravityMacOSCredential: vi.fn()
 }))
+vi.mock('./native-windows-credentials', () => ({
+  readAntigravityWindowsCredential: vi.fn(),
+  writeAntigravityWindowsCredential: vi.fn()
+}))
+import {
+  readAntigravityWindowsCredential,
+  writeAntigravityWindowsCredential
+} from './native-windows-credentials'
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllEnvs()
@@ -55,30 +63,35 @@ describe('execution-host native credential authority', () => {
     expect(isAntigravityFileStorageHost({}, '6.8-linux')).toBe(false)
   })
 
-  it('refuses Windows file bypass until private ACL protection is verified', () => {
+  it('routes Windows hosts to Credential Manager instead of the file bypass', async () => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
-    vi.stubEnv('SSH_CLIENT', 'task-host')
-    expect(() => createAntigravityHostCredentialBackend('/task-home')).toThrow(
-      'private file permissions need a verified adapter'
+    const { parseAntigravityNativeCredential } = await import('./native-credential-codec')
+    let current: string | null = null
+    vi.mocked(readAntigravityWindowsCredential).mockImplementation(async () =>
+      current === null ? null : parseAntigravityNativeCredential(current)
     )
+    vi.mocked(writeAntigravityWindowsCredential).mockImplementation(async (contents: string) => {
+      current = contents
+    })
+    const backend = createAntigravityHostCredentialBackend('/task-home')
+    expect(await backend.read()).toBeNull()
+    await backend.write(credential('a'), null)
+    expect(writeAntigravityWindowsCredential).toHaveBeenCalledWith(credential('a'))
   })
 
-  it.each(['win32', 'linux'] as const)(
-    'capability-refuses unverified native %s without mutating client credentials',
-    (platform) => {
-      for (const key of [
-        'SSH_TTY',
-        'SSH_CLIENT',
-        'SSH_CONNECTION',
-        'WSL_DISTRO_NAME',
-        'WSL_INTEROP'
-      ]) {
-        vi.stubEnv(key, '')
-      }
-      vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
-      expect(() => createAntigravityHostCredentialBackend('/task-home')).toThrow(
-        'not supported on this host yet'
-      )
+  it('capability-refuses unverified native linux without mutating client credentials', () => {
+    for (const key of [
+      'SSH_TTY',
+      'SSH_CLIENT',
+      'SSH_CONNECTION',
+      'WSL_DISTRO_NAME',
+      'WSL_INTEROP'
+    ]) {
+      vi.stubEnv(key, '')
     }
-  )
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+    expect(() => createAntigravityHostCredentialBackend('/task-home')).toThrow(
+      'not supported on this host yet'
+    )
+  })
 })
