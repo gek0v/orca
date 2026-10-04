@@ -208,19 +208,18 @@ export function getWindowSections(
 // `text-background` for primary text and `text-background/50` for secondary
 // to stay readable inside the inverted tooltip container.
 
-// Why: urgency color tracks % used even when fill represents % remaining;
-// low usage stays neutral so persistent chrome stays quiet.
+// Why: status colors indicate consumption health (healthy green <60%, warning yellow <80%, urgent red >=80%).
 export const USAGE_WARNING_PERCENT = 60
 export const USAGE_URGENT_PERCENT = 80
 
 export function barColor(usedPct: number): string {
   if (usedPct < USAGE_WARNING_PERCENT) {
-    return 'bg-muted-foreground/40'
+    return 'bg-status-success'
   }
   if (usedPct < USAGE_URGENT_PERCENT) {
-    return 'bg-yellow-500'
+    return 'bg-status-warning'
   }
-  return 'bg-red-500'
+  return 'bg-destructive'
 }
 
 function ProviderRateLimitWindowSection({
