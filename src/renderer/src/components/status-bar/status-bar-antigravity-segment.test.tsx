@@ -49,18 +49,89 @@ function antigravityLimits(overrides: Partial<ProviderRateLimits> = {}): Provide
 }
 
 describe('Antigravity status-bar segment', () => {
-  it('renders both model-group pools by name', async () => {
-    // Why: the verbose bucket allowlist was written for Gemini's experimental models, so
-    // Antigravity's pools — whose names come from the account's tier and cannot be enumerated
-    // ahead of time — were filtered out and the segment showed no number at all.
+  it('renders Gemini model pools as GM · WL and hides external Claude/GPT models from the status bar', async () => {
+    // Why: Antigravity hides external model pools (Claude and GPT) from the status bar,
+    // formatting first-party Gemini pools concisely as GM · WL / GM · 5H.
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
       <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).toContain('Gemini Models')
-    expect(markup).toContain('Claude and GPT models')
+    expect(markup).toContain('GM · WL')
     expect(markup).toContain('100%')
+    expect(markup).not.toContain('Gemini Models')
+    expect(markup).not.toContain('Claude and GPT models')
+  })
+
+  it('formats Gemini 5h and weekly limit buckets as GM · 5H and GM · WL', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const limits: ProviderRateLimits = {
+      ...antigravityLimits(),
+      buckets: [
+        {
+          name: 'Gemini Models · 5h Limit Remaining',
+          usedPercent: 40,
+          windowMinutes: 300,
+          resetsAt: null,
+          resetDescription: null
+        },
+        {
+          name: 'Gemini Models · Weekly Limit Remaining',
+          usedPercent: 25,
+          windowMinutes: 10_080,
+          resetsAt: null,
+          resetDescription: null
+        },
+        {
+          name: 'Claude and GPT models · Weekly Limit Remaining',
+          usedPercent: 80,
+          windowMinutes: 10_080,
+          resetsAt: null,
+          resetDescription: null
+        }
+      ]
+    }
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={limits} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('GM · 5H')
+    expect(markup).toContain('40%')
+    expect(markup).toContain('GM · WL')
+    expect(markup).toContain('25%')
+    expect(markup).not.toContain('Gemini Models')
+    expect(markup).not.toContain('Claude and GPT models')
+    expect(markup).not.toContain('80%')
+  })
+
+  it('prioritizes Gemini models for tightest section in compact mode ignoring external models', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const limits: ProviderRateLimits = {
+      ...antigravityLimits(),
+      buckets: [
+        {
+          name: 'Gemini Models · Weekly Limit Remaining',
+          usedPercent: 30,
+          windowMinutes: 10_080,
+          resetsAt: null,
+          resetDescription: null
+        },
+        {
+          name: 'Claude and GPT models',
+          usedPercent: 95,
+          windowMinutes: 10_080,
+          resetsAt: null,
+          resetDescription: null
+        }
+      ]
+    }
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={limits} compact={true} display="used" mode="compact" />
+    )
+
+    expect(markup).toContain('30%')
+    expect(markup).not.toContain('95%')
+    expect(markup).not.toContain('Claude and GPT models')
   })
 
   it('shows the weekly window when a tier reports no session pool', async () => {

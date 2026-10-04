@@ -93,7 +93,7 @@ describe('fetchAntigravityRateLimits', () => {
     expect(result.weekly).toMatchObject({ usedPercent: 60, windowMinutes: 10_080 })
     expect(result.buckets).toEqual([
       {
-        name: 'Gemini Models',
+        name: 'GM · WL',
         usedPercent: 60,
         windowMinutes: 10_080,
         resetsAt: new Date('2026-10-07T08:08:35Z').getTime(),

@@ -14,7 +14,11 @@ import {
   getProviderDisplayName,
   getProviderUsageStatusLabel
 } from './tooltip'
-import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
+import {
+  getTightestUsageSection,
+  getUsageHeadlineSection,
+  type UsageSection
+} from './UsageRosterPanel'
 import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { translate } from '@/i18n/i18n'
@@ -75,11 +79,81 @@ export function ProviderLetterBadge({ p }: { p: ProviderRateLimits }): React.JSX
   )
 }
 
+// Why: Gemini exposes extra experimental buckets that made the pre-existing verbose footer noisy.
+const STATUS_BAR_BUCKET_NAMES = new Set(['Flash', 'Pro', '1.5 Pro'])
+
+export function isExternalAntigravityModel(name: string): boolean {
+  const lower = name.toLowerCase()
+  return (
+    lower.includes('claude') ||
+    lower.includes('gpt') ||
+    lower.includes('3p') ||
+    lower.includes('external')
+  )
+}
+
+export function formatStatusBarBucketLabel(
+  name: string,
+  provider: ProviderRateLimits['provider'],
+  windowMinutes?: number
+): string {
+  if (provider === 'antigravity') {
+    if (/gemini/i.test(name) || /^gm\b/i.test(name)) {
+      if (/5h/i.test(name) || windowMinutes === 300) {
+        return 'GM · 5H'
+      }
+      if (/weekly/i.test(name) || /wl\b/i.test(name) || windowMinutes === 10_080) {
+        return 'GM · WL'
+      }
+      return 'GM · WL'
+    }
+  }
+  return name
+}
+
+/**
+ * Antigravity hides external model pools (Claude and GPT models) from the status bar,
+ * keeping only first-party Gemini pools (GM · WL, GM · 5H).
+ * Cursor stays name-matched on purpose.
+ */
+export function isVisibleStatusBarBucket(
+  name: string,
+  provider: ProviderRateLimits['provider']
+): boolean {
+  if (provider === 'antigravity') {
+    return !isExternalAntigravityModel(name)
+  }
+  return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
+}
+
+export function getAntigravityStatusTightestSection(p: ProviderRateLimits): UsageSection | null {
+  const visible = (p.buckets ?? []).filter((b) => isVisibleStatusBarBucket(b.name, 'antigravity'))
+  if (visible.length === 0) {
+    return getTightestUsageSection(p)
+  }
+  const tightestBucket = visible.reduce((current, candidate) =>
+    clampUsedPercent(candidate.usedPercent) > clampUsedPercent(current.usedPercent)
+      ? candidate
+      : current
+  )
+  return {
+    label: formatStatusBarBucketLabel(
+      tightestBucket.name,
+      'antigravity',
+      tightestBucket.windowMinutes
+    ),
+    window: tightestBucket
+  }
+}
+
 export type UsageTone = 'urgent' | 'warning' | 'normal'
 
 /** Urgency by consumption, matching the usage bar colors, whatever % display the user chose. */
 export function getUsageTone(p: ProviderRateLimits): UsageTone {
-  const tightest = getTightestUsageSection(p)
+  const tightest =
+    p.provider === 'antigravity' && p.buckets && p.buckets.length > 0
+      ? getAntigravityStatusTightestSection(p)
+      : getTightestUsageSection(p)
   const used = tightest ? clampUsedPercent(tightest.window.usedPercent) : 0
   return used >= USAGE_URGENT_PERCENT
     ? 'urgent'
@@ -107,7 +181,10 @@ export function UsageOverflowChip({
       : 'normal'
   const names = hidden
     .map((p) => {
-      const tightest = getTightestUsageSection(p)
+      const tightest =
+        p.provider === 'antigravity' && p.buckets && p.buckets.length > 0
+          ? getAntigravityStatusTightestSection(p)
+          : getTightestUsageSection(p)
       const name = getProviderDisplayName(p.provider)
       if (!tightest) {
         return name
@@ -161,26 +238,6 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Provider segment
-// ---------------------------------------------------------------------------
-
-// Why: Gemini exposes extra experimental buckets that made the pre-existing verbose footer noisy.
-const STATUS_BAR_BUCKET_NAMES = new Set(['Flash', 'Pro', '1.5 Pro'])
-
-/**
- * Why Antigravity is matched by provider and not by name: its pools are one per model group, and the
- * group names come from the account's own tier ("Gemini Models", "Claude and GPT models" today), so
- * there is no list to allow. Cursor stays name-matched on purpose — a pool Orca does not recognise
- * is filtered so the segment can fall back to the plan total instead of showing an unlabelled row.
- */
-function isVisibleStatusBarBucket(name: string, provider: ProviderRateLimits['provider']): boolean {
-  if (provider === 'antigravity') {
-    return true
-  }
-  return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
-}
-
 function VerboseProviderUsage({
   p,
   display
@@ -206,7 +263,9 @@ function VerboseProviderUsage({
             <React.Fragment key={bucket.name}>
               {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
               <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-                <span className="text-[11px] text-muted-foreground">{bucket.name}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {formatStatusBarBucketLabel(bucket.name, p.provider, bucket.windowMinutes)}
+                </span>
                 <span className={getQuotaTextColorClass(bucket.usedPercent)}>{pct}%</span>
               </span>
             </React.Fragment>
@@ -293,7 +352,12 @@ export function ProviderSegment({
     )
   }
 
-  const tightest = mode === 'compact' ? getUsageHeadlineSection(p) : getTightestUsageSection(p)
+  const tightest =
+    p.provider === 'antigravity' && p.buckets && p.buckets.length > 0
+      ? getAntigravityStatusTightestSection(p)
+      : mode === 'compact'
+        ? getUsageHeadlineSection(p)
+        : getTightestUsageSection(p)
 
   // Fetching with no prior data
   if (p.status === 'fetching' && !tightest) {

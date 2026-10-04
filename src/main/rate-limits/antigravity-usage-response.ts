@@ -81,13 +81,33 @@ function parseResetsAt(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-/**
- * Why a group name and not the bucket name: every bucket in the payload is called "Weekly Limit
- * Remaining", so the bucket name alone renders two identical rows. The group is what distinguishes
- * them ("Gemini Models" vs "Claude and GPT models"), and the agy label is only appended when one
- * group reports more than one window.
- */
-function formatBucketName(groupName: string, bucketName: string | null, siblings: number): string {
+// Why: Gemini Models are shortened to GM · WL (weekly) and GM · 5H (5h) for compact quota display.
+function formatBucketName(
+  groupName: string,
+  bucketName: string | null,
+  siblings: number,
+  window?: string | null,
+  id?: string | null
+): string {
+  const isGemini =
+    /gemini/i.test(groupName) || (id !== null && id !== undefined && id.startsWith('gemini'))
+  if (isGemini) {
+    const is5h =
+      window === '5h' ||
+      (id !== null && id !== undefined && id.includes('5h')) ||
+      (bucketName !== null && /5h/i.test(bucketName))
+    const isWeekly =
+      window === 'weekly' ||
+      (id !== null && id !== undefined && id.includes('weekly')) ||
+      (bucketName !== null && /weekly/i.test(bucketName))
+    if (is5h) {
+      return 'GM · 5H'
+    }
+    if (isWeekly) {
+      return 'GM · WL'
+    }
+    return 'GM · WL'
+  }
   if (siblings <= 1 || !bucketName) {
     return groupName
   }
@@ -111,13 +131,15 @@ function parseBucket(
     return null
   }
   const usedPercent = Math.min(100, Math.max(0, Math.round((1 - fraction) * 100)))
+  const windowStr = readString(raw.window)
+  const bucketName = readString(raw.name)
   return {
     id,
-    name: formatBucketName(groupName, readString(raw.name), siblings),
+    name: formatBucketName(groupName, bucketName, siblings, windowStr, id),
     usedPercent,
     // Why 0 and not null: RateLimitWindow requires a number, and an unrecognised agy window still
     // carries a real remaining fraction worth showing as a named bucket.
-    windowMinutes: windowMinutesFor(readString(raw.window)) ?? 0,
+    windowMinutes: windowMinutesFor(windowStr) ?? 0,
     resetsAt: parseResetsAt(raw.reset_time),
     resetDescription: null
   }
