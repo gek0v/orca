@@ -51,11 +51,10 @@ function WindowLabel({
   display: UsagePercentageDisplay
   showLabel?: boolean
 }): React.JSX.Element {
-  const used = clampUsedPercent(w.usedPercent)
-  const pct = getDisplayedUsagePercentage(used, display)
+  const pct = getDisplayedUsagePercentage(w.usedPercent, display)
   return (
     <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-      <span className={getQuotaTextColorClass(used)}>{pct}%</span>
+      <span className={getQuotaTextColorClass(w.usedPercent)}>{pct}%</span>
       {showLabel ? <span className="text-[11px] text-muted-foreground">{label}</span> : null}
     </span>
   )
@@ -202,14 +201,13 @@ function VerboseProviderUsage({
     return (
       <>
         {visibleBuckets.map((bucket, index) => {
-          const used = clampUsedPercent(bucket.usedPercent)
-          const pct = getDisplayedUsagePercentage(used, display)
+          const pct = getDisplayedUsagePercentage(bucket.usedPercent, display)
           return (
             <React.Fragment key={bucket.name}>
               {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
               <span className="inline-flex items-center gap-1 font-medium tabular-nums">
                 <span className="text-[11px] text-muted-foreground">{bucket.name}</span>
-                <span className={getQuotaTextColorClass(used)}>{pct}%</span>
+                <span className={getQuotaTextColorClass(bucket.usedPercent)}>{pct}%</span>
               </span>
             </React.Fragment>
           )
@@ -336,7 +334,7 @@ export function ProviderSegment({
       {mode === 'verbose' ? (
         <>
           {tightest && !compact ? (
-            <MiniBar usedPct={clampUsedPercent(tightest.window.usedPercent)} display={display} />
+            <MiniBar usedPct={tightest.window.usedPercent} display={display} />
           ) : null}
           <VerboseProviderUsage p={p} display={display} />
         </>

@@ -157,4 +157,32 @@ describe('InlineUsageBars', () => {
     expect(markup).toContain('width:58%')
     expect(markup).not.toContain('width:32%')
   })
+
+  it('renders consistent destructive color and 0% width for NaN usage', async () => {
+    mocks.usagePercentageDisplay = 'remaining'
+    const { InlineUsageBars } = await import('./StatusBar')
+
+    const nanLimits: ProviderRateLimits = {
+      provider: 'claude',
+      session: {
+        usedPercent: Number.NaN,
+        windowMinutes: 300,
+        resetsAt: null,
+        resetDescription: null
+      },
+      weekly: null,
+      updatedAt: Date.now(),
+      error: null,
+      status: 'ok'
+    }
+
+    const markup = renderToStaticMarkup(<InlineUsageBars limits={nanLimits} isFetching={false} />)
+
+    expect(markup).toContain('0%')
+    expect(markup).toContain('width:0%')
+    expect(markup).toContain('bg-destructive')
+    expect(markup).toContain('text-destructive')
+    expect(markup).not.toContain('text-status-success')
+    expect(markup).not.toContain('bg-status-success')
+  })
 })

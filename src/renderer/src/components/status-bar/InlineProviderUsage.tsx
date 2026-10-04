@@ -8,9 +8,8 @@ import {
   normalizeUsagePercentageDisplay
 } from '../../../../shared/usage-percentage-display'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
-import { barColor, clampUsedPercent } from './tooltip'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
-import { getQuotaTextColorClass } from './status-bar-quota-tones'
+import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { translate } from '@/i18n/i18n'
 
 export function InlineUsageBars({
@@ -29,7 +28,7 @@ export function InlineUsageBars({
     limits.session
       ? {
           key: 'session',
-          used: clampUsedPercent(limits.session.usedPercent),
+          used: limits.session.usedPercent,
           // Why: live reset countdown (matches popover); '5h' window length only when resetsAt is unknown (#5399).
           label: formatRateLimitWindowChipLabel(limits.session, now)
         }
@@ -37,14 +36,14 @@ export function InlineUsageBars({
     limits.weekly
       ? {
           key: 'weekly',
-          used: clampUsedPercent(limits.weekly.usedPercent),
+          used: limits.weekly.usedPercent,
           label: translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
         }
       : null,
     limits.fableWeekly
       ? {
           key: 'fableWeekly',
-          used: clampUsedPercent(limits.fableWeekly.usedPercent),
+          used: limits.fableWeekly.usedPercent,
           label: translate('auto.components.status.bar.StatusBar.54e8d6bb2d', 'Fable')
         }
       : null
@@ -64,7 +63,7 @@ export function InlineUsageBars({
             <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
               {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
               <div
-                className={`h-full rounded-full transition-all duration-300 ${barColor(window.used)}`}
+                className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(window.used)}`}
                 style={{ width: `${pct}%` }}
               />
             </div>

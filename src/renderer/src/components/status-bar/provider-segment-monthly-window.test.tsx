@@ -224,4 +224,25 @@ describe('undefined provider window safety (crash d2c1da69 / bb74236c)', () => {
       )
     ).not.toThrow()
   })
+
+  it('renders 0% in destructive color for NaN usedPercent instead of masking as 100% remaining', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const nanProvider: ProviderRateLimits = {
+      provider: 'claude',
+      session: windowOf(Number.NaN, 300),
+      weekly: null,
+      updatedAt: Date.now(),
+      error: null,
+      status: 'ok'
+    }
+
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={nanProvider} compact={false} display="remaining" mode="verbose" />
+    )
+
+    expect(markup).toContain('0%')
+    expect(markup).toContain('text-destructive')
+    expect(markup).not.toContain('100%')
+    expect(markup).not.toContain('text-status-success')
+  })
 })

@@ -586,6 +586,7 @@ describe('barColor', () => {
     expect(barColor(79)).toBe('bg-status-warning')
     expect(barColor(80)).toBe('bg-destructive')
     expect(barColor(100)).toBe('bg-destructive')
+    expect(barColor(Number.NaN)).toBe('bg-destructive')
   })
 })
 

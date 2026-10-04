@@ -208,19 +208,13 @@ export function getWindowSections(
 // `text-background` for primary text and `text-background/50` for secondary
 // to stay readable inside the inverted tooltip container.
 
-// Why: status colors indicate consumption health (healthy green <60%, warning yellow <80%, urgent red >=80%).
-export const USAGE_WARNING_PERCENT = 60
-export const USAGE_URGENT_PERCENT = 80
+import {
+  getQuotaBarColorClass,
+  USAGE_URGENT_PERCENT,
+  USAGE_WARNING_PERCENT
+} from './status-bar-quota-tones'
 
-export function barColor(usedPct: number): string {
-  if (usedPct < USAGE_WARNING_PERCENT) {
-    return 'bg-status-success'
-  }
-  if (usedPct < USAGE_URGENT_PERCENT) {
-    return 'bg-status-warning'
-  }
-  return 'bg-destructive'
-}
+export { USAGE_WARNING_PERCENT, USAGE_URGENT_PERCENT, getQuotaBarColorClass as barColor }
 
 function ProviderRateLimitWindowSection({
   window,
@@ -242,8 +236,7 @@ function ProviderRateLimitWindowSection({
   if (!window) {
     return null
   }
-  const usedPct = clampUsedPercent(window.usedPercent)
-  const displayedPct = getDisplayedUsagePercentage(usedPct, usagePercentageDisplay)
+  const displayedPct = getDisplayedUsagePercentage(window.usedPercent, usagePercentageDisplay)
   const resetLabel = window.resetsAt ? formatResetCountdown(window.resetsAt - now) : null
 
   return (
@@ -252,12 +245,12 @@ function ProviderRateLimitWindowSection({
       <div className={`h-[6px] w-full overflow-hidden rounded-full ${emptyBarClass}`}>
         {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
         <div
-          className={`h-full rounded-full ${barColor(usedPct)} transition-all duration-300`}
+          className={`h-full rounded-full ${getQuotaBarColorClass(window.usedPercent)} transition-all duration-300`}
           style={{ width: `${displayedPct}%` }}
         />
       </div>
       <div className={`flex justify-between ${mutedClass}`}>
-        <span>{formatUsagePercentageLabel(usedPct, usagePercentageDisplay)}</span>
+        <span>{formatUsagePercentageLabel(window.usedPercent, usagePercentageDisplay)}</span>
         {resetLabel && <span>{resetLabel}</span>}
       </div>
     </div>

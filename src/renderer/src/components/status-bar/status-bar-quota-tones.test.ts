@@ -28,4 +28,11 @@ describe('status-bar-quota-tones', () => {
     expect(getQuotaBarColorClass(85)).toBe('bg-destructive')
     expect(getQuotaBarColorClass(100)).toBe('bg-destructive')
   })
+
+  it('returns destructive tokens for invalid or non-finite quota values to avoid masking errors', () => {
+    expect(getQuotaTextColorClass(Number.NaN)).toBe('text-destructive')
+    expect(getQuotaTextColorClass(Number.POSITIVE_INFINITY)).toBe('text-destructive')
+    expect(getQuotaBarColorClass(Number.NaN)).toBe('bg-destructive')
+    expect(getQuotaBarColorClass(Number.POSITIVE_INFINITY)).toBe('bg-destructive')
+  })
 })
