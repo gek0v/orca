@@ -13,3 +13,12 @@ export const AntigravityAccountMutationParams = z
     accountId: z.string().min(1).max(128)
   })
   .strict()
+
+export const AntigravityAccountUpdateParams = z
+  .object({
+    target: AntigravityAccountTargetParams,
+    accountId: z.string().min(1).max(128),
+    alias: z.string().max(128).nullable().optional(),
+    color: z.string().max(32).nullable().optional()
+  })
+  .strict()

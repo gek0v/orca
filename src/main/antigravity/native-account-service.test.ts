@@ -156,4 +156,18 @@ describe('Antigravity native account identity and selection', () => {
     await expect(h.service.removeAccount(id)).rejects.toThrow('Select another')
     expect(h.getVault().accounts).toHaveLength(1)
   })
+
+  it('updates account metadata alias and color atomically', async () => {
+    const h = harness()
+    const first = await h.service.addCurrentAccount()
+    const id = first.activeAccountId!
+
+    const updated = await h.service.updateAccountMetadata(id, { alias: 'Trabajo', color: '#3b82f6' })
+    expect(updated.accounts[0].alias).toBe('Trabajo')
+    expect(updated.accounts[0].color).toBe('#3b82f6')
+
+    const listed = await h.service.listAccounts()
+    expect(listed.accounts[0].alias).toBe('Trabajo')
+    expect(listed.accounts[0].color).toBe('#3b82f6')
+  })
 })

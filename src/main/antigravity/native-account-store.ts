@@ -29,6 +29,8 @@ function isAccount(value: unknown): value is StoredAntigravityAccount {
     (value.email === null || typeof value.email === 'string') &&
     (value.subject === null || typeof value.subject === 'string') &&
     typeof value.authMethod === 'string' &&
+    (value.alias === undefined || value.alias === null || typeof value.alias === 'string') &&
+    (value.color === undefined || value.color === null || typeof value.color === 'string') &&
     typeof value.createdAt === 'number' &&
     typeof value.updatedAt === 'number' &&
     typeof value.credentials === 'string'

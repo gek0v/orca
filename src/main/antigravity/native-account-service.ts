@@ -121,6 +121,28 @@ export class AntigravityAccountService {
     })
   }
 
+  updateAccountMetadata(
+    id: string,
+    metadata: { alias?: string | null; color?: string | null }
+  ): Promise<AntigravityAccountState> {
+    return this.serialize(async () => {
+      const { vault, current } = await this.reconcile()
+      const account = vault.accounts.find((entry) => entry.id === id)
+      if (!account) {
+        throw new Error('Antigravity account was not found.')
+      }
+      if (metadata.alias !== undefined) {
+        account.alias = metadata.alias?.trim() || null
+      }
+      if (metadata.color !== undefined) {
+        account.color = metadata.color?.trim() || null
+      }
+      account.updatedAt = this.now()
+      this.store.write(vault)
+      return this.state({ vault, current })
+    })
+  }
+
   prepareForLaunch(): Promise<void> {
     return this.serialize(async () => {
       const { vault, current } = await this.reconcile()

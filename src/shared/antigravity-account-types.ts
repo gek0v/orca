@@ -1,8 +1,15 @@
+export type AntigravityAccountMetadata = {
+  alias?: string | null
+  color?: string | null
+}
+
 export type AntigravityAccountSummary = {
   id: string
   email: string | null
   subject: string | null
   authMethod: string
+  alias?: string | null
+  color?: string | null
   createdAt: number
   updatedAt: number
 }
