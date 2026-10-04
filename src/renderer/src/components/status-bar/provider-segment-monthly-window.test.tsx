@@ -51,7 +51,10 @@ describe('ProviderSegment monthly window', () => {
       <ProviderSegment p={grokMonthlyLimits('ok')} compact={false} display="used" mode="compact" />
     )
 
-    expect(markup).toContain('25% used 30d')
+    expect(markup).toContain('25%')
+    expect(markup).toContain('30d')
+    expect(markup).not.toContain('used')
+    expect(markup).not.toContain('left')
   })
 
   it('shows monthly data while fetching instead of the loading placeholder', async () => {
@@ -66,7 +69,8 @@ describe('ProviderSegment monthly window', () => {
       />
     )
 
-    expect(markup).toContain('25% used 30d')
+    expect(markup).toContain('25%')
+    expect(markup).toContain('30d')
     expect(markup).not.toContain('···')
   })
 
@@ -86,9 +90,10 @@ describe('ProviderSegment monthly window', () => {
       <ProviderSegment p={limits} compact={false} display="used" mode="compact" />
     )
 
-    expect(markup).toContain('30% used 30d')
-    expect(markup).not.toContain('10% used')
-    expect(markup).not.toContain('20% used')
+    expect(markup).toContain('30%')
+    expect(markup).toContain('30d')
+    expect(markup).not.toContain('10%')
+    expect(markup).not.toContain('20%')
   })
 
   it('selects a named bucket as the tightest provider window', async () => {
@@ -110,8 +115,9 @@ describe('ProviderSegment monthly window', () => {
       <ProviderSegment p={limits} compact={false} display="used" mode="compact" />
     )
 
-    expect(markup).toContain('80% used Pro')
-    expect(markup).not.toContain('25% used')
+    expect(markup).toContain('80%')
+    expect(markup).toContain('Pro')
+    expect(markup).not.toContain('25%')
   })
 
   // Why: #8378 — status-bar chip showed fixed window size ("5h") while the
@@ -135,10 +141,12 @@ describe('ProviderSegment monthly window', () => {
         <ProviderSegment p={limits} compact={false} display="used" mode="compact" />
       )
 
-      expect(markup).toContain('42% used 2h 33m')
+      expect(markup).toContain('42%')
+      expect(markup).toContain('2h 33m')
+      expect(markup).not.toContain('used')
       expect(markup).not.toContain('5h')
       // The consolidated footer intentionally renders only the tightest window.
-      expect(markup).not.toContain('10% used')
+      expect(markup).not.toContain('10%')
       expect(markup).not.toContain('wk')
     } finally {
       dateNow.mockRestore()
@@ -177,10 +185,14 @@ describe('ProviderSegment monthly window', () => {
       <ProviderSegment p={limits} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).toContain('10% used 5h')
-    expect(markup).toContain('20% used wk')
-    expect(markup).toContain('30% used Fable')
-    expect(markup).not.toContain('40% used')
+    expect(markup).toContain('10%')
+    expect(markup).toContain('5h')
+    expect(markup).toContain('20%')
+    expect(markup).toContain('wk')
+    expect(markup).toContain('30%')
+    expect(markup).toContain('Fable')
+    expect(markup).not.toContain('30d')
+    expect(markup).not.toContain('used')
   })
 })
 

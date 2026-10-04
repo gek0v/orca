@@ -15,8 +15,8 @@ import {
   getProviderUsageStatusLabel
 } from './tooltip'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
+import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
-import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
 import { isCursorUsageBucket } from '../../../../shared/cursor-usage-buckets'
 
@@ -30,10 +30,10 @@ function MiniBar({
   return (
     <div
       data-usage-bar
-      className="w-[48px] h-[6px] rounded-full bg-muted overflow-hidden flex-shrink-0"
+      className="h-[5px] w-[36px] flex-shrink-0 overflow-hidden rounded-full bg-muted/70"
     >
       <div
-        className="h-full rounded-full transition-all duration-300 bg-muted-foreground/40"
+        className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(usedPct)}`}
         style={{ width: `${getDisplayedUsagePercentage(usedPct, display)}%` }}
       />
     </div>
@@ -51,10 +51,12 @@ function WindowLabel({
   display: UsagePercentageDisplay
   showLabel?: boolean
 }): React.JSX.Element {
+  const used = clampUsedPercent(w.usedPercent)
+  const pct = getDisplayedUsagePercentage(used, display)
   return (
-    <span className="tabular-nums">
-      {formatUsagePercentageLabel(w.usedPercent, display)}
-      {showLabel ? ` ${label}` : ''}
+    <span className="inline-flex items-center gap-1 font-medium tabular-nums">
+      <span className={getQuotaTextColorClass(used)}>{pct}%</span>
+      {showLabel ? <span className="text-[11px] text-muted-foreground">{label}</span> : null}
     </span>
   )
 }
@@ -108,9 +110,11 @@ export function UsageOverflowChip({
     .map((p) => {
       const tightest = getTightestUsageSection(p)
       const name = getProviderDisplayName(p.provider)
-      return tightest
-        ? `${name} ${formatUsagePercentageLabel(tightest.window.usedPercent, display)}`
-        : name
+      if (!tightest) {
+        return name
+      }
+      const pct = getDisplayedUsagePercentage(tightest.window.usedPercent, display)
+      return `${name} ${pct}%`
     })
     .join(', ')
   return (
@@ -197,14 +201,19 @@ function VerboseProviderUsage({
     const fallbackWindow = p.session ?? p.monthly ?? p.weekly ?? null
     return (
       <>
-        {visibleBuckets.map((bucket, index) => (
-          <React.Fragment key={bucket.name}>
-            {index > 0 ? <span className="text-muted-foreground">·</span> : null}
-            <span className="tabular-nums">
-              {bucket.name} {formatUsagePercentageLabel(bucket.usedPercent, display)}
-            </span>
-          </React.Fragment>
-        ))}
+        {visibleBuckets.map((bucket, index) => {
+          const used = clampUsedPercent(bucket.usedPercent)
+          const pct = getDisplayedUsagePercentage(used, display)
+          return (
+            <React.Fragment key={bucket.name}>
+              {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
+              <span className="inline-flex items-center gap-1 font-medium tabular-nums">
+                <span className="text-[11px] text-muted-foreground">{bucket.name}</span>
+                <span className={getQuotaTextColorClass(used)}>{pct}%</span>
+              </span>
+            </React.Fragment>
+          )
+        })}
         {visibleBuckets.length === 0 && fallbackWindow ? (
           <WindowLabel
             w={fallbackWindow}
@@ -254,7 +263,7 @@ function VerboseProviderUsage({
     <>
       {visibleWindows.map((window, index) => (
         <React.Fragment key={window.key}>
-          {index > 0 ? <span className="text-muted-foreground">·</span> : null}
+          {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
           <WindowLabel w={window.window} label={window.label} display={display} />
         </React.Fragment>
       ))}
