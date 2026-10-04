@@ -11,6 +11,7 @@ import { getFitOverrideForPty } from '@/lib/pane-manager/mobile-fit-overrides'
 import { shouldShowMobileDriverOverlay } from './mobile-driver-overlay-visibility'
 import { shouldChatTakeOverMobileSurface } from '../native-chat/native-chat-send-eligibility'
 import type { TerminalPaneController } from './use-terminal-pane-controller'
+import { AntigravityTerminalQuotaPortal } from '../terminal/TerminalQuotaFailoverBanner'
 
 export function TerminalPaneCodexRestartPortals({
   controller
@@ -58,6 +59,34 @@ export function TerminalPaneCodexRestartPortals({
           </>,
           pane.container,
           `codex-restart-${pane.id}`
+        )
+      })}
+    </>
+  )
+}
+
+export function TerminalPaneAntigravityQuotaPortals({
+  controller
+}: {
+  controller: TerminalPaneController
+}): React.JSX.Element {
+  const { managedPanes, paneTransportsRef, savedLayout, tabId } = controller
+  return (
+    <>
+      {managedPanes.map((pane) => {
+        const ptyId =
+          paneTransportsRef.current.get(pane.id)?.getPtyId() ??
+          savedLayout.ptyIdsByLeafId?.[pane.leafId]
+        if (!ptyId) {
+          return null
+        }
+        return (
+          <AntigravityTerminalQuotaPortal
+            key={`antigravity-quota-${pane.id}-${ptyId}`}
+            ptyId={ptyId}
+            tabId={tabId}
+            container={pane.container}
+          />
         )
       })}
     </>
