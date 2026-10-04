@@ -146,7 +146,7 @@ git commit --no-verify -m "feat(tabs): preserve Antigravity launchAccountId on t
 - Consumes: `tab.launchAccountId`, `AntigravityAccountState`
 - Produces: Visual dot + alias badge with tooltip on tab header and quick launch menu items
 
-- [ ] **Step 1: Write the failing component test**
+- [x] **Step 1: Write the failing component test**
 
 ```tsx
 it('renders color dot and alias label when account exists, with tooltip', () => {
@@ -157,23 +157,23 @@ it('renders color dot and alias label when account exists, with tooltip', () => 
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/tab-bar/AntigravityAccountTabBadge.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: Implement `AntigravityAccountTabBadge` and integrate into TabBarItemRow & QuickLaunchButton**
+- [x] **Step 3: Implement `AntigravityAccountTabBadge` and integrate into TabBarItemRow & QuickLaunchButton**
 
 1. Create `AntigravityAccountTabBadge.tsx`: renders a 6px dot with `style={{ backgroundColor: color }}` and a `span` with `text-[10px] text-muted-foreground font-medium truncate max-w-[60px]`, wrapped in a Tooltip showing the full email.
 2. Integrate into `TabBarItemRow.tsx` when `tab.launchAgent === 'antigravity'` and `tab.launchAccountId` is present.
 3. In `QuickLaunchButton.tsx`, render the colored dot and `alias ?? email` in the dropdown menu items.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/tab-bar/AntigravityAccountTabBadge.test.tsx src/renderer/src/components/tab-bar/QuickLaunchButton.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/src/components/tab-bar/AntigravityAccountTabBadge.tsx src/renderer/src/components/tab-bar/TabBarItemRow.tsx src/renderer/src/components/tab-bar/QuickLaunchButton.tsx src/renderer/src/components/tab-bar/AntigravityAccountTabBadge.test.tsx src/renderer/src/components/tab-bar/QuickLaunchButton.test.ts
@@ -193,7 +193,7 @@ git commit --no-verify -m "feat(ui): display Antigravity account color dot and a
 - Consumes: `callAntigravityAccounts(owner, target, 'Update', { accountId, alias, color })`
 - Produces: Inline edit button, alias text input, preset color palette selector, save handler
 
-- [ ] **Step 1: Write failing test in AntigravityAccountsSection.test.tsx**
+- [x] **Step 1: Write failing test in AntigravityAccountsSection.test.tsx**
 
 ```tsx
 it('allows editing an account alias and color preset, calling Update RPC', async () => {
@@ -212,22 +212,22 @@ it('allows editing an account alias and color preset, calling Update RPC', async
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/settings/AntigravityAccountsSection.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: Implement edit dialog / popover in Settings**
+- [x] **Step 3: Implement edit dialog / popover in Settings**
 
 1. Create `AntigravityAccountEditDialog.tsx` offering an input for `alias` and a 6-color circular button selector (`#3b82f6`, `#10b981`, `#8b5cf6`, `#f59e0b`, `#f43f5e`, `#06b6d4`).
 2. In `AntigravityAccountsSection.tsx`, render an "Edit" button for each saved account. On save, call `callAntigravityAccounts` with `'Update'` and refresh state.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/settings/AntigravityAccountsSection.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx src/renderer/src/components/settings/AntigravityAccountsSection.tsx src/renderer/src/components/settings/AntigravityAccountsSection.test.tsx
@@ -247,7 +247,7 @@ git commit --no-verify -m "feat(settings): allow editing Antigravity account ali
 - Consumes: `tab.launchAccountId`, `tab.launchAgent === 'antigravity'`, `pty:data` stream or rate-limit state
 - Produces: Interactive top banner offering 1-click failover to alternate account and session restart
 
-- [ ] **Step 1: Write the failing banner component test**
+- [x] **Step 1: Write the failing banner component test**
 
 ```tsx
 it('detects quota exhaustion in output and displays switch action to alternate account', () => {
@@ -266,12 +266,12 @@ it('detects quota exhaustion in output and displays switch action to alternate a
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/terminal/TerminalQuotaFailoverBanner.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: Implement `TerminalQuotaFailoverBanner` and mount in `TerminalPane`**
+- [x] **Step 3: Implement `TerminalQuotaFailoverBanner` and mount in `TerminalPane`**
 
 1. Create `TerminalQuotaFailoverBanner.tsx`: floating top bar with `AlertTriangle`, warning text, select/switch button, and dismiss button.
 2. In `TerminalPane.tsx`, mount the banner when `tab.launchAgent === 'antigravity'`. Scan terminal stream for quota signatures (`RESOURCE_EXHAUSTED`, `429 Too Many Requests`, `Rate limit reached`, `Quota exceeded`).
@@ -281,12 +281,12 @@ Expected: FAIL
    - Send restart / reload signal to PTY.
    - Show success toast.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/terminal/TerminalQuotaFailoverBanner.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/src/components/terminal/TerminalQuotaFailoverBanner.tsx src/renderer/src/components/terminal/TerminalPane.tsx src/renderer/src/components/terminal/TerminalQuotaFailoverBanner.test.tsx
@@ -300,17 +300,17 @@ git commit --no-verify -m "feat(terminal): 1-click smart failover banner for Ant
 **Files:**
 - None (verification & packaging)
 
-- [ ] **Step 1: Run complete typechecking and lint quality gate**
+- [x] **Step 1: Run complete typechecking and lint quality gate**
 
 Run: `node node_modules/typescript/bin/tsc --noEmit -p config/tsconfig.tc.web.json && node config/scripts/check-changed-code-quality.mjs`
 Expected: 0 errors, 0 lint findings.
 
-- [ ] **Step 2: Run all relevant unit tests**
+- [x] **Step 2: Run all relevant unit tests**
 
 Run: `node node_modules/vitest/vitest.mjs run --config config/vitest.config.ts src/renderer/src/components/tab-bar/QuickLaunchButton.test.ts src/renderer/src/components/tab-bar/AntigravityAccountTabBadge.test.tsx src/renderer/src/components/settings/AntigravityAccountsSection.test.tsx src/renderer/src/components/terminal/TerminalQuotaFailoverBanner.test.tsx`
 Expected: All tests PASS.
 
-- [ ] **Step 3: Package new release installer**
+- [x] **Step 3: Package new release installer**
 
 Run: `$env:ORCA_WIN_ADHOC="1"; node node_modules/electron-builder/cli.js --config config/electron-builder.config.cjs --win`
 Expected: `dist/orca-windows-setup.exe` generated with exit code 0.
