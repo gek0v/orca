@@ -66,9 +66,14 @@ describe('InlineUsageBars', () => {
     )
 
     // Why: bars show % used with explicit "used" so compact labels are not ambiguous.
-    expect(markup).toContain('32% used 5h')
-    expect(markup).toContain('16% used wk')
-    expect(markup).toContain('42% used Fable')
+    expect(markup).toContain('32%')
+    expect(markup).toContain('5h')
+    expect(markup).toContain('16%')
+    expect(markup).toContain('wk')
+    expect(markup).toContain('42%')
+    expect(markup).toContain('Fable')
+    expect(markup).not.toContain('used')
+    expect(markup).not.toContain('left')
   })
 
   it('derives the collapsed session label from resetsAt (#5399)', async () => {
@@ -81,11 +86,15 @@ describe('InlineUsageBars', () => {
 
     const markup = renderToStaticMarkup(<InlineUsageBars limits={limits} isFetching={false} />)
 
-    expect(markup).toContain('32% used 1h 20m')
-    expect(markup).not.toContain('32% used 5h')
+    expect(markup).toContain('32%')
+    expect(markup).toContain('1h 20m')
+    expect(markup).not.toContain('5h')
     // Non-session bars keep their fixed labels.
-    expect(markup).toContain('16% used wk')
-    expect(markup).toContain('42% used Fable')
+    expect(markup).toContain('16%')
+    expect(markup).toContain('wk')
+    expect(markup).toContain('42%')
+    expect(markup).toContain('Fable')
+    expect(markup).not.toContain('used')
   })
 
   it('shows "now" for an already-expired session reset', async () => {
@@ -96,7 +105,9 @@ describe('InlineUsageBars', () => {
 
     const markup = renderToStaticMarkup(<InlineUsageBars limits={limits} isFetching={false} />)
 
-    expect(markup).toContain('32% used now')
+    expect(markup).toContain('32%')
+    expect(markup).toContain('now')
+    expect(markup).not.toContain('used')
   })
 
   it('keeps the footer meter for weekly-only Codex usage', async () => {
@@ -119,9 +130,11 @@ describe('InlineUsageBars', () => {
       <ProviderSegment p={limits} compact={false} display="used" />
     )
 
-    expect(markup).toContain('w-[48px] h-[6px]')
+    expect(markup).toContain('data-usage-bar')
     expect(markup).toContain('width:37%')
-    expect(markup).toContain('37% used wk')
+    expect(markup).toContain('37%')
+    expect(markup).toContain('wk')
+    expect(markup).not.toContain('used')
   })
 
   it('shows remaining copy and remaining meter fill', async () => {
@@ -132,9 +145,13 @@ describe('InlineUsageBars', () => {
       <InlineUsageBars limits={claudeLimits()} isFetching={false} />
     )
 
-    expect(markup).toContain('68% left 5h')
-    expect(markup).toContain('84% left wk')
-    expect(markup).toContain('58% left Fable')
+    expect(markup).toContain('68%')
+    expect(markup).toContain('5h')
+    expect(markup).toContain('84%')
+    expect(markup).toContain('wk')
+    expect(markup).toContain('58%')
+    expect(markup).toContain('Fable')
+    expect(markup).not.toContain('left')
     expect(markup).toContain('width:68%')
     expect(markup).toContain('width:84%')
     expect(markup).toContain('width:58%')

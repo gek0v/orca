@@ -10,7 +10,7 @@ import {
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { barColor, clampUsedPercent } from './tooltip'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
-import { formatUsagePercentageLabel } from './usage-percentage-label'
+import { getQuotaTextColorClass } from './status-bar-quota-tones'
 import { translate } from '@/i18n/i18n'
 
 export function InlineUsageBars({
@@ -57,20 +57,24 @@ export function InlineUsageBars({
         gridTemplateColumns: `repeat(${Math.max(1, usageWindows.length)}, minmax(0, 1fr))`
       }}
     >
-      {usageWindows.map((window) => (
-        <div key={window.key} className="flex min-w-0 items-center gap-1">
-          <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-            {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
-            <div
-              className={`h-full rounded-full ${barColor(window.used)}`}
-              style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
-            />
+      {usageWindows.map((window) => {
+        const pct = getDisplayedUsagePercentage(window.used, display)
+        return (
+          <div key={window.key} className="flex min-w-0 items-center gap-1.5">
+            <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${barColor(window.used)}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] tabular-nums font-medium inline-flex items-center gap-1">
+              <span className={getQuotaTextColorClass(window.used)}>{pct}%</span>
+              <span className="text-muted-foreground">{window.label}</span>
+            </span>
           </div>
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-            {formatUsagePercentageLabel(window.used, display)} {window.label}
-          </span>
-        </div>
-      ))}
+        )
+      })}
       {usageWindows.length === 0 && limits.status === 'error' ? (
         <span className="text-[10px] text-muted-foreground">
           {translate('auto.components.status.bar.StatusBar.f19a63e7cd', 'Sign in to see usage')}
