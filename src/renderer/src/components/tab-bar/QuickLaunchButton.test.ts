@@ -56,7 +56,8 @@ vi.mock('@/lib/agent-catalog', async () => {
     getAgentCatalog: () => [
       { id: 'claude', label: 'Claude' },
       { id: 'codex', label: 'Codex' },
-      { id: 'gemini', label: 'Gemini' }
+      { id: 'gemini', label: 'Gemini' },
+      { id: 'antigravity', label: 'Antigravity' }
     ],
     AgentIcon: ({ agent }: { agent: string }) => ReactActual.createElement('span', null, agent)
   }
@@ -71,9 +72,36 @@ vi.mock('@/components/ui/dropdown-menu', async () => {
     DropdownMenuItem: ({ children, ...props }: { children: React.ReactNode }) =>
       ReactActual.createElement('div', props, children),
     DropdownMenuShortcut: ({ children }: { children: React.ReactNode }) =>
-      ReactActual.createElement('span', { 'data-dropdown-shortcut': 'true' }, children)
+      ReactActual.createElement('span', { 'data-dropdown-shortcut': 'true' }, children),
+    DropdownMenuSub: ({ children }: { children: React.ReactNode }) =>
+      ReactActual.createElement('div', { 'data-dropdown-sub': 'true' }, children),
+    DropdownMenuSubTrigger: ({ children, ...props }: { children: React.ReactNode }) =>
+      ReactActual.createElement('div', props, children),
+    DropdownMenuSubContent: ({ children, ...props }: { children: React.ReactNode }) =>
+      ReactActual.createElement('div', props, children),
+    DropdownMenuSeparator: () => ReactActual.createElement('hr', null)
   }
 })
+
+vi.mock('@/runtime/runtime-antigravity-accounts-client', () => ({
+  callAntigravityAccounts: vi.fn(() =>
+    Promise.resolve({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'test@gmail.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      currentAccount: { email: 'test@gmail.com', subject: 'sub-1', authMethod: 'oauth', identityKnown: true },
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1'
+    })
+  )
+}))
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string, values?: Record<string, string>) =>
@@ -205,6 +233,14 @@ describe('QuickLaunchAgentMenuItems', () => {
 
     storeState.settings.defaultTuiAgent = 'blank'
     expect(renderAgentMenuItems()).not.toContain('data-dropdown-shortcut="true"')
+  })
+
+  it('renders antigravity as a submenu with accounts and manage action', () => {
+    useDetectedAgentsMock.mockReturnValue({ detectedIds: ['antigravity'] })
+    const html = renderAgentMenuItems()
+    expect(html).toContain('data-dropdown-sub="true"')
+    expect(html).toContain('Launch Antigravity in a new terminal')
+    expect(html).toContain('Manage accounts…')
   })
 })
 
