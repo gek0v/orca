@@ -884,4 +884,24 @@ describe('launchAgentInNewTab', () => {
       })
     )
   })
+
+  it('passes launchAccountId to createTab when specified', async () => {
+    const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
+
+    launchAgentInNewTab({
+      agent: 'antigravity',
+      worktreeId: 'wt-1',
+      launchAccountId: 'acc-work'
+    })
+
+    expect(mockCreateTab).toHaveBeenCalledWith(
+      'wt-1',
+      undefined,
+      undefined,
+      expect.objectContaining({
+        launchAgent: 'antigravity',
+        launchAccountId: 'acc-work'
+      })
+    )
+  })
 })

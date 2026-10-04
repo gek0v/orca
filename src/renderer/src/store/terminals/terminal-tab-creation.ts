@@ -131,6 +131,7 @@ export function createTerminalTabCreationActions(
           ...(startupCwd && startupCwd.length > 0 ? { startupCwd } : {}),
           ...(options?.forceHostRuntime ? { forceHostRuntime: true } : {}),
           ...(options?.launchAgent ? { launchAgent: options.launchAgent } : {}),
+          ...(options?.launchAccountId ? { launchAccountId: options.launchAccountId } : {}),
           // Why: mark click-caused (not work-caused) spawns so updateTabPtyId skips the activity/sortEpoch bump that would reorder Recent/Smart on click.
           ...(options?.pendingActivationSpawn ? { pendingActivationSpawn: true } : {})
         }
@@ -205,6 +206,8 @@ export function createTerminalTabCreationActions(
           color: tab.color,
           sortOrder: cleanedGroupOrder.length,
           createdAt: tab.createdAt,
+          ...(options?.launchAgent ? { launchAgent: options.launchAgent } : {}),
+          ...(options?.launchAccountId ? { launchAccountId: options.launchAccountId } : {}),
           // Why: omit for non-agent tabs so they keep the implicit 'terminal' view mode.
           ...(options?.viewMode ? { viewMode: options.viewMode } : {})
         }

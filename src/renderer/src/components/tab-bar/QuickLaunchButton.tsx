@@ -162,13 +162,14 @@ function QuickLaunchAgentMenuItemsInner({
   }, [openSettingsPage, openSettingsTarget])
 
   const runLaunch = useCallback(
-    (agent: TuiAgent) => {
+    (agent: TuiAgent, launchAccountId?: string) => {
       const entry = getCatalogEntry(agent)
       const label = entry?.label ?? agent
       const result = launchAgentInNewTab({
         agent,
         worktreeId,
         groupId,
+        ...(launchAccountId ? { launchAccountId } : {}),
         ...(prompt !== undefined ? { prompt } : {}),
         ...(promptDelivery !== undefined ? { promptDelivery } : {}),
         ...(launchSource !== undefined ? { launchSource } : {}),
@@ -215,6 +216,7 @@ function QuickLaunchAgentMenuItemsInner({
 
   const launchAntigravity = useCallback(
     async (accountId?: string) => {
+      const resolvedAccountId = accountId ?? antigravityState?.activeAccountId ?? undefined
       if (accountId && accountId !== antigravityState?.activeAccountId) {
         try {
           await callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'Select', accountId)
@@ -227,7 +229,7 @@ function QuickLaunchAgentMenuItemsInner({
           return
         }
       }
-      runLaunch('antigravity')
+      runLaunch('antigravity', resolvedAccountId)
     },
     [antigravityState?.activeAccountId, runLaunch]
   )

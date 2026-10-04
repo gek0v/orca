@@ -79,6 +79,7 @@ export type TerminalActions = {
       recordInteraction?: boolean
       id?: string
       launchAgent?: TuiAgent
+      launchAccountId?: string
       quickCommandLabel?: string | null
       viewMode?: Tab['viewMode']
       startupCwd?: string

@@ -35,6 +35,8 @@ import {
 export type LaunchAgentInNewTabArgs = {
   agent: TuiAgent
   worktreeId: string
+  /** Identity of the specific account that spawned this tab, if bound. */
+  launchAccountId?: string
   /** Tab group the user launched from; keeps split-group launches in that pane instead of the active group. */
   groupId?: string
   /** Optional initial prompt; delivery depends on `promptDelivery` and the agent's prompt mode. */
@@ -105,6 +107,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   const {
     agent,
     worktreeId,
+    launchAccountId,
     groupId,
     prompt,
     agentArgs,
@@ -237,6 +240,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   // Why: followup path pastes an unsubmitted draft, so gate the initial chat view like a draft launch, not auto-submit.
   const tab = store.createTab(worktreeId, groupId, undefined, {
     launchAgent: agent,
+    ...(launchAccountId ? { launchAccountId } : {}),
     quickCommandLabel,
     ...(pendingActivationSpawn ? { pendingActivationSpawn: true } : {}),
     ...initialViewModeProps
