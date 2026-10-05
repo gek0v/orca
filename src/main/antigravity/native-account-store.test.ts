@@ -138,4 +138,31 @@ describe('protected Antigravity account snapshots', () => {
       expect(() => store.read()).toThrow('preserved')
     }
   )
+
+  it('updates and persists account usage snapshots atomically', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const path = join(dir, 'vault')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(h.getVault())
+    const accountId = h.getVault().accounts[0].id
+
+    const usage = {
+      provider: 'antigravity' as const,
+      status: 'ok' as const,
+      session: { windowMinutes: 300, usedPercent: 20, resetsAt: Date.now() + 10000 },
+      weekly: { windowMinutes: 10080, usedPercent: 45, resetsAt: Date.now() + 50000 },
+      updatedAt: 123456
+    }
+
+    store.updateAccountUsage(accountId, usage, 9999)
+    const readback = store.read()
+    const updated = readback.accounts.find((a) => a.id === accountId)
+    expect(updated?.lastUsage).toEqual(usage)
+    expect(updated?.lastUsageAt).toBe(9999)
+
+    // Updating a non-existent account is safe and no-ops
+    store.updateAccountUsage('non-existent-id', usage, 10000)
+    expect(store.read().accounts).toHaveLength(1)
+  })
 })

@@ -1,6 +1,9 @@
+import type { ProviderRateLimits } from './rate-limit-types'
+
 export type AntigravityAccountMetadata = {
   alias?: string | null
   color?: string | null
+  emoji?: string | null
 }
 
 export type AntigravityAccountSummary = {
@@ -10,8 +13,11 @@ export type AntigravityAccountSummary = {
   authMethod: string
   alias?: string | null
   color?: string | null
+  emoji?: string | null
   createdAt: number
   updatedAt: number
+  lastUsage?: ProviderRateLimits | null
+  lastUsageAt?: number | null
 }
 
 export type AntigravityAccountState = {

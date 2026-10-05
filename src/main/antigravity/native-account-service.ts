@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { AntigravityAccountState } from '../../shared/antigravity-account-types'
+import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import {
   parseAntigravityNativeCredential,
   type AntigravityNativeCredential
@@ -123,7 +124,7 @@ export class AntigravityAccountService {
 
   updateAccountMetadata(
     id: string,
-    metadata: { alias?: string | null; color?: string | null }
+    metadata: { alias?: string | null; color?: string | null; emoji?: string | null }
   ): Promise<AntigravityAccountState> {
     return this.serialize(async () => {
       const { vault, current } = await this.reconcile()
@@ -137,7 +138,27 @@ export class AntigravityAccountService {
       if (metadata.color !== undefined) {
         account.color = metadata.color?.trim() || null
       }
+      if (metadata.emoji !== undefined) {
+        account.emoji = metadata.emoji?.trim() || null
+      }
       account.updatedAt = this.now()
+      this.store.write(vault)
+      return this.state({ vault, current })
+    })
+  }
+
+  recordUsageSnapshot(
+    accountId: string,
+    usage: ProviderRateLimits
+  ): Promise<AntigravityAccountState> {
+    return this.serialize(async () => {
+      const { vault, current } = await this.reconcile()
+      const account = vault.accounts.find((entry) => entry.id === accountId)
+      if (!account) {
+        return this.state({ vault, current })
+      }
+      account.lastUsage = usage
+      account.lastUsageAt = this.now()
       this.store.write(vault)
       return this.state({ vault, current })
     })

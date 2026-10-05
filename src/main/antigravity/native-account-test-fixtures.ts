@@ -33,6 +33,13 @@ export function harness(initial: string | null = credential('a')) {
     read: vi.fn(() => structuredClone(vault)),
     write: vi.fn((next) => {
       vault = structuredClone(next)
+    }),
+    updateAccountUsage: vi.fn((accountId, usage, timestamp) => {
+      const account = vault.accounts.find((a) => a.id === accountId)
+      if (account) {
+        account.lastUsage = usage
+        account.lastUsageAt = timestamp
+      }
     })
   }
   const backend: AntigravityCredentialBackend = {
