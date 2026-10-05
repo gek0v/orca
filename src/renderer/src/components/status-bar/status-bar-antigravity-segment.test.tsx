@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 
 vi.mock('@/i18n/i18n', () => ({
   i18n: { language: 'en' },
@@ -17,9 +18,20 @@ vi.mock('@/lib/agent-catalog', () => ({
   AgentIcon: () => null
 }))
 
+type MockStoreState = {
+  usagePercentageDisplay: 'used' | 'remaining'
+  activeTabId: string | null
+  tabsByWorktree: Record<string, { id: string; launchAgent?: string; launchAccountId?: string }[]>
+}
+
+let mockStoreState: MockStoreState = {
+  usagePercentageDisplay: 'used',
+  activeTabId: null,
+  tabsByWorktree: {}
+}
+
 vi.mock('../../store', () => ({
-  useAppStore: (selector: (state: { usagePercentageDisplay: 'used' | 'remaining' }) => unknown) =>
-    selector({ usagePercentageDisplay: 'used' })
+  useAppStore: (selector: (state: MockStoreState) => unknown) => selector(mockStoreState)
 }))
 
 const WEEKLY_MINUTES = 10_080
@@ -190,5 +202,151 @@ describe('Antigravity status-bar segment', () => {
 
     expect(markup).toContain('Pro')
     expect(markup).not.toContain('Some Experimental Model')
+  })
+
+  it('renders the active account alias and emoji next to the Antigravity icon', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'dev@company.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('data-antigravity-status-account')
+    expect(markup).toContain('💼')
+    expect(markup).toContain('Trabajo')
+  })
+
+  it('falls back to email prefix when emoji is present without alias', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-personal',
+          email: 'geko@gmail.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: null,
+          color: '#10b981',
+          emoji: '⚡',
+          createdAt: 1000,
+          updatedAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-personal',
+      currentAccount: null,
+      selectedAccountId: 'acc-personal'
+    })
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('⚡')
+    expect(markup).toContain('geko')
+  })
+
+  it('switches active account when active tab has launchAccountId', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@co.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000
+        },
+        {
+          id: 'acc-personal',
+          email: 'personal@gmail.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#10b981',
+          emoji: '🚀',
+          createdAt: 1000,
+          updatedAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: 'tab-pers',
+      tabsByWorktree: {
+        'wt-1': [
+          { id: 'tab-pers', launchAgent: 'antigravity', launchAccountId: 'acc-personal' }
+        ]
+      }
+    }
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('🚀')
+    expect(markup).toContain('Personal')
+    expect(markup).not.toContain('Trabajo')
+
+    // Reset store state
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: null,
+      tabsByWorktree: {}
+    }
+  })
+
+  it('constrains max width in compact mode', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@co.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'VeryLongAccountAliasThatShouldBeConstrained',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={antigravityLimits()} compact={true} display="used" mode="compact" />
+    )
+
+    expect(markup).toContain('max-w-[70px]')
+    expect(markup).toContain('truncate')
   })
 })

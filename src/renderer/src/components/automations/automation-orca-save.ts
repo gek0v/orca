@@ -154,11 +154,15 @@ export async function saveOrcaAutomation(
     currentAutomation = (reread.ok ? reread.value : null) ?? currentAutomation
   }
 
+  const resolvedLaunchAccountId =
+    draft.agentId === 'antigravity' ? (draft.launchAccountId || null) : null
+
   const updates: AutomationUpdateInput = {
     name: draft.name,
     prompt: draft.prompt,
     precheck,
     agentId: draft.agentId,
+    launchAccountId: resolvedLaunchAccountId,
     runContext,
     projectId: draft.projectId,
     workspaceMode: draft.workspaceMode,
@@ -178,6 +182,7 @@ export async function saveOrcaAutomation(
     prompt: draft.prompt,
     precheck,
     agentId: draft.agentId,
+    launchAccountId: resolvedLaunchAccountId,
     runContext,
     projectId: draft.projectId,
     workspaceMode: draft.workspaceMode,

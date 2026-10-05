@@ -53,7 +53,10 @@ export function LinkActionPopover<TRequest extends LinkActionRequest>({
 }: LinkActionPopoverProps<TRequest>): React.JSX.Element {
   const openSettingsPage = useAppStore((state) => state.openSettingsPage)
   const openSettingsTarget = useAppStore((state) => state.openSettingsTarget)
-  const copyableDestination = request?.kind === 'url' ? request.destination : ''
+  const isUrl = request?.kind === 'url'
+  const isPath = request?.kind === 'file' || request?.kind === 'workspace'
+  const canCopy = isUrl || isPath
+  const copyableDestination = canCopy ? request.destination : ''
   const { copyText, status: copyStatus } = useClipboardTextCopyFeedback(copyableDestination)
   const copyInFlightRef = useRef(false)
   const virtualRef = useMemo(
@@ -78,7 +81,9 @@ export function LinkActionPopover<TRequest extends LinkActionRequest>({
   const copyLabel =
     copyStatus === 'copied'
       ? translate('auto.components.terminal.pane.TerminalLinkActionPopover.copied', 'Copied')
-      : translate('auto.components.terminal.pane.TerminalLinkActionPopover.copyLink', 'Copy link')
+      : isUrl
+        ? translate('auto.components.terminal.pane.TerminalLinkActionPopover.copyLink', 'Copy link')
+        : translate('auto.components.terminal.pane.TerminalLinkActionPopover.copyPath', 'Copy path')
 
   const copyDestination = async (): Promise<void> => {
     if (copyInFlightRef.current) {
@@ -88,18 +93,28 @@ export function LinkActionPopover<TRequest extends LinkActionRequest>({
     try {
       if (await copyText()) {
         toast.success(
-          translate(
-            'auto.components.terminal.pane.TerminalLinkActionPopover.copiedLink',
-            'Copied link'
-          )
+          isUrl
+            ? translate(
+                'auto.components.terminal.pane.TerminalLinkActionPopover.copiedLink',
+                'Copied link'
+              )
+            : translate(
+                'auto.components.terminal.pane.TerminalLinkActionPopover.copiedPath',
+                'Copied path'
+              )
         )
         return
       }
       toast.error(
-        translate(
-          'auto.components.terminal.pane.TerminalLinkActionPopover.copyLinkFailed',
-          'Failed to copy link'
-        )
+        isUrl
+          ? translate(
+              'auto.components.terminal.pane.TerminalLinkActionPopover.copyLinkFailed',
+              'Failed to copy link'
+            )
+          : translate(
+              'auto.components.terminal.pane.TerminalLinkActionPopover.copyPathFailed',
+              'Failed to copy path'
+            )
       )
     } finally {
       copyInFlightRef.current = false
@@ -143,7 +158,7 @@ export function LinkActionPopover<TRequest extends LinkActionRequest>({
             >
               {request.destination}
             </span>
-            {request.kind === 'url' ? (
+            {canCopy ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -189,6 +204,31 @@ export function LinkActionPopover<TRequest extends LinkActionRequest>({
               alternate
               onRun={() => runAction(request.alternate!)}
             />
+          ) : null}
+          {isPath ? (
+            <Button
+              className="h-8 w-full justify-start gap-1.5 px-1.5 text-[13px] font-normal has-[>svg]:px-1.5"
+              variant="ghost"
+              onClick={() => {
+                onClose()
+                request.restoreFocus()
+                void copyDestination()
+              }}
+            >
+              <Copy className="size-3.5" />
+              <span
+                className="min-w-0 flex-1 truncate text-left"
+                title={translate(
+                  'auto.components.terminal.pane.TerminalLinkActionPopover.copyPath',
+                  'Copy path'
+                )}
+              >
+                {translate(
+                  'auto.components.terminal.pane.TerminalLinkActionPopover.copyPath',
+                  'Copy path'
+                )}
+              </span>
+            </Button>
           ) : null}
         </PopoverContent>
       ) : null}

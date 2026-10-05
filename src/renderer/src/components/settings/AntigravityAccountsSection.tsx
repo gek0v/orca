@@ -261,7 +261,11 @@ export function AntigravityAccountsSection({
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  {account.color ? (
+                  {account.emoji ? (
+                    <span className="text-sm select-none leading-none" data-account-emoji={account.emoji}>
+                      {account.emoji}
+                    </span>
+                  ) : account.color ? (
                     <span
                       className="size-2 rounded-full shrink-0"
                       style={{ backgroundColor: account.color }}

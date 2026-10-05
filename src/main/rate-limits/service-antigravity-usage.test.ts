@@ -4,6 +4,7 @@ import { fetchClaudeRateLimits } from './claude-fetcher'
 import { fetchCodexRateLimits } from './codex-fetcher'
 import { fetchGeminiRateLimits } from './gemini-usage-fetcher'
 import { fetchAntigravityRateLimits } from './antigravity-usage-fetcher'
+import { getAntigravityAccountService } from '../antigravity/native-account-host'
 import {
   errorProvider,
   okProvider,
@@ -56,6 +57,13 @@ vi.mock('./cursor-auth', () => ({
 
 vi.mock('./grok-auth', () => ({
   readGrokAuthSession: vi.fn(() => ({ status: 'missing' }))
+}))
+
+vi.mock('../antigravity/native-account-host', () => ({
+  getAntigravityAccountService: vi.fn(() => ({
+    listAccounts: vi.fn().mockResolvedValue({ activeAccountId: null, accounts: [] }),
+    recordUsageSnapshot: vi.fn().mockResolvedValue({})
+  }))
 }))
 
 vi.mock('../minimax/minimax-cookie-store', () => ({
@@ -194,5 +202,29 @@ describe('Antigravity usage gating', () => {
     // flash an empty segment while the next poll runs.
     expect(service.getState().antigravity?.session?.usedPercent).toBe(44)
     expect(fetchAntigravityRateLimits).toHaveBeenCalledTimes(1)
+  })
+
+  it('records a snapshot for the active Antigravity account when usage succeeds', async () => {
+    const recordUsageSnapshot = vi.fn().mockResolvedValue({})
+    const listAccounts = vi.fn().mockResolvedValue({
+      activeAccountId: 'acc-123',
+      accounts: []
+    })
+    vi.mocked(getAntigravityAccountService).mockReturnValue({
+      listAccounts,
+      recordUsageSnapshot
+    } as any)
+
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 25))
+    const service = new RateLimitService()
+    await service.refresh()
+
+    expect(listAccounts).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => {
+      expect(recordUsageSnapshot).toHaveBeenCalledWith(
+        'acc-123',
+        expect.objectContaining({ status: 'ok' })
+      )
+    })
   })
 })

@@ -38,6 +38,7 @@ export type AutomationDraft = {
   name: string
   prompt: string
   agentId: TuiAgent
+  launchAccountId?: string | null
   projectId: string
   workspaceMode: AutomationWorkspaceMode
   workspaceId: string

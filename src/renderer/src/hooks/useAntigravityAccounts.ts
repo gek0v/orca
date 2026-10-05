@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AntigravityAccountState, AntigravityAccountSummary } from '../../../shared/antigravity-account-types'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
+import { useAppStore } from '@/store'
 
 let cachedState: AntigravityAccountState | null = null
 const listeners = new Set<(state: AntigravityAccountState | null) => void>()
@@ -47,4 +48,31 @@ export function useAntigravityAccounts(): {
   }
 
   return { state, accounts, activeAccount, getAccountById }
+}
+
+export function useActiveWindowAntigravityAccount(): AntigravityAccountSummary | null {
+  const { activeAccount, getAccountById } = useAntigravityAccounts()
+  const activeTabLaunchAccountId = useAppStore((s) => {
+    if (!s.activeTabId) {
+      return null
+    }
+    for (const tabs of Object.values(s.tabsByWorktree)) {
+      const match = tabs.find((t) => t.id === s.activeTabId)
+      if (match) {
+        return match.launchAgent === 'antigravity' && match.launchAccountId
+          ? match.launchAccountId
+          : null
+      }
+    }
+    return null
+  })
+
+  if (activeTabLaunchAccountId) {
+    const tabAccount = getAccountById(activeTabLaunchAccountId)
+    if (tabAccount) {
+      return tabAccount
+    }
+  }
+
+  return activeAccount
 }

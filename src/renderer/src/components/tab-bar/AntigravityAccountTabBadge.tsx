@@ -22,11 +22,17 @@ export function AntigravityAccountTabBadge({
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="flex items-center gap-1 shrink-0 select-none mr-1">
-          <span
-            className="size-1.5 rounded-full shrink-0"
-            style={{ backgroundColor: color }}
-            data-account-color={color}
-          />
+          {account.emoji ? (
+            <span className="text-[11px] leading-none select-none" data-account-emoji={account.emoji}>
+              {account.emoji}
+            </span>
+          ) : (
+            <span
+              className="size-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: color }}
+              data-account-color={color}
+            />
+          )}
           <span className="max-w-[54px] truncate text-[10px] font-medium text-muted-foreground">
             {label}
           </span>

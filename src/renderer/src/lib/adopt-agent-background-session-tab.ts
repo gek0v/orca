@@ -1,6 +1,7 @@
 import { useAppStore } from '@/store'
 import { makePaneKey, type PaneKey } from '../../../shared/stable-pane-id'
 import type { AgentType } from '../../../shared/agent-status-types'
+import type { TuiAgent } from '../../../shared/tui-agent'
 import { bindAutomationTerminal } from '@/lib/automation-terminal-ownership'
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import { retireProvider, retireUnownedTerminal } from '@/lib/retire-unowned-background-terminal'
@@ -65,6 +66,8 @@ export async function adoptAgentBackgroundSessionTab(args: {
   runtimeTerminalHandle: string | null
   onRetire: () => void
   title?: string
+  launchAgent?: TuiAgent
+  launchAccountId?: string | null
 }): Promise<{
   tab: ReturnType<Store['createTab']>
   paneKey: PaneKey
@@ -98,7 +101,9 @@ export async function adoptAgentBackgroundSessionTab(args: {
     id: reservedTabId,
     initialPtyId: ptyId,
     activate: false,
-    recordInteraction: false
+    recordInteraction: false,
+    ...(args.launchAgent ? { launchAgent: args.launchAgent } : {}),
+    ...(args.launchAccountId ? { launchAccountId: args.launchAccountId } : {})
   })
   const paneKey = args.paneKey
   store.registerAgentLaunchConfig(paneKey, args.launchConfig, launchRegistration)

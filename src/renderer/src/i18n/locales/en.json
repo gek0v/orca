@@ -3309,9 +3309,12 @@
             "orcaBrowser": "Orca Browser",
             "terminalLinkSettings": "Terminal link settings",
             "copyLink": "Copy link",
+            "copyPath": "Copy path",
             "copied": "Copied",
             "copiedLink": "Copied link",
+            "copiedPath": "Copied path",
             "copyLinkFailed": "Failed to copy link",
+            "copyPathFailed": "Failed to copy path",
             "downloadOpenWithDefaultApp": "Download & open with default app",
             "downloadOpenFailed": "Failed to download '{{value0}}'."
           },
@@ -18872,6 +18875,9 @@
       "searchTitle": "Antigravity Accounts",
       "searchDescription": "Save and select native agy Google accounts on the execution host.",
       "title": "Antigravity",
+      "account": "Account",
+      "currentActive": "Current active account",
+      "openCurrent": "Current account",
       "keyword": {
         "antigravity": "antigravity",
         "agy": "agy",

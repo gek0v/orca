@@ -297,11 +297,17 @@ function QuickLaunchAgentMenuItemsInner({
                         className="justify-between"
                       >
                         <span className="flex items-center gap-2 truncate">
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: dotColor }}
-                            data-account-color={dotColor}
-                          />
+                          {acc.emoji ? (
+                            <span className="text-[12px] leading-none select-none" data-account-emoji={acc.emoji}>
+                              {acc.emoji}
+                            </span>
+                          ) : (
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: dotColor }}
+                              data-account-color={dotColor}
+                            />
+                          )}
                           <span className="truncate">{displayLabel}</span>
                         </span>
                         {isActive ? (
@@ -316,10 +322,16 @@ function QuickLaunchAgentMenuItemsInner({
                     className="justify-between"
                   >
                     <span className="flex items-center gap-2 truncate">
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: activeSummary?.color?.trim() || '#3b82f6' }}
-                      />
+                      {activeSummary?.emoji ? (
+                        <span className="text-[12px] leading-none select-none" data-account-emoji={activeSummary.emoji}>
+                          {activeSummary.emoji}
+                        </span>
+                      ) : (
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: activeSummary?.color?.trim() || '#3b82f6' }}
+                        />
+                      )}
                       <span className="truncate">
                         {activeSummary?.alias?.trim()
                           ? `${activeSummary.alias.trim()} (${activeAccount?.email ?? ''})`

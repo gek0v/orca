@@ -5,6 +5,7 @@ import { launchAgentBackgroundSession } from '@/lib/launch-agent-background-sess
 import { observeExistingAutomationSession } from '@/lib/automation-session-observer'
 import { findReusableAutomationSession } from '@/lib/automation-session-reuse'
 import type { AutomationTerminalOwnership } from '@/lib/automation-terminal-ownership'
+import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
 import { useAppStore } from '@/store'
 import type {
   AutomationDispatchRequest,
@@ -96,6 +97,7 @@ export async function handleAutomationDispatchRequest({
       const reusableSession = findReusableAutomationSession({
         automationId: automation.id,
         agentId: automation.agentId,
+        launchAccountId: automation.launchAccountId,
         worktreeId: worktree.id,
         currentRunId: run.id,
         // Why: the dispatch loop only ever executes for the desktop authority,
@@ -164,9 +166,18 @@ export async function handleAutomationDispatchRequest({
         }
       }
     }
+    if (automation.agentId === 'antigravity' && automation.launchAccountId) {
+      await callAntigravityAccounts(
+        { kind: 'local' },
+        { runtime: 'host' },
+        'Select',
+        automation.launchAccountId
+      )
+    }
     const result = await launchAgentBackgroundSession({
       agent: automation.agentId,
       worktreeId: worktree.id,
+      launchAccountId: automation.launchAccountId,
       prompt: automation.prompt,
       launchSource: 'unknown',
       title: run.title,

@@ -1,6 +1,7 @@
 import { RateLimitServiceFullCyclePreparation } from './service-full-cycle-preparation'
 import { settleSiblingProviderResult } from './service-sibling-provider-result'
 import type { ProviderRateLimits } from './service-types'
+import { getAntigravityAccountService } from '../../antigravity/native-account-host'
 
 export abstract class RateLimitServiceFullCycleApplication extends RateLimitServiceFullCyclePreparation {
   protected async runFetchAllCycle(
@@ -228,6 +229,21 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       this.trackActiveFailureStreak('zcode', zcode)
     }
     this.trackActiveFailureStreak('antigravity', antigravity)
+    if (antigravity.status === 'ok') {
+      try {
+        const accountService = getAntigravityAccountService({ runtime: 'host' })
+        void accountService
+          .listAccounts()
+          .then((accountState) => {
+            if (accountState.activeAccountId) {
+              void accountService.recordUsageSnapshot(accountState.activeAccountId, antigravity)
+            }
+          })
+          .catch(() => {})
+      } catch {
+        // Non-fatal if host account service cannot be resolved
+      }
+    }
     this.updateState({
       ...this.state,
       grok: this.applyStalePolicy(grok, previousState.grok),

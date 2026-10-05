@@ -17,6 +17,7 @@ import type { AutomationTargetAvailability } from './automation-target-availabil
 import type { AutomationHostCatalogEntry } from './automation-host-catalog-types'
 import { getAutomationHostDetailDisplay } from './automation-host-detail-display'
 import { getAutomationSourceDisplay } from './automation-source-display'
+import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
 import { translate } from '@/i18n/i18n'
 import { AutomationPromptDisclosure } from './AutomationPromptDisclosure'
 
@@ -114,6 +115,8 @@ export function AutomationDetail({
   onToggle,
   onDelete
 }: AutomationDetailProps): React.JSX.Element {
+  const { getAccountById, activeAccount } = useAntigravityAccounts()
+
   if (!automation) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -143,6 +146,24 @@ export function AutomationDetail({
     entry: hostEntry,
     hostLabelById
   })
+  const boundAccount = automation.launchAccountId
+    ? getAccountById(automation.launchAccountId)
+    : null
+  const antigravityAccountDisplay = boundAccount
+    ? {
+        color: boundAccount.color?.trim() || '#3b82f6',
+        label: boundAccount.alias?.trim()
+          ? `${boundAccount.alias.trim()} (${boundAccount.email ?? boundAccount.subject ?? ''})`
+          : (boundAccount.email ??
+            boundAccount.subject ??
+            translate('accounts.antigravity.saved', 'Saved Google account'))
+      }
+    : {
+        color: activeAccount?.color?.trim() || '#3b82f6',
+        label: activeAccount?.email
+          ? `${translate('accounts.antigravity.currentActive', 'Current active account')} (${activeAccount.email})`
+          : translate('accounts.antigravity.currentActive', 'Current active account')
+      }
   const runNowDisabled = runNowAvailability?.canRunNow === false
 
   return (
@@ -293,6 +314,20 @@ export function AutomationDetail({
             <span className="truncate">{agentLabel}</span>
           </div>
         </div>
+        {automation.agentId === 'antigravity' ? (
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium uppercase text-muted-foreground">
+              {translate('accounts.antigravity.account', 'Account')}
+            </div>
+            <div className="mt-1 flex min-w-0 items-center gap-2 text-sm font-medium">
+              <span
+                className="size-2 rounded-full shrink-0"
+                style={{ backgroundColor: antigravityAccountDisplay.color }}
+              />
+              <span className="truncate">{antigravityAccountDisplay.label}</span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-5 rounded-md border border-border/50 bg-muted/20 px-4 py-3 shadow-sm">

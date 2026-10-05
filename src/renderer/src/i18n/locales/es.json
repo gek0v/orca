@@ -2826,6 +2826,28 @@
             "cc5a2dc706": "Editar título del panel: {{value0}}",
             "7dbbfcbecc": "Título del panel"
           },
+          "TerminalLinkActionPopover": {
+            "openLink": "Abrir enlace",
+            "openFile": "Abrir archivo",
+            "switchWorkspace": "Cambiar espacio de trabajo",
+            "openInFinder": "Abrir en Finder",
+            "openFolder": "Abrir carpeta",
+            "openWithDefaultApp": "Abrir con la aplicación predeterminada",
+            "switchTerminal": "Cambiar terminal",
+            "openTaskTerminal": "Abrir terminal de tareas",
+            "systemBrowser": "Navegador del sistema",
+            "orcaBrowser": "Navegador de Orca",
+            "terminalLinkSettings": "Ajustes de enlaces del terminal",
+            "copyLink": "Copiar enlace",
+            "copyPath": "Copiar ruta",
+            "copied": "Copiado",
+            "copiedLink": "Enlace copiado",
+            "copiedPath": "Ruta copiada",
+            "copyLinkFailed": "No se pudo copiar el enlace",
+            "copyPathFailed": "No se pudo copiar la ruta",
+            "downloadOpenWithDefaultApp": "Descargar y abrir con la aplicación predeterminada",
+            "downloadOpenFailed": "No se pudo descargar '{{value0}}'."
+          },
           "TerminalSessionStateSaveFailureDialog": {
             "6bee0c8f17": "Abrir analizador de espacio en disco",
             "ae20d0ffc2": "Descartar",
@@ -15572,6 +15594,18 @@
     }
   },
   "accounts": {
+    "antigravity": {
+      "account": "Cuenta",
+      "currentActive": "Cuenta activa actual",
+      "openCurrent": "Cuenta actual",
+      "saved": "Cuenta de Google guardada",
+      "switchFailed": "No se pudo cambiar la cuenta de Antigravity",
+      "manageAccounts": "Administrar cuentas…",
+      "editTitle": "Editar detalles de la cuenta",
+      "aliasLabel": "Alias de la cuenta",
+      "aliasPlaceholder": "Alias de la cuenta",
+      "colorLabel": "Color de la cuenta"
+    },
     "managedData": {
       "description": "Añade cuentas ejecutando este comando en una terminal del host de Orca. La selección se aplica a nuevos inicios del agente en ese host; las conexiones SSH directas y WSL alojado en Windows usan sus propias credenciales.",
       "copied": "Copiado",

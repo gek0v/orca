@@ -23,6 +23,7 @@ import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quot
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { translate } from '@/i18n/i18n'
 import { isCursorUsageBucket } from '../../../../shared/cursor-usage-buckets'
+import { useActiveWindowAntigravityAccount } from '@/hooks/useAntigravityAccounts'
 
 function MiniBar({
   usedPct,
@@ -328,6 +329,35 @@ function VerboseProviderUsage({
   )
 }
 
+function AntigravityStatusAccountBadge({
+  compact
+}: {
+  compact: boolean
+}): React.JSX.Element | null {
+  const account = useActiveWindowAntigravityAccount()
+  if (!account) {
+    return null
+  }
+  const label = account.alias?.trim() || account.email?.split('@')[0] || ''
+  if (!label && !account.emoji) {
+    return null
+  }
+  return (
+    <span
+      data-antigravity-status-account
+      className={`inline-flex items-center gap-1 font-medium text-foreground ${compact ? 'max-w-[70px]' : 'max-w-[120px]'} truncate text-[11px]`}
+      title={account.email ?? undefined}
+    >
+      {account.emoji ? (
+        <span className="select-none leading-none text-[12px]" data-account-emoji={account.emoji}>
+          {account.emoji}
+        </span>
+      ) : null}
+      {label ? <span className="truncate">{label}</span> : null}
+    </span>
+  )
+}
+
 export function ProviderSegment({
   p,
   compact,
@@ -340,6 +370,7 @@ export function ProviderSegment({
   mode?: StatusBarUsageMode
 }): React.JSX.Element {
   const provider = p?.provider ?? 'claude'
+  const isAntigravity = provider === 'antigravity'
   const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
 
   // Idle / initial load
@@ -347,6 +378,7 @@ export function ProviderSegment({
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
+        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
         <span className="animate-pulse">···</span>
       </span>
     )
@@ -364,6 +396,7 @@ export function ProviderSegment({
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
+        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
         <span className="animate-pulse">···</span>
       </span>
     )
@@ -373,7 +406,8 @@ export function ProviderSegment({
   if (p.status === 'unavailable') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground/50">
-        <ProviderIcon provider={provider} /> --
+        <ProviderIcon provider={provider} />
+        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null} --
       </span>
     )
   }
@@ -383,6 +417,7 @@ export function ProviderSegment({
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
+        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
         <AlertTriangle size={11} className="text-muted-foreground/80" />
         {!compact && <span className="text-[11px] font-medium">{statusLabel}</span>}
       </span>
@@ -395,6 +430,7 @@ export function ProviderSegment({
   return (
     <span className="inline-flex items-center gap-1.5">
       <ProviderIcon provider={provider} />
+      {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
       {mode === 'verbose' ? (
         <>
           {tightest && !compact ? (

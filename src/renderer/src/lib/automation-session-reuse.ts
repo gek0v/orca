@@ -2,7 +2,6 @@ import type { AgentStatusEntry } from '../../../shared/agent-status-types'
 import type { AutomationRun } from '../../../shared/automations-types'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import { parsePaneKey } from '../../../shared/stable-pane-id'
-import type { AppState } from '@/store/types'
 
 export type ReusableAutomationSession = {
   tabId: string
@@ -10,18 +9,24 @@ export type ReusableAutomationSession = {
   paneKey: string
 }
 
+export type AutomationSessionReuseState = {
+  agentStatusByPaneKey: Record<string, AgentStatusEntry | undefined>
+  ptyIdsByTabId: Record<string, string[] | undefined>
+  terminalLayoutsByTabId: Record<string, { ptyIdsByLeafId?: Record<string, string> } | null | undefined>
+  unifiedTabsByWorktree: Record<string, { contentType: string; entityId: string }[] | undefined>
+  tabsByWorktree?: Record<string, { id: string; launchAccountId?: string | null }[] | undefined>
+}
+
 export function findReusableAutomationSession(args: {
   automationId: string
   agentId: TuiAgent
+  launchAccountId?: string | null
   worktreeId: string
   currentRunId: string
   runs: AutomationRun[]
-  state: Pick<
-    AppState,
-    'agentStatusByPaneKey' | 'ptyIdsByTabId' | 'terminalLayoutsByTabId' | 'unifiedTabsByWorktree'
-  >
+  state: AutomationSessionReuseState
 }): ReusableAutomationSession | null {
-  const { automationId, agentId, worktreeId, currentRunId, runs, state } = args
+  const { automationId, agentId, launchAccountId, worktreeId, currentRunId, runs, state } = args
   const worktreeTabs = state.unifiedTabsByWorktree[worktreeId] ?? []
   const terminalTabIds = new Set(
     worktreeTabs.filter((tab) => tab.contentType === 'terminal').map((tab) => tab.entityId)
@@ -39,7 +44,14 @@ export function findReusableAutomationSession(args: {
     .sort((left, right) => right.createdAt - left.createdAt)
 
   for (const run of candidates) {
-    const exactPane = findReusableExactRunPane({ state, terminalTabIds, agentId, run })
+    const exactPane = findReusableExactRunPane({
+      state,
+      terminalTabIds,
+      worktreeId,
+      agentId,
+      launchAccountId,
+      run
+    })
     if (exactPane) {
       return exactPane
     }
@@ -50,12 +62,16 @@ export function findReusableAutomationSession(args: {
 function findReusableExactRunPane({
   state,
   terminalTabIds,
+  worktreeId,
   agentId,
+  launchAccountId,
   run
 }: {
-  state: Pick<AppState, 'agentStatusByPaneKey' | 'ptyIdsByTabId' | 'terminalLayoutsByTabId'>
+  state: AutomationSessionReuseState
   terminalTabIds: Set<string>
+  worktreeId: string
   agentId: TuiAgent
+  launchAccountId?: string | null
   run: AutomationRun
 }): ReusableAutomationSession | null {
   if (!run.terminalPaneKey || !run.terminalPtyId) {
@@ -64,6 +80,12 @@ function findReusableExactRunPane({
   const parsed = parsePaneKey(run.terminalPaneKey)
   if (!parsed || !terminalTabIds.has(parsed.tabId)) {
     return null
+  }
+  if (launchAccountId) {
+    const tab = state.tabsByWorktree?.[worktreeId]?.find((t) => t.id === parsed.tabId)
+    if (tab && tab.launchAccountId && tab.launchAccountId !== launchAccountId) {
+      return null
+    }
   }
   const entry = state.agentStatusByPaneKey[run.terminalPaneKey]
   if (!entry || !isReusableAgentStatus(entry, agentId)) {
@@ -83,7 +105,7 @@ function isReusableAgentStatus(entry: AgentStatusEntry, agentId: TuiAgent): bool
 }
 
 function isRunPtyLiveInPane(
-  state: Pick<AppState, 'ptyIdsByTabId' | 'terminalLayoutsByTabId'>,
+  state: Pick<AutomationSessionReuseState, 'ptyIdsByTabId' | 'terminalLayoutsByTabId'>,
   tabId: string,
   leafId: string,
   ptyId: string

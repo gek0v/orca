@@ -40,6 +40,23 @@ describe('AntigravityAccountTabBadge', () => {
     expect(html).toContain('data-account-color="#3b82f6"')
   })
 
+  it('renders emoji instead of color dot when emoji is present', () => {
+    const account = {
+      id: 'acc-3',
+      email: 'work@company.com',
+      subject: 'sub-3',
+      authMethod: 'oauth',
+      alias: 'Trabajo',
+      emoji: '💼',
+      createdAt: 0,
+      updatedAt: 0
+    }
+    const html = renderToStaticMarkup(<AntigravityAccountTabBadge account={account} />)
+    expect(html).toContain('Trabajo')
+    expect(html).toContain('data-account-emoji="💼"')
+    expect(html).not.toContain('data-account-color')
+  })
+
   it('renders nothing when account is null or undefined', () => {
     const html = renderToStaticMarkup(<AntigravityAccountTabBadge account={null} />)
     expect(html).toBe('')

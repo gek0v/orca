@@ -10,6 +10,7 @@ export type AntigravityAccountUpdateOptions = {
   accountId: string
   alias?: string | null
   color?: string | null
+  emoji?: string | null
 }
 
 export async function callAntigravityAccounts(
