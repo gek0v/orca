@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
@@ -15,28 +14,45 @@ vi.mock('@/lib/agent-catalog', () => ({
   AgentIcon: () => null
 }))
 
+type ComponentMockProps = {
+  children?: React.ReactNode
+}
+
+type MenuItemMockProps = {
+  children?: React.ReactNode
+  onSelect?: (event: unknown) => void
+  disabled?: boolean
+}
+
 vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: any) => <>{children}</>,
-  DropdownMenuContent: ({ children }: any) => <div role="menu">{children}</div>,
-  DropdownMenuItem: ({ children, onSelect, disabled }: any) => (
+  DropdownMenu: ({ children }: ComponentMockProps) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: ComponentMockProps) => <>{children}</>,
+  DropdownMenuContent: ({ children }: ComponentMockProps) => <div role="menu">{children}</div>,
+  DropdownMenuItem: ({ children, onSelect, disabled }: MenuItemMockProps) => (
     <button type="button" role="menuitem" onClick={(e) => onSelect?.(e)} disabled={disabled}>
       {children}
     </button>
   ),
-  DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
+  DropdownMenuLabel: ({ children }: ComponentMockProps) => <div>{children}</div>,
   DropdownMenuSeparator: () => <hr />,
-  DropdownMenuSub: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuSubTrigger: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuSubContent: ({ children }: any) => <div>{children}</div>
+  DropdownMenuSub: ({ children }: ComponentMockProps) => <div>{children}</div>,
+  DropdownMenuSubTrigger: ({ children }: ComponentMockProps) => <div>{children}</div>,
+  DropdownMenuSubContent: ({ children }: ComponentMockProps) => <div>{children}</div>
 }))
 
 const mockOpenSettingsPage = vi.fn()
 const mockOpenSettingsTarget = vi.fn()
 const mockRefreshRateLimits = vi.fn()
 
+type MockAppStoreState = {
+  openSettingsPage: () => void
+  openSettingsTarget: (target: unknown) => void
+  refreshRateLimits: () => void
+  usagePercentageDisplay: 'used'
+}
+
 vi.mock('../../store', () => ({
-  useAppStore: (selector: (state: any) => unknown) =>
+  useAppStore: (selector: (state: MockAppStoreState) => unknown) =>
     selector({
       openSettingsPage: mockOpenSettingsPage,
       openSettingsTarget: mockOpenSettingsTarget,
@@ -53,8 +69,8 @@ vi.mock('@/runtime/runtime-antigravity-accounts-client', () => ({
 function createRateLimits(usedPercent = 25): ProviderRateLimits {
   return {
     provider: 'antigravity',
-    session: { windowMinutes: 300, usedPercent, resetsAt: Date.now() + 10000 },
-    weekly: { windowMinutes: 10080, usedPercent: 40, resetsAt: Date.now() + 50000 },
+    session: { windowMinutes: 300, usedPercent, resetsAt: Date.now() + 10000, resetDescription: null },
+    weekly: { windowMinutes: 10080, usedPercent: 40, resetsAt: Date.now() + 50000, resetDescription: null },
     updatedAt: Date.now(),
     error: null,
     status: 'ok'

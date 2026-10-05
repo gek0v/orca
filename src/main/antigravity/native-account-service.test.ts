@@ -188,9 +188,10 @@ describe('Antigravity native account identity and selection', () => {
     const usage = {
       provider: 'antigravity' as const,
       status: 'ok' as const,
-      session: { windowMinutes: 300, usedPercent: 15, resetsAt: Date.now() + 10000 },
-      weekly: { windowMinutes: 10080, usedPercent: 60, resetsAt: Date.now() + 50000 },
-      updatedAt: 7777
+      session: { windowMinutes: 300, usedPercent: 15, resetsAt: Date.now() + 10000, resetDescription: null },
+      weekly: { windowMinutes: 10080, usedPercent: 60, resetsAt: Date.now() + 50000, resetDescription: null },
+      updatedAt: 7777,
+      error: null
     }
 
     const recorded = await h.service.recordUsageSnapshot(id, usage)

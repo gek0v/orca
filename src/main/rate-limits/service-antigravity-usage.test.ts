@@ -210,10 +210,15 @@ describe('Antigravity usage gating', () => {
       activeAccountId: 'acc-123',
       accounts: []
     })
-    vi.mocked(getAntigravityAccountService).mockReturnValue({
+    const mockService = {
       listAccounts,
       recordUsageSnapshot
-    } as any)
+    }
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Synthetic test double for AntigravityAccountService in quota cycle test.
+    vi.mocked(getAntigravityAccountService).mockReturnValue(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+      mockService as unknown as ReturnType<typeof getAntigravityAccountService>
+    )
 
     vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 25))
     const service = new RateLimitService()
