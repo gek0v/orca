@@ -45,7 +45,7 @@
   - `updateAccountUsage(accountId: string, usage: ProviderRateLimits, timestamp: number): void` in `AntigravityAccountStore`
   - `recordUsageSnapshot(accountId: string, usage: ProviderRateLimits): Promise<AntigravityAccountState>` in `AntigravityAccountService`
 
-- [ ] **Step 1: Write failing tests in `native-account-store.test.ts` and `native-account-service.test.ts`**
+- [x] **Step 1: Write failing tests in `native-account-store.test.ts` and `native-account-service.test.ts`**
 
 In `src/main/antigravity/native-account-store.test.ts`, add test cases asserting:
 1. `isAccount` validates accounts containing optional `lastUsage` and `lastUsageAt`.
@@ -56,12 +56,12 @@ In `src/main/antigravity/native-account-service.test.ts`, add test cases asserti
 1. `recordUsageSnapshot` persists usage and returns updated state where the account carries `lastUsage`.
 2. Subsequent `listAccounts()` preserves the recorded `lastUsage` snapshots.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm test src/main/antigravity/native-account-store.test.ts src/main/antigravity/native-account-service.test.ts`
 Expected: FAIL with missing methods `updateAccountUsage` and `recordUsageSnapshot`.
 
-- [ ] **Step 3: Implement data model and store updates**
+- [x] **Step 3: Implement data model and store updates**
 
 In `src/shared/antigravity-account-types.ts`:
 - Add `lastUsage?: ProviderRateLimits | null` and `lastUsageAt?: number | null` to `AntigravityAccountSummary`.
@@ -75,12 +75,12 @@ In `src/main/antigravity/native-account-service.ts`:
 - Implement `recordUsageSnapshot(accountId: string, usage: ProviderRateLimits): Promise<AntigravityAccountState>`.
 - Ensure `state()` mapping passes through `lastUsage` and `lastUsageAt` to `AntigravityAccountSummary`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test src/main/antigravity/native-account-store.test.ts src/main/antigravity/native-account-service.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/shared/antigravity-account-types.ts src/main/antigravity/native-account-store.ts src/main/antigravity/native-account-store.test.ts src/main/antigravity/native-account-service.ts src/main/antigravity/native-account-service.test.ts
@@ -100,18 +100,18 @@ git commit -m "feat(antigravity): add persistent usage snapshot support to accou
 - Consumes: `antigravitySettled` in `RateLimitServiceFullCycleApplication`, `getAntigravityAccountService`
 - Produces: Automatic call to `recordUsageSnapshot` on successful host quota reads
 
-- [ ] **Step 1: Write failing test in `service-antigravity-usage.test.ts`**
+- [x] **Step 1: Write failing test in `service-antigravity-usage.test.ts`**
 
 Add a test case asserting that when `fetchAntigravityRateLimits` resolves with an `ok` status containing rate limits:
 1. `recordUsageSnapshot` on `AntigravityAccountService` is called with the active account ID and the settled `antigravity` rate limit reading.
 2. If `antigravity` status is `unavailable` or `error`, `recordUsageSnapshot` is not called.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test src/main/rate-limits/service-antigravity-usage.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement snapshot recording in `service-full-cycle-application.ts`**
+- [x] **Step 3: Implement snapshot recording in `service-full-cycle-application.ts`**
 
 In `src/main/rate-limits/service/service-full-cycle-application.ts`:
 - When settling `antigravitySettled`:
@@ -129,12 +129,12 @@ In `src/main/rate-limits/service/service-full-cycle-application.ts`:
   }
   ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test src/main/rate-limits/service-antigravity-usage.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/rate-limits/service/service-full-cycle-application.ts src/main/rate-limits/service-antigravity-usage.test.ts
@@ -153,7 +153,7 @@ git commit -m "feat(rate-limits): record Antigravity usage snapshot on successfu
 - Consumes: Standard translation keys
 - Produces: Localization entries under `auto.components.status.bar.AntigravitySwitcherMenu`
 
-- [ ] **Step 1: Add translation keys in `en.json`**
+- [x] **Step 1: Add translation keys in `en.json`**
 
 Add:
 ```json
@@ -166,7 +166,7 @@ Add:
 "auto.components.status.bar.AntigravitySwitcherMenu.openDetails": "Open Antigravity details and account switcher"
 ```
 
-- [ ] **Step 2: Add translation keys in `es.json`**
+- [x] **Step 2: Add translation keys in `es.json`**
 
 Add corresponding Spanish translations:
 ```json
@@ -179,7 +179,7 @@ Add corresponding Spanish translations:
 "auto.components.status.bar.AntigravitySwitcherMenu.openDetails": "Abrir detalles y selector de cuentas de Antigravity"
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/renderer/src/i18n/locales/en.json src/renderer/src/i18n/locales/es.json
@@ -203,7 +203,7 @@ git commit -m "i18n: add localization keys for Antigravity switcher menu"
   - `ProviderDetailsMenu`, `InlineUsageBars`
 - Produces: `AntigravitySwitcherMenu` React component
 
-- [ ] **Step 1: Write unit tests in `AntigravitySwitcherMenu.test.tsx`**
+- [x] **Step 1: Write unit tests in `AntigravitySwitcherMenu.test.tsx`**
 
 Test scenarios:
 1. Renders the active account with its alias, emoji/color, and "Active" badge.
@@ -213,12 +213,12 @@ Test scenarios:
 5. Clicking an inactive account calls `callAntigravityAccounts` with `Select` action, disables the button during switching, and triggers rate-limit refresh.
 6. Renders "Manage accounts..." button navigating to settings.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test src/renderer/src/components/status-bar/AntigravitySwitcherMenu.test.tsx`
 Expected: FAIL with module not found.
 
-- [ ] **Step 3: Implement `AntigravitySwitcherMenu.tsx`**
+- [x] **Step 3: Implement `AntigravitySwitcherMenu.tsx`**
 
 Create `src/renderer/src/components/status-bar/AntigravitySwitcherMenu.tsx`:
 - Export `AntigravitySwitcherMenu({ antigravity, compact, iconOnly, asSubmenu, triggerContent })`.
@@ -232,12 +232,12 @@ In `src/renderer/src/components/status-bar/StatusBarSurface.tsx`:
 - Import `AntigravitySwitcherMenu`.
 - In `renderRow`, if `p.provider === 'antigravity'`, return `<AntigravitySwitcherMenu antigravity={p} compact={compact} iconOnly={false} asSubmenu triggerContent={rowNode} />`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test src/renderer/src/components/status-bar/AntigravitySwitcherMenu.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/renderer/src/components/status-bar/AntigravitySwitcherMenu.tsx src/renderer/src/components/status-bar/AntigravitySwitcherMenu.test.tsx src/renderer/src/components/status-bar/StatusBarSurface.tsx
@@ -251,17 +251,17 @@ git commit -m "feat(status-bar): implement AntigravitySwitcherMenu and integrate
 **Files:**
 - Verification only
 
-- [ ] **Step 1: Run typechecks**
+- [x] **Step 1: Run typechecks**
 
 Run: `pnpm tc`
 Expected: 0 errors across node, cli, and web.
 
-- [ ] **Step 2: Run all related tests**
+- [x] **Step 2: Run all related tests**
 
 Run: `pnpm test src/main/antigravity/ src/main/rate-limits/ src/renderer/src/components/status-bar/`
 Expected: All tests pass.
 
-- [ ] **Step 3: Check code quality and formatting**
+- [x] **Step 3: Check code quality and formatting**
 
 Run: `pnpm run check:code-quality:changed`
 Expected: 0 lint errors, clean design system check.
