@@ -7,7 +7,7 @@ import type { AgentTrustPreset } from './agent-trust-presets'
 import { resolveLocalClaudeTrustConfig } from './claude/claude-folder-trust-file'
 import type { ClaudeRuntimeAuthPreparation } from './claude-accounts/runtime-auth/runtime-auth-types'
 import type { AgentWorkspaceTrustSpawnRequest } from '../shared/agent-workspace-trust-spawn-request'
-import { parseWslUncPath } from '../shared/wsl-paths'
+import { parseWslUncPath, toLinuxPath } from '../shared/wsl-paths'
 import { applyWorkspaceTrustOnThisHost, launchedAgentHome } from './execution-host-workspace-trust'
 import { getLocalCodexTrustConfigFiles } from './codex/codex-home-paths'
 import { getCachedWslHome } from './wsl-home-cache'
@@ -58,14 +58,27 @@ export async function applyAgentWorkspaceTrust(
     // Why: the SSH host's relay writes on its own disk, under its own homes and the agent's final env.
     return { agentWorkspaceTrust: { workspacePath } }
   }
-  // Why: the other writers target this host's home, which a WSL guest agent never reads.
-  if (preset !== 'claude' && isWslLaunch(workspacePath, context)) {
-    return {}
+  const isWsl = isWslLaunch(workspacePath, context)
+  const wslWorkspace = parseWslUncPath(workspacePath)
+  const distro = wslWorkspace?.distro ?? context.wslDistro
+  const guestHome = isWsl && distro ? getCachedWslHome(distro) : null
+
+  if (isWsl) {
+    if (preset !== 'claude' && preset !== 'antigravity') {
+      return {}
+    }
+    if (preset === 'antigravity' && !guestHome) {
+      return {}
+    }
   }
-  await applyWorkspaceTrustOnThisHost(preset, workspacePath, () => {
-    const agentHome = launchedAgentHome(context.env)
+
+  const effectiveWorkspacePath =
+    isWsl && preset === 'antigravity' ? toLinuxPath(workspacePath) : workspacePath
+
+  await applyWorkspaceTrustOnThisHost(preset, effectiveWorkspacePath, () => {
+    const agentHome = guestHome || launchedAgentHome(context.env)
     return {
-      homes: localHomePaths(workspacePath, context),
+      homes: guestHome ? [guestHome] : localHomePaths(workspacePath, context),
       agentHome,
       claudeConfig: () =>
         resolveLocalClaudeTrustConfig({

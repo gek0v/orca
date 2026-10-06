@@ -149,3 +149,34 @@ export function createMuseProvider(input: UsageOverviewInput['muse']): UsageProv
     activeDays: countActiveDays(dailyActiveDays)
   }
 }
+
+export function createAntigravityProvider(
+  input?: UsageOverviewInput['antigravity']
+): UsageProviderOverview {
+  const summary = input?.summary
+  const dailyActiveDays = (input?.daily ?? [])
+    .filter((entry) => entry.totalTokens > 0)
+    .map((entry) => entry.day)
+  return {
+    id: 'antigravity',
+    label: 'Antigravity',
+    enabled: input?.scanState?.enabled ?? false,
+    isScanning: input?.scanState?.isScanning ?? false,
+    hasData: summary?.hasAnyAntigravityData ?? input?.scanState?.hasAnyAntigravityData ?? false,
+    lastScanCompletedAt: input?.scanState?.lastScanCompletedAt ?? null,
+    lastScanError: input?.scanState?.lastScanError ?? null,
+    sessions: summary?.sessions ?? 0,
+    activityLabel: 'turns',
+    activityCount: summary?.turns ?? 0,
+    totalTokens: summary?.totalTokens ?? 0,
+    newInputTokens: summary ? Math.max(summary.inputTokens - summary.cachedInputTokens, 0) : 0,
+    outputTokens: summary?.outputTokens ?? 0,
+    cacheTokens: summary?.cachedInputTokens ?? 0,
+    reasoningTokens: summary?.reasoningOutputTokens ?? 0,
+    estimatedCostUsd: summary?.estimatedCostUsd ?? null,
+    hasPartialCost: false,
+    topModel: summary?.topModel ?? null,
+    topProject: summary?.topProject ?? null,
+    activeDays: countActiveDays(dailyActiveDays)
+  }
+}

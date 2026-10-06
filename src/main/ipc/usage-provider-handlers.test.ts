@@ -22,15 +22,21 @@ describe('usage provider IPC handlers', () => {
     const codexUsage = createUsage()
     const openCodeUsage = createUsage()
     const museUsage = createUsage()
+    const antigravityUsage = createUsage()
     registerUsageProviderHandlers({
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mock implements every method the registrar calls on a usage store.
       claudeUsage: claudeUsage as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mock implements every method the registrar calls on a usage store.
       codexUsage: codexUsage as never,
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mock implements every method the registrar calls on a usage store.
       museUsage: museUsage as never,
-      openCodeUsage: openCodeUsage as never
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mock implements every method the registrar calls on a usage store.
+      openCodeUsage: openCodeUsage as never,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the mock implements every method the registrar calls on a usage store.
+      antigravityUsage: antigravityUsage as never
     })
 
-    const prefixes = ['claudeUsage', 'codexUsage', 'openCodeUsage', 'museUsage']
+    const prefixes = ['claudeUsage', 'codexUsage', 'openCodeUsage', 'museUsage', 'antigravityUsage']
     const suffixes = Object.keys(claudeUsage)
     expect(handle.mock.calls.map(([channel]) => channel)).toEqual(
       prefixes.flatMap((prefix) => suffixes.map((suffix) => `${prefix}:${suffix}`))

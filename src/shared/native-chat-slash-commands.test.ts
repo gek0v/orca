@@ -24,6 +24,14 @@ describe('getAgentSlashCommands', () => {
     expect(names).not.toContain('model')
   })
 
+  it('returns Antigravity commands (e.g. /model, /effort, /usage) for antigravity', () => {
+    const names = getAgentSlashCommands('antigravity').map((c) => c.name)
+    expect(names).toContain('model')
+    expect(names).toContain('effort')
+    expect(names).toContain('usage')
+    expect(names).toContain('plan')
+  })
+
   it('falls back to a small common set for an unknown agent (never empty)', () => {
     const names = getAgentSlashCommands('some-other-agent').map((c) => c.name)
     expect(names).toEqual(['clear', 'help'])

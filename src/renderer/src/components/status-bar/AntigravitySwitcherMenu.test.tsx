@@ -203,4 +203,23 @@ describe('AntigravitySwitcherMenu', () => {
     })
     expect(mockOpenSettingsPage).toHaveBeenCalled()
   })
+
+  it('renders restart notice when accounts list is expanded', () => {
+    render(
+      <AntigravitySwitcherMenu
+        antigravity={createRateLimits()}
+        compact={false}
+        iconOnly={false}
+      />
+    )
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    expect(
+      screen.getByText(
+        'Restart live Antigravity terminals before continuing old conversations after switching.'
+      )
+    ).toBeTruthy()
+  })
 })

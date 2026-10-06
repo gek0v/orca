@@ -1,3 +1,4 @@
+import { pollAntigravityTranscriptStatus } from '../../../shared/agent-hook-listener/providers/antigravity-transcript-poll'
 import { pollCodexTranscriptStatus } from '../../../shared/agent-hook-listener/providers/codex-transcript-poll'
 import { normalizeHookPayload } from '../../../shared/agent-hook-listener'
 import {
@@ -54,7 +55,7 @@ export abstract class AgentHookServerStatusRetries extends AgentHookServerStatus
     original: EnrichedAgentHookEventPayload
   ): void {
     // Why: a nested CLI of another kind inherits ORCA_PANE_KEY, so clearing here would silently end a live poll.
-    if (source !== 'codex' && source !== 'muse') {
+    if (source !== 'codex' && source !== 'muse' && source !== 'antigravity') {
       return
     }
     if (!shouldPollHookTranscript(this.state, source, original)) {
@@ -82,7 +83,9 @@ export abstract class AgentHookServerStatusRetries extends AgentHookServerStatus
     const normalized =
       source === 'codex'
         ? pollCodexTranscriptStatus(this.state, original)
-        : normalizeHookPayload(this.state, source, body, this.env)
+        : source === 'antigravity'
+          ? pollAntigravityTranscriptStatus(this.state, original)
+          : normalizeHookPayload(this.state, source, body, this.env)
     if (!normalized) {
       return
     }

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -13,6 +13,15 @@ import {
 } from '@/hooks/useAntigravityAccounts'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
 import { translate } from '@/i18n/i18n'
+import { useWindowsTerminalCapabilities } from '@/lib/windows-terminal-capabilities'
+import {
+  getCodexStatusRuntimeKey,
+  getStatusBarPreferredWslDistro,
+  shouldIncludeSettingsWslRuntime,
+  type CodexStatusRuntimeTarget,
+  type CodexStatusSwitchGroup
+} from './status-bar-runtime-targets'
+import { AccountRuntimeToggle } from './StatusBarAccountControls'
 import { InlineUsageBars } from './InlineProviderUsage'
 import { ProviderDetailsMenu } from './ProviderDetailsMenu'
 
@@ -32,18 +41,75 @@ export function AntigravitySwitcherMenu({
   const [open, setOpen] = useState(false)
   const [accountsExpanded, setAccountsExpanded] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
+  const [selectedRuntimeTarget, setSelectedRuntimeTarget] = useState<CodexStatusRuntimeTarget>({
+    runtime: 'host',
+    wslDistro: null
+  })
 
   const { accounts, activeAccount } = useAntigravityAccounts()
+  const settings = useAppStore((s) => s.settings)
+  const windowsTerminalCapabilities = useWindowsTerminalCapabilities(
+    navigator.userAgent.includes('Windows'),
+    false
+  )
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
 
+  const switchGroups = useMemo<CodexStatusSwitchGroup[]>(() => {
+    const hostLabel = navigator.userAgent.includes('Windows') ? 'Windows' : 'This device'
+    const fallbackWslDistro = getStatusBarPreferredWslDistro(
+      settings,
+      windowsTerminalCapabilities.wslDistros
+    )
+    const distros = windowsTerminalCapabilities.wslDistros
+    const groups: CodexStatusSwitchGroup[] = [
+      {
+        key: 'host',
+        label: hostLabel,
+        runtimeTarget: { runtime: 'host', wslDistro: null },
+        targets: []
+      }
+    ]
+    if (distros.length > 0) {
+      for (const distro of distros) {
+        groups.push({
+          key: `wsl:${distro}`,
+          label: `WSL ${distro}`,
+          runtimeTarget: { runtime: 'wsl', wslDistro: distro },
+          targets: []
+        })
+      }
+    } else if (shouldIncludeSettingsWslRuntime(settings) && fallbackWslDistro) {
+      groups.push({
+        key: `wsl:${fallbackWslDistro}`,
+        label: `WSL ${fallbackWslDistro}`,
+        runtimeTarget: { runtime: 'wsl', wslDistro: fallbackWslDistro },
+        targets: []
+      })
+    }
+    return groups
+  }, [settings, windowsTerminalCapabilities.wslDistros])
+
+  const selectedRuntimeKey = getCodexStatusRuntimeKey(selectedRuntimeTarget)
+  const selectedGroup =
+    switchGroups.find((g) => g.key === selectedRuntimeKey) ?? switchGroups[0]
+
+  const handleSelectRuntime = (group: CodexStatusSwitchGroup): void => {
+    setSelectedRuntimeTarget(group.runtimeTarget)
+    setAccountsExpanded(false)
+  }
+
   const handleSelectAccount = async (accountId: string): Promise<void> => {
     try {
       setIsSwitching(true)
+      const target =
+        selectedGroup.runtimeTarget.runtime === 'host'
+          ? { runtime: 'host' as const }
+          : { runtime: 'wsl' as const, wslDistro: selectedGroup.runtimeTarget.wslDistro ?? undefined }
       const res = await callAntigravityAccounts(
         { kind: 'local' },
-        { runtime: 'host' },
+        target,
         'Select',
         accountId
       )
@@ -74,6 +140,17 @@ export function AntigravitySwitcherMenu({
         'auto.components.status.bar.StatusBar.antigravityOpenDetails',
         'Open Antigravity details and account switcher'
       )}
+      topContent={
+        <AccountRuntimeToggle
+          groups={switchGroups}
+          value={selectedGroup?.key ?? selectedRuntimeKey}
+          onChange={handleSelectRuntime}
+          ariaLabel={translate(
+            'auto.components.status.bar.StatusBar.antigravityUsageRuntime',
+            'Antigravity usage runtime'
+          )}
+        />
+      }
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
@@ -170,6 +247,12 @@ export function AntigravitySwitcherMenu({
                 </DropdownMenuItem>
               )
             })}
+          </div>
+          <div className="px-2 py-1.5 text-[10px] leading-4 text-muted-foreground">
+            {translate(
+              'auto.components.status.bar.StatusBar.antigravityRestartNotice',
+              'Restart live Antigravity terminals before continuing old conversations after switching.'
+            )}
           </div>
         </div>
       ) : null}

@@ -5,14 +5,17 @@ import {
 import { consumeCompleteJsonlLines } from './session-scanner-jsonl-reader'
 import { MAX_SESSION_TRANSCRIPT_RECORD_BYTES } from './session-transcript-record-budget'
 import type { AiVaultSession } from '../../shared/ai-vault-types'
-import type { ExecutionHostId } from '../../shared/execution-host'
+import { LOCAL_EXECUTION_HOST_ID, type ExecutionHostId } from '../../shared/execution-host'
 import {
-  accumulatorFoldResumeState,
+  accumulatorSessionIdentity,
   addPreviewMessage,
+  cloneSessionAccumulator,
   createAccumulator,
+  finalizeSession,
   timestampIso,
   updateTimeline
 } from './session-scanner-accumulator'
+import { countAntigravitySubagents } from './session-scanner-antigravity-subagents'
 import { antigravityConversationIdFromTranscriptPath } from './session-scanner-antigravity-paths'
 import { antigravityHistoryPromptHash } from './antigravity-history-prompt'
 import type {
@@ -67,10 +70,28 @@ export function createAntigravitySessionResumeState(
   const sessionId = antigravityConversationIdFromTranscriptPath(file.path) ?? ''
   // Why: the transcript has no cwd/model fields. Workspace enrichment is a
   // separate, conservative history join; protobuf/SQLite blobs are unstable.
-  return accumulatorFoldResumeState(
-    createAccumulator({ agent: 'antigravity', file, sessionId, messages }),
-    consumeAntigravityRecordLine
-  )
+  const accumulator = createAccumulator({ agent: 'antigravity', file, sessionId, messages })
+  return antigravityResumeState(accumulator)
+}
+
+function antigravityResumeState(accumulator: SessionAccumulator): ResumableSessionParseState {
+  return {
+    consumeLine: (line) => consumeAntigravityRecordLine(accumulator, line),
+    identity: () => accumulatorSessionIdentity(accumulator),
+    clone: () => antigravityResumeState(cloneSessionAccumulator(accumulator)),
+    touchFile: (file) => {
+      accumulator.modifiedAt = file.modifiedAt
+    },
+    finalize: async (platform, options) => {
+      const snapshot = cloneSessionAccumulator(accumulator)
+      const ownsTranscriptDisk =
+        !options?.executionHostId || options.executionHostId === LOCAL_EXECUTION_HOST_ID
+      if (ownsTranscriptDisk) {
+        snapshot.subagentTranscriptCount = await countAntigravitySubagents(snapshot.filePath)
+      }
+      return finalizeSession(snapshot, platform, options)
+    }
+  }
 }
 
 async function parseAntigravitySessionLines(args: {

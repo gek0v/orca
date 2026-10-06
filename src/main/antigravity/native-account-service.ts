@@ -16,9 +16,23 @@ export type AntigravityCredentialBackend = {
   write(contents: string, expected: string | null): Promise<void>
 }
 
+function extractRefreshToken(credentials: string): string | null {
+  try {
+    return parseAntigravityNativeCredential(credentials).refreshToken
+  } catch {
+    return null
+  }
+}
+
 function matches(account: StoredAntigravityAccount, current: AntigravityNativeCredential): boolean {
   if (current.identity && account.subject) {
     return account.subject === current.identity.subject && account.authMethod === current.authMethod
+  }
+  if (current.refreshToken) {
+    const storedRefreshToken = extractRefreshToken(account.credentials)
+    if (storedRefreshToken && storedRefreshToken === current.refreshToken) {
+      return account.authMethod === current.authMethod
+    }
   }
   return account.credentials === current.contents
 }
@@ -171,11 +185,25 @@ export class AntigravityAccountService {
         return
       }
       const selected = vault.accounts.find((account) => account.id === vault.selectedAccountId)
-      if (!selected || !current || !matches(selected, current)) {
-        throw new Error(
-          'The native Antigravity account changed. Select the account again in Accounts before launching agy.'
-        )
+      if (selected && current && matches(selected, current)) {
+        return
       }
+      if (current) {
+        const matching = vault.accounts.find((entry) => matches(entry, current))
+        if (matching) {
+          vault.selectedAccountId = matching.id
+          this.store.write(vault)
+          return
+        }
+      }
+      if (!selected) {
+        vault.selectedAccountId = null
+        this.store.write(vault)
+        return
+      }
+      throw new Error(
+        'The native Antigravity account changed. Select the account again in Accounts before launching agy.'
+      )
     })
   }
 

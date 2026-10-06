@@ -19,6 +19,11 @@ import type {
   MuseUsageScope,
   MuseUsageSnapshot
 } from '../../../../shared/muse-usage-types'
+import type {
+  AntigravityUsageRange,
+  AntigravityUsageScope,
+  AntigravityUsageSnapshot
+} from '../../../../shared/antigravity-usage-types'
 import type { AppState } from '../types'
 
 type UsageSnapshot = {
@@ -273,11 +278,21 @@ type OpenCodeUsageTypes = UsageProviderTypes<
 >
 
 type MuseUsageTypes = UsageProviderTypes<MuseUsageScope, MuseUsageRange, MuseUsageSnapshot>
+type AntigravityUsageTypes = UsageProviderTypes<
+  AntigravityUsageScope,
+  AntigravityUsageRange,
+  AntigravityUsageSnapshot
+>
 
 export type ClaudeUsageSlice = ProviderUsageSlice<'claude', 'Claude', ClaudeUsageTypes>
 export type CodexUsageSlice = ProviderUsageSlice<'codex', 'Codex', CodexUsageTypes>
 export type OpenCodeUsageSlice = ProviderUsageSlice<'openCode', 'OpenCode', OpenCodeUsageTypes>
 export type MuseUsageSlice = ProviderUsageSlice<'muse', 'Muse', MuseUsageTypes>
+export type AntigravityUsageSlice = ProviderUsageSlice<
+  'antigravity',
+  'Antigravity',
+  AntigravityUsageTypes
+>
 
 export const createClaudeUsageSlice = createUsageProviderSlice<
   'claude',
@@ -321,4 +336,17 @@ export const createMuseUsageSlice = createUsageProviderSlice<'muse', 'Muse', Mus
   initialRange: '30d',
   getApi: () => window.api.museUsage,
   hasCachedData: (state) => state.hasAnyMuseData
+})
+
+export const createAntigravityUsageSlice = createUsageProviderSlice<
+  'antigravity',
+  'Antigravity',
+  AntigravityUsageTypes
+>({
+  prefix: 'antigravity',
+  name: 'Antigravity',
+  initialScope: 'orca',
+  initialRange: '30d',
+  getApi: () => window.api.antigravityUsage,
+  hasCachedData: (state) => state.hasAnyAntigravityData
 })

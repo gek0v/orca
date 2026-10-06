@@ -27,6 +27,14 @@ describe('native chat agent picker profiles', () => {
     })
   })
 
+  it('configures Antigravity with dollar skills and expandsSlashCommandsFromText', () => {
+    expect(getNativeChatAgentProfile('antigravity')).toMatchObject({
+      skillPrefix: '$',
+      skillSourceOwner: 'antigravity',
+      expandsSlashCommandsFromText: true
+    })
+  })
+
   it('does not grant custom or unverified agents a skill grammar', () => {
     expect(getNativeChatAgentProfile('custom-agent')).toBeNull()
   })

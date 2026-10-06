@@ -1,6 +1,7 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ChevronRight } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { cn } from '@/lib/utils'
 import { formatUsageCost, formatUsageTokens } from './usage-overview-model'
 import type {
   UsageOverviewDailyPoint,
@@ -146,7 +147,7 @@ export function DailyIntensityGrid({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.stats.usage.overview.sections.recentCombinedActivity',
-              'Recent combined Claude, Codex, OpenCode, and Muse token activity.'
+              'Recent combined Claude, Codex, OpenCode, Muse, and Antigravity token activity.'
             )}
           </p>
         </div>
@@ -199,11 +200,13 @@ export function DailyIntensityGrid({
 export function ProviderUsageRow({
   provider,
   totalTokens,
-  onEnable
+  onEnable,
+  onSelect
 }: {
   provider: UsageProviderOverview
   totalTokens: number
   onEnable: () => void
+  onSelect?: () => void
 }): React.JSX.Element {
   const share = totalTokens > 0 ? provider.totalTokens / totalTokens : 0
   const status = provider.enabled
@@ -214,7 +217,25 @@ export function ProviderUsageRow({
   const statusVariant = provider.enabled ? 'secondary' : 'outline'
 
   return (
-    <div className="rounded-lg border border-border/60 bg-card/40 p-3">
+    <div
+      className={cn(
+        'group rounded-lg border border-border/60 bg-card/40 p-3 transition-colors text-left',
+        onSelect && 'cursor-pointer hover:border-border hover:bg-card/70'
+      )}
+      onClick={onSelect}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onKeyDown={
+        onSelect
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect()
+              }
+            }
+          : undefined
+      }
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
@@ -227,11 +248,23 @@ export function ProviderUsageRow({
             {provider.topProject ? ` - ${provider.topProject}` : ''}
           </p>
         </div>
-        {!provider.enabled ? (
-          <Button variant="outline" size="xs" onClick={onEnable}>
-            {translate('auto.components.stats.usage.overview.sections.57d1448ef8', 'Enable')}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!provider.enabled ? (
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEnable()
+              }}
+            >
+              {translate('auto.components.stats.usage.overview.sections.57d1448ef8', 'Enable')}
+            </Button>
+          ) : null}
+          {onSelect ? (
+            <ChevronRight className="size-4 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">

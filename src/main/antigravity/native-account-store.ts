@@ -69,7 +69,19 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
         ) {
           throw new Error('unsafe vault')
         }
-        const value: unknown = JSON.parse(getSecretStore().decryptString(readFileSync(path)))
+        const raw = readFileSync(path)
+        let plaintext: string
+        try {
+          plaintext = getSecretStore().decryptString(raw)
+        } catch (decryptError) {
+          const asText = raw.toString('utf8').trim()
+          if (asText.startsWith('{') && asText.endsWith('}')) {
+            plaintext = asText
+          } else {
+            throw decryptError
+          }
+        }
+        const value: unknown = JSON.parse(plaintext)
         if (
           !isRecord(value) ||
           !Array.isArray(value.accounts) ||
@@ -89,7 +101,7 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
           const credential = parseAntigravityNativeCredential(account.credentials)
           if (
             credential.authMethod !== account.authMethod ||
-            credential.identity?.subject !== account.subject
+            (credential.identity && credential.identity.subject !== account.subject)
           ) {
             throw new Error('inconsistent identity')
           }

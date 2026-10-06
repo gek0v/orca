@@ -1,6 +1,7 @@
 import type { AgentHookSource } from '../agent-hook-relay'
 import type { AgentHookEventPayload } from './listener-event'
 import type { HookListenerState } from './listener-state'
+import { hasAntigravityTranscriptSubagents } from './providers/antigravity-events'
 import { hasCodexTranscriptSubagents } from './providers/codex-state'
 import { hasMuseSessionLog } from './providers/muse-events'
 
@@ -17,6 +18,13 @@ export function shouldPollHookTranscript(
         Boolean(state.codexSubagentTranscriptByPaneKey.get(event.paneKey)?.parent.filePath))
     )
   }
+  if (source === 'antigravity') {
+    return (
+      hasAntigravityTranscriptSubagents(state, event.paneKey) ||
+      (event.payload.state !== 'done' &&
+        Boolean(state.antigravitySubagentTranscriptByPaneKey.get(event.paneKey)?.parent.filePath))
+    )
+  }
   if (source === 'muse') {
     // Why: Muse's question tool fires no hook, so only its session log shows the wait and its answer.
     return event.payload.state !== 'done' && hasMuseSessionLog(state, event.paneKey)
@@ -30,6 +38,9 @@ export function hookTranscriptWatchPath(
   source: AgentHookSource,
   paneKey: string
 ): string | undefined {
+  if (source === 'antigravity' && !hasAntigravityTranscriptSubagents(state, paneKey)) {
+    return state.antigravitySubagentTranscriptByPaneKey.get(paneKey)?.parent.filePath
+  }
   return source === 'codex' && !hasCodexTranscriptSubagents(state, paneKey)
     ? state.codexSubagentTranscriptByPaneKey.get(paneKey)?.parent.filePath
     : undefined
