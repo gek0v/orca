@@ -88,7 +88,7 @@
   ```
 - Uses: `useAntigravityAccounts()`, `SearchableSetting`, `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`.
 
-- [ ] **Step 1: Write failing tests in `RepositoryAntigravityAccountSection.test.tsx`**
+- [x] **Step 1: Write failing tests in `RepositoryAntigravityAccountSection.test.tsx`**
   Assert that:
   1. Renders the section with title *"Default Antigravity Account"*.
   2. Displays *"Ambient active account"* as selected when `repo.antigravityAccountId` is undefined.
@@ -97,18 +97,18 @@
   5. Selecting ambient triggers `updateRepo(repo.id, { antigravityAccountId: null })`.
   6. Displays an alert/warning if `repo.antigravityAccountId` points to an ID not in the account list.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   `pnpm test src/renderer/src/components/settings/RepositoryAntigravityAccountSection.test.tsx`
 
-- [ ] **Step 3: Implement `RepositoryAntigravityAccountSection.tsx` and mount in `RepositoryPane.tsx`**
+- [x] **Step 3: Implement `RepositoryAntigravityAccountSection.tsx` and mount in `RepositoryPane.tsx`**
   1. Implement the component with full design system adherence and translation tokens.
   2. Add it to `RepositoryPane.tsx` adjacent to `RepositoryGitHubAccountSection`.
   3. Register search keywords in `repository-search.ts`.
 
-- [ ] **Step 4: Run tests and verify they pass**
+- [x] **Step 4: Run tests and verify they pass**
   `pnpm test src/renderer/src/components/settings/RepositoryAntigravityAccountSection.test.tsx`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(settings): add RepositoryAntigravityAccountSection for default profile selection"`
 
 ---
