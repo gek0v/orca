@@ -86,6 +86,12 @@ export type Repo = {
    * and injects it into that child env only.
    */
   ghAccount?: GhAccountBinding
+  /**
+   * Per-project default Antigravity account binding.
+   * When set, new Antigravity sessions launched in this project inherit this account ID.
+   * If null or undefined, inherits ambient active account.
+   */
+  antigravityAccountId?: string | null
   /** Controls Orca's fork-default-branch sync offer for repos with upstream metadata. */
   forkSyncMode?: ForkSyncMode
   /** Canonical identity for the repo remote Orca should use for provider-level grouping. */

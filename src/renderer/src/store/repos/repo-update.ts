@@ -59,6 +59,17 @@ export function sanitizeRepoUpdate(updates: RepoUpdate): RepoUpdate {
       sanitized.ghAccount = normalized
     }
   }
+  if ('antigravityAccountId' in sanitized && sanitized.antigravityAccountId != null) {
+    const trimmed =
+      typeof sanitized.antigravityAccountId === 'string'
+        ? sanitized.antigravityAccountId.trim()
+        : ''
+    if (!trimmed) {
+      delete sanitized.antigravityAccountId
+    } else {
+      sanitized.antigravityAccountId = trimmed
+    }
+  }
   if ('customWorktreeVisibilitySources' in sanitized) {
     const sources = normalizeCustomWorktreeVisibilitySources(
       sanitized.customWorktreeVisibilitySources
@@ -155,6 +166,7 @@ export function createRepoUpdateActions(
                 sourceControlAi,
                 externalWorktreeDiscoverySuppressedAt,
                 ghAccount,
+                antigravityAccountId,
                 externalWorktreeVisibility,
                 agentWorktreeVisibility,
                 ...updatesWithoutClearSentinels
@@ -195,6 +207,15 @@ export function createRepoUpdateActions(
                 mergedRepo = repoWithoutGhAccount
               } else if (ghAccount !== undefined) {
                 mergedRepo = { ...mergedRepo, ghAccount }
+              }
+              if (antigravityAccountId === null) {
+                const {
+                  antigravityAccountId: _antigravityAccountId,
+                  ...repoWithoutAntigravityAccount
+                } = mergedRepo
+                mergedRepo = repoWithoutAntigravityAccount
+              } else if (antigravityAccountId !== undefined) {
+                mergedRepo = { ...mergedRepo, antigravityAccountId }
               }
               return mergedRepo
             })

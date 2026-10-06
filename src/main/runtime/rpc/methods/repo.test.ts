@@ -491,6 +491,43 @@ describe('repo RPC methods', () => {
     expect(runtime.updateRepo).toHaveBeenLastCalledWith('repo-1', { ghAccount: null })
   })
 
+  it('persists normalized antigravityAccountId bindings and clear sentinels', async () => {
+    const runtime = new OrcaRuntimeService(null)
+    vi.spyOn(runtime, 'updateRepo').mockResolvedValue({
+      id: 'repo-1',
+      path: '/srv/repo',
+      displayName: 'repo',
+      badgeColor: '#000000',
+      addedAt: 0,
+      antigravityAccountId: 'acc-123'
+    })
+    const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
+
+    const response = await dispatcher.dispatch(
+      makeRequest('repo.update', {
+        repo: 'repo-1',
+        updates: { antigravityAccountId: '  acc-123  ' }
+      }),
+      { clientCapabilities: [WORKTREE_VISIBILITY_DEFAULTS_RUNTIME_CAPABILITY] }
+    )
+
+    expect(runtime.updateRepo).toHaveBeenCalledWith('repo-1', {
+      antigravityAccountId: 'acc-123'
+    })
+    expect(response).toMatchObject({
+      ok: true,
+      result: { repo: { id: 'repo-1', antigravityAccountId: 'acc-123' } }
+    })
+
+    await dispatcher.dispatch(
+      makeRequest('repo.update', {
+        repo: 'repo-1',
+        updates: { antigravityAccountId: null }
+      })
+    )
+    expect(runtime.updateRepo).toHaveBeenLastCalledWith('repo-1', { antigravityAccountId: null })
+  })
+
   it('persists agent worktree visibility updates', async () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
