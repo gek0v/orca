@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, createElement } from 'react'
+import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { NativeChatAttachmentOwner } from './native-chat-attachment-upload'
 
@@ -100,8 +100,10 @@ type ProbeArgs = {
 }
 
 function Probe({ onReady, ...args }: ProbeArgs): null {
-  // react-doctor-disable-next-line react-doctor/no-prop-callback-in-render
-  onReady(useNativeChatComposerPaste({ agent: 'claude', caret: 0, setCaret: () => {}, ...args }))
+  const api = useNativeChatComposerPaste({ agent: 'claude', caret: 0, setCaret: () => {}, ...args })
+  useEffect(() => {
+    onReady(api)
+  })
   return null
 }
 
