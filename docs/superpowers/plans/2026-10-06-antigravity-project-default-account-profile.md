@@ -128,22 +128,22 @@
     - If `repo?.antigravityAccountId` exists, set `resolvedLaunchAccountId = repo.antigravityAccountId`.
     - Use `resolvedLaunchAccountId` for tab creation and session spawning.
 
-- [ ] **Step 1: Write failing tests in `launch-agent-in-new-tab.test.ts`**
+- [x] **Step 1: Write failing tests in `launch-agent-in-new-tab.test.ts`**
   Assert that:
   1. Launching `antigravity` in a worktree whose repo has `antigravityAccountId: 'acc-work'` without explicit `launchAccountId` resolves to `'acc-work'`.
   2. If the caller explicitly provides `launchAccountId: 'acc-personal'`, it overrides the project's default.
   3. If the project has no `antigravityAccountId`, `launchAccountId` falls back to undefined (ambient).
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   `pnpm test src/renderer/src/lib/launch-agent-in-new-tab.test.ts`
 
-- [ ] **Step 3: Implement resolution logic in `launch-agent-in-new-tab.ts`**
+- [x] **Step 3: Implement resolution logic in `launch-agent-in-new-tab.ts`**
   Add helper `resolveDefaultLaunchAccountIdForWorktree(agent, worktreeId, explicitAccountId)`.
 
-- [ ] **Step 4: Run tests and verify they pass**
+- [x] **Step 4: Run tests and verify they pass**
   `pnpm test src/renderer/src/lib/launch-agent-in-new-tab.test.ts`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(launch): resolve project default account for antigravity sessions"`
 
 ---
