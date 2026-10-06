@@ -12,11 +12,18 @@ import {
 import type { AgentStatusLegacyIngressCaller } from '../agent-status-legacy-ingress-manifest'
 import type { AntigravitySubagentRoster } from '../antigravity-subagent-roster'
 import type { AntigravitySubagentTranscriptState } from '../antigravity-subagent-transcript'
+import type { ClaudeLaunchedBackgroundTasks } from '../claude-owed-task-notifications'
 import type { ClaudeSubagentRoster } from '../claude-subagent-roster'
 import type { CodexSubagentRoster } from '../codex-subagent-roster'
 import type { CodexSubagentTranscriptState } from '../codex-subagent-transcript'
 import type { MuseSessionLogState } from '../muse-session-log'
 import type { AgentHookEventPayload, ToolSnapshot } from './listener-event'
+import {
+  deletePaneScopedCacheEntry,
+  deletePaneScopedSetEntry,
+  movePaneScopedMapEntries,
+  movePaneScopedSetEntries
+} from './pane-scoped-cache-entries'
 import type { JcodeUserPromptEvidence } from '../jcode-session-files'
 import {
   moveOpenCodeSessionBindings,
@@ -50,6 +57,8 @@ export type HookListenerState = {
   claudeRunningNonAgentTaskPaneKeys: Set<string>
   /** Panes whose latest authoritative Claude cron inventory still has a scheduled job. */
   claudeActiveSessionCronPaneKeys: Set<string>
+  /** Background tasks each pane's main agent launched, and which of them still owe it a notification. */
+  claudeLaunchedBackgroundTasksByPaneKey: Map<string, ClaudeLaunchedBackgroundTasks>
   /** Compact whose completion each pane already applied, so relay duplicates can't refresh the row. */
   claudeConsumedCompactPromptIdByPaneKey: Map<string, string>
   /** Claude `session_id` that last reported on the pane from a LEAD event. A different id means the
@@ -122,6 +131,7 @@ export function createHookListenerState(
     claudeUnconfirmedRestoredStatusPaneKeys: new Set(),
     claudeRunningNonAgentTaskPaneKeys: new Set(),
     claudeActiveSessionCronPaneKeys: new Set(),
+    claudeLaunchedBackgroundTasksByPaneKey: new Map(),
     claudeConsumedCompactPromptIdByPaneKey: new Map(),
     claudeSessionOwnerByPaneKey: new Map(),
     codexSubagentRosterByPaneKey: new Map(),
@@ -216,6 +226,7 @@ export function clearPaneCacheState(state: HookListenerState, paneKey: string): 
   state.claudeUnconfirmedRestoredStatusPaneKeys.delete(paneKey)
   state.claudeRunningNonAgentTaskPaneKeys.delete(paneKey)
   state.claudeActiveSessionCronPaneKeys.delete(paneKey)
+  state.claudeLaunchedBackgroundTasksByPaneKey.delete(paneKey)
   state.claudeSessionOwnerByPaneKey.delete(paneKey)
   state.codexSubagentRosterByPaneKey.delete(paneKey)
   state.codexSubagentTranscriptByPaneKey.delete(paneKey)
@@ -241,39 +252,12 @@ export function paneHasStateClaims(state: HookListenerState, paneKey: string): b
     state.claudeLeadStateByPaneKey.has(paneKey) ||
     state.claudeRunningNonAgentTaskPaneKeys.has(paneKey) ||
     state.claudeActiveSessionCronPaneKeys.has(paneKey) ||
+    state.claudeLaunchedBackgroundTasksByPaneKey.has(paneKey) ||
     state.claudeSessionOwnerByPaneKey.has(paneKey) ||
     state.antigravitySubagentRosterByPaneKey.has(paneKey) ||
     state.codexSubagentRosterByPaneKey.has(paneKey) ||
     state.codexLeadStateByPaneKey.has(paneKey)
   )
-}
-
-export function movePaneScopedMapEntries<T>(
-  map: Map<string, T>,
-  fromPaneKey: string,
-  toPaneKey: string
-): void {
-  for (const [key, value] of Array.from(map.entries())) {
-    if (key !== fromPaneKey && !key.startsWith(`${fromPaneKey}\0`)) {
-      continue
-    }
-    map.delete(key)
-    map.set(`${toPaneKey}${key.slice(fromPaneKey.length)}`, value)
-  }
-}
-
-export function movePaneScopedSetEntries(
-  set: Set<string>,
-  fromPaneKey: string,
-  toPaneKey: string
-): void {
-  for (const key of Array.from(set)) {
-    if (key !== fromPaneKey && !key.startsWith(`${fromPaneKey}\0`)) {
-      continue
-    }
-    set.delete(key)
-    set.add(`${toPaneKey}${key.slice(fromPaneKey.length)}`)
-  }
 }
 
 export function movePaneCacheState(
@@ -296,6 +280,7 @@ export function movePaneCacheState(
   movePaneScopedSetEntries(state.claudeUnconfirmedRestoredStatusPaneKeys, fromPaneKey, toPaneKey)
   movePaneScopedSetEntries(state.claudeRunningNonAgentTaskPaneKeys, fromPaneKey, toPaneKey)
   movePaneScopedSetEntries(state.claudeActiveSessionCronPaneKeys, fromPaneKey, toPaneKey)
+  movePaneScopedMapEntries(state.claudeLaunchedBackgroundTasksByPaneKey, fromPaneKey, toPaneKey)
   movePaneScopedMapEntries(state.claudeSessionOwnerByPaneKey, fromPaneKey, toPaneKey)
   movePaneScopedMapEntries(state.codexSubagentRosterByPaneKey, fromPaneKey, toPaneKey)
   movePaneScopedMapEntries(state.codexSubagentTranscriptByPaneKey, fromPaneKey, toPaneKey)
@@ -317,26 +302,6 @@ export function clearPaneTurnCacheState(state: HookListenerState, paneKey: strin
   state.grokMainAgentStatusByPaneKey.delete(paneKey)
 }
 
-export function deletePaneScopedCacheEntry(map: Map<string, unknown>, paneKey: string): void {
-  map.delete(paneKey)
-  const scopedPrefix = `${paneKey}\0`
-  for (const key of map.keys()) {
-    if (key.startsWith(scopedPrefix)) {
-      map.delete(key)
-    }
-  }
-}
-
-export function deletePaneScopedSetEntry(set: Set<string>, paneKey: string): void {
-  set.delete(paneKey)
-  const scopedPrefix = `${paneKey}\0`
-  for (const key of set) {
-    if (key.startsWith(scopedPrefix)) {
-      set.delete(key)
-    }
-  }
-}
-
 export function clearAllListenerCaches(state: HookListenerState): void {
   state.lastPromptByPaneKey.clear()
   state.lastToolByPaneKey.clear()
@@ -354,6 +319,7 @@ export function clearAllListenerCaches(state: HookListenerState): void {
   state.claudeUnconfirmedRestoredStatusPaneKeys.clear()
   state.claudeRunningNonAgentTaskPaneKeys.clear()
   state.claudeActiveSessionCronPaneKeys.clear()
+  state.claudeLaunchedBackgroundTasksByPaneKey.clear()
   state.claudeSessionOwnerByPaneKey.clear()
   state.codexSubagentRosterByPaneKey.clear()
   state.codexSubagentTranscriptByPaneKey.clear()

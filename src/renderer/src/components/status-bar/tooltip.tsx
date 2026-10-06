@@ -18,6 +18,19 @@ import {
 } from '../../../../shared/usage-percentage-display'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
+import { ProviderExtraUsageSection, getExtraUsageLabel } from './provider-extra-usage-section'
+import {
+  getQuotaBarColorClass,
+  USAGE_URGENT_PERCENT,
+  USAGE_WARNING_PERCENT
+} from './status-bar-quota-tones'
+
+export {
+  getQuotaBarColorClass as barColor,
+  getExtraUsageLabel,
+  USAGE_URGENT_PERCENT,
+  USAGE_WARNING_PERCENT
+}
 
 // Re-exported from its shared home so status-bar callers keep a single import.
 export { clampUsedPercent }
@@ -208,13 +221,6 @@ export function getWindowSections(
 // `text-background` for primary text and `text-background/50` for secondary
 // to stay readable inside the inverted tooltip container.
 
-import {
-  getQuotaBarColorClass,
-  USAGE_URGENT_PERCENT,
-  USAGE_WARNING_PERCENT
-} from './status-bar-quota-tones'
-
-export { USAGE_WARNING_PERCENT, USAGE_URGENT_PERCENT, getQuotaBarColorClass as barColor }
 
 function ProviderRateLimitWindowSection({
   window,
@@ -369,6 +375,18 @@ export function ProviderPanel({
           now={now}
         />
       ))}
+
+      {p.extraUsage ? (
+        <ProviderExtraUsageSection
+          balance={p.extraUsage}
+          provider={p.provider}
+          textClass={textClass}
+          mutedClass={mutedClass}
+          faintClass={faintClass}
+          emptyBarClass={emptyBarClass}
+          usagePercentageDisplay={usagePercentageDisplay}
+        />
+      ) : null}
 
       {p.error ? (
         <ErrorMessage

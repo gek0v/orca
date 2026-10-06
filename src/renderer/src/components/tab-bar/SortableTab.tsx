@@ -32,6 +32,7 @@ import {
   resolveTerminalTabActivityStatus,
   terminalTabHasUnreadActivity
 } from './terminal-tab-activity-status'
+import { CLOSE_ALL_CONTEXT_MENUS_EVENT } from '@/lib/close-all-context-menus'
 
 type SortableTabProps = {
   tab: TerminalTab
@@ -63,8 +64,6 @@ type SortableTabProps = {
   onToggleViewMode?: () => void
   canSplitTerminal?: boolean
 }
-
-export const CLOSE_ALL_CONTEXT_MENUS_EVENT = 'orca-close-all-context-menus'
 
 export default function SortableTab({
   tab,
