@@ -184,7 +184,7 @@
 - Modify: `src/renderer/src/i18n/locales/en.json`
 - Modify: `src/renderer/src/i18n/locales/es.json`
 
-- [ ] **Step 1: Add localization keys**
+- [x] **Step 1: Add localization keys**
   Provide keys for:
   - `auto.components.settings.repository.antigravityAccount.title`: "Default Antigravity Account" / "Perfil de Antigravity predeterminado"
   - `auto.components.settings.repository.antigravityAccount.description`: "Account profile used when launching Antigravity sessions in this project." / "Perfil de cuenta utilizado al iniciar sesiones de Antigravity en este proyecto."
@@ -192,10 +192,10 @@
   - `auto.components.settings.repository.antigravityAccount.notFound`: "Configured account not found on this machine" / "La cuenta configurada no se encuentra en esta máquina"
   - `auto.components.settings.repository.antigravityAccount.switchToDefault`: "Switch to project default" / "Cambiar al predeterminado del proyecto"
 
-- [ ] **Step 2: Run verification checks**
+- [x] **Step 2: Run verification checks**
   1. `pnpm tc`
   2. `pnpm run check:code-quality:changed`
   3. `pnpm test`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
   `git commit -m "chore(i18n): add translations for project default account settings"`

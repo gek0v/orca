@@ -3726,6 +3726,9 @@
             "antigravityOpenDetails": "Abrir detalles y selector de cuentas de Antigravity",
             "antigravityNoUsageData": "Sin lectura previa",
             "antigravityClickToActivate": "Clic para activar",
+            "antigravityProjectDefaultTitle": "Predeterminado del proyecto",
+            "antigravitySwitchToProjectDefault": "Cambiar",
+            "antigravityProjectDefaultBadge": "Predeterminado",
             "11e2354daf": "Uso de Claude",
             "3dd7ddfae1": "Abrir detalles de Claude y cambiar de cuenta",
             "59c6e7b4e0": "Las sesiones visibles se reinician ahora. Las demás se reinician cuando su worktree se activa.",
@@ -10421,7 +10424,24 @@
             "windowsHost": "anfitrión de ventanas",
             "distro": "distribución",
             "agentRuntime": "tiempo de ejecución del agente",
-            "skillRuntime": "tiempo de ejecución de habilidades"
+            "skillRuntime": "tiempo de ejecución de habilidades",
+            "antigravityAccount": "Perfil de Antigravity predeterminado",
+            "antigravityAccountDescription": "Elige el perfil de cuenta predeterminado utilizado al iniciar sesiones y agentes de Antigravity en este proyecto.",
+            "antigravity": "antigravity",
+            "antigravityAccountKeyword": "cuenta antigravity",
+            "accountProfile": "perfil de cuenta",
+            "defaultAccount": "cuenta predeterminada"
+          },
+          "antigravityAccount": {
+            "title": "Perfil de Antigravity predeterminado",
+            "description": "Elige el perfil de cuenta predeterminado utilizado al iniciar sesiones y agentes de Antigravity en este proyecto.",
+            "longDescription": "Las sesiones y agentes iniciados dentro de este repositorio usarán este perfil de cuenta de forma predeterminada a menos que se indique explícitamente lo contrario.",
+            "selectLabel": "Perfil de cuenta",
+            "refresh": "Actualizar cuentas de Antigravity",
+            "selectPlaceholder": "Selecciona una cuenta",
+            "ambient": "Heredar cuenta activa global",
+            "missingOption": "Cuenta no encontrada ({{id}})",
+            "notFound": "La cuenta configurada no se encuentra en esta máquina. Se usará la cuenta global activa."
           }
         },
         "runtime": {

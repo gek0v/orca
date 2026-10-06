@@ -2269,6 +2269,9 @@
           "eb6a066185": "claude",
           "eee19cfade": "overview"
         },
+        "UsageOverviewPane": {
+          "noLocalUsageYet": "No local Claude, Codex, OpenCode, or Muse usage found yet. The overview will populate after the next agent session writes token logs."
+        },
         "UsageSessionsTable": {
           "01476891c7": "Last active",
           "0f03975d59": "Events",
@@ -2281,10 +2284,16 @@
           "f6a2c8d019": "Model",
           "faf3444859": "Input"
         },
+        "stats": {
+          "search": {
+            "26bb901fcd": "Orca stats plus Claude, Codex, OpenCode, Muse token analytics and Grok subscription usage."
+          }
+        },
         "usage": {
           "overview": {
             "sections": {
-              "9564a3b21b": "sessions -"
+              "9564a3b21b": "sessions -",
+              "recentCombinedActivity": "Recent combined Claude, Codex, OpenCode, and Muse token activity."
             }
           }
         }
@@ -2325,6 +2334,7 @@
             "68efc0345c": "gemini",
             "76b06d4da5": "claude",
             "a28a5dd9b1": "error",
+            "antigravityClickToActivate": "Click to activate",
             "antigravityUsageDetails": "Open Antigravity usage details",
             "d2375976eb": "Open Gemini usage details",
             "d79c3362c4": "5h",
@@ -2663,7 +2673,8 @@
         "f6300deb8b": "New Browser Tab"
       },
       "useSettingsNavigationMetadata": {
-        "5235c215ca": "Choose which task providers appear in the Tasks page and sidebar."
+        "5235c215ca": "Choose which task providers appear in the Tasks page and sidebar.",
+        "b351014180": "Orca stats plus Claude, Codex, OpenCode, Muse token analytics and Grok subscription usage."
       }
     },
     "lib": {
