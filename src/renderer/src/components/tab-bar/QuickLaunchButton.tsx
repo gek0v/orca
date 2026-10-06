@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Check, Loader2, Settings as SettingsIcon } from 'lucide-react'
+import { Check, Settings as SettingsIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   DropdownMenuItem,
@@ -22,6 +22,7 @@ import {
   DEFAULT_DISABLED_TUI_AGENTS,
   filterEnabledTuiAgents
 } from '../../../../shared/tui-agent-selection'
+import { translate } from '@/i18n/i18n'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
 import type { AntigravityAccountState } from '../../../../shared/antigravity-account-types'
 import { newAgentPromptOutcome } from '@/lib/new-agent-prompt-outcome'

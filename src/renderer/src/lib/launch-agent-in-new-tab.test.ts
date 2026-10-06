@@ -895,6 +895,7 @@ describe('launchAgentInNewTab', () => {
     const { launchAgentInNewTab } = await import('./launch-agent-in-new-tab')
 
     launchAgentInNewTab({
+      requestId: 'request-27',
       agent: 'antigravity',
       worktreeId: 'wt-1',
       launchAccountId: 'acc-work'
