@@ -72,6 +72,7 @@ function HookProbe({
   onRender: (displaySrc: string | undefined) => void
   src: string
 }): null {
+  // react-doctor-disable-next-line react-doctor/no-prop-callback-in-render
   onRender(useLocalImageSrc(src, filePath))
   return null
 }
@@ -471,6 +472,7 @@ describe('useLocalImageSrc runtime owner', () => {
     onRender: (displaySrc: string | undefined) => void
     runtimeContext: RuntimeFileOperationArgs
   }): null {
+    // react-doctor-disable-next-line react-doctor/no-prop-callback-in-render
     onRender(useLocalImageSrc(imageSrc, documentPath, null, runtimeContext))
     return null
   }

@@ -49,6 +49,7 @@ function Probe({
   setNotice: (notice: string | null) => void
   onReady: (api: HookApi) => void
 }): null {
+  // react-doctor-disable-next-line react-doctor/no-prop-callback-in-render
   onReady(
     useNativeChatExternalAttachments({
       terminalTabId: 'tab-1',
