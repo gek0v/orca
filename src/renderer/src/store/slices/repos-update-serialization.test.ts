@@ -207,6 +207,37 @@ describe('repo update serialization', () => {
     expect(store.getState().repos[0]?.externalWorktreeDiscoverySuppressedAt).toBeUndefined()
   })
 
+  it('updates and clears antigravityAccountId in optimistic fallback state', async () => {
+    reposUpdate.mockResolvedValueOnce(undefined)
+    const repo: Repo = {
+      ...localRepo,
+      antigravityAccountId: 'acc-work'
+    }
+    const store = createTestStore()
+    store.setState({ repos: [repo] })
+
+    await store.getState().updateRepo(repo.id, {
+      antigravityAccountId: '  acc-personal  '
+    })
+
+    expect(reposUpdate).toHaveBeenCalledWith({
+      repoId: repo.id,
+      updates: { antigravityAccountId: 'acc-personal' }
+    })
+    expect(store.getState().repos[0]?.antigravityAccountId).toBe('acc-personal')
+
+    reposUpdate.mockResolvedValueOnce(undefined)
+    await store.getState().updateRepo(repo.id, {
+      antigravityAccountId: null
+    })
+
+    expect(reposUpdate).toHaveBeenCalledWith({
+      repoId: repo.id,
+      updates: { antigravityAccountId: null }
+    })
+    expect(store.getState().repos[0]?.antigravityAccountId).toBeUndefined()
+  })
+
   it('does not apply repo icons that fail shared sanitization', async () => {
     reposUpdate.mockResolvedValueOnce(undefined)
     const store = createTestStore()

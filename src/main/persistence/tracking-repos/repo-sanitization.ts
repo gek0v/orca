@@ -80,6 +80,7 @@ export function sanitizeRepoUpdatesForPersistence<
       | 'forkSyncMode'
       | 'customWorktreeVisibilitySources'
       | 'worktreeVisibilitySourcePreferences'
+      | 'antigravityAccountId'
     >
   > & {
     ghAccount?: GhAccountBinding | null
@@ -149,6 +150,17 @@ export function sanitizeRepoUpdatesForPersistence<
       delete sanitized.ghAccount
     } else {
       sanitized.ghAccount = ghAccount
+    }
+  }
+  if ('antigravityAccountId' in sanitized && sanitized.antigravityAccountId != null) {
+    const trimmed =
+      typeof sanitized.antigravityAccountId === 'string'
+        ? sanitized.antigravityAccountId.trim()
+        : ''
+    if (!trimmed) {
+      delete sanitized.antigravityAccountId
+    } else {
+      sanitized.antigravityAccountId = trimmed
     }
   }
   if ('customWorktreeVisibilitySources' in sanitized) {

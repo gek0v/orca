@@ -32,6 +32,7 @@ import {
   type AgentSessionLaunchPlan
 } from '@/lib/agent-session-launch-plan'
 import type { AgentLaunchRequestId } from '@/lib/agent-launch-request-id'
+import { resolveDefaultLaunchAccountId } from '@/lib/launch-agent-account-resolution'
 
 /** The user action this launch serves: minted where that action is handled, or carried by the
  *  route the caller already planned for it. */
@@ -249,9 +250,15 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   }
   // Why: queue startup BEFORE TerminalPane mounts — it snapshots pendingStartupByTabId in useState on first render.
   // Why: followup path pastes an unsubmitted draft, so gate the initial chat view like a draft launch, not auto-submit.
+  const resolvedLaunchAccountId = resolveDefaultLaunchAccountId(
+    store,
+    agent,
+    worktreeId,
+    launchAccountId
+  )
   const tab = store.createTab(worktreeId, groupId, undefined, {
     launchAgent: agent,
-    ...(launchAccountId ? { launchAccountId } : {}),
+    ...(resolvedLaunchAccountId ? { launchAccountId: resolvedLaunchAccountId } : {}),
     quickCommandLabel,
     ...(pendingActivationSpawn ? { pendingActivationSpawn: true } : {}),
     ...initialViewModeProps

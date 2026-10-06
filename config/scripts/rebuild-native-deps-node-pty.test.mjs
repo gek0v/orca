@@ -16,6 +16,7 @@ import {
   writeFakeWindowsProcessTree,
   writeFakeWindowsProcessTreeWithNodeAddonApi,
   writeFakeWindowsRegistry,
+  writeFakeWindowsCredentials,
   writeNodePtyPatchFile,
   writePatchedNodePtyBuildArtifacts,
   writeWindowsProcessTreePatchFile
@@ -78,6 +79,7 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
         writeFakeElectronRebuild(projectDir, { logPathEnv: 'ORCA_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { nativeDir: '../build/Release/' })
         writeFakeWindowsRegistry(projectDir)
+        writeFakeWindowsCredentials(projectDir)
         writeFakeWindowsProcessTree(projectDir)
         writeFakeNodePtyConptyPayload(projectDir, process.arch)
 
@@ -275,6 +277,7 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
         writeFakeUsableElectronPackage(projectDir, { platform: 'win32' })
         writeFakeElectronRebuild(projectDir, { logPathEnv: 'ORCA_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir)
+        writeFakeWindowsCredentials(projectDir)
         writeFakeWindowsProcessTree(projectDir)
         writeFakeNodePtyConptyPayload(projectDir, process.arch)
 
@@ -305,6 +308,7 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
         writeFakeElectronRebuild(projectDir, { logPathEnv: 'ORCA_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { ownsPtyJob: false })
         writeFakeWindowsRegistry(projectDir)
+        writeFakeWindowsCredentials(projectDir)
         writeFakeWindowsProcessTree(projectDir)
         writeFakeNodePtyConptyPayload(projectDir, process.arch)
 
@@ -339,6 +343,7 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
         writeFakeElectronRebuild(projectDir, { logPathEnv: 'ORCA_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { cygwinBreakawayDenied: false })
         writeFakeWindowsRegistry(projectDir)
+        writeFakeWindowsCredentials(projectDir)
         writeFakeWindowsProcessTree(projectDir)
         writeFakeNodePtyConptyPayload(projectDir, process.arch)
         writeFakeNodePtyConptySource(projectDir)

@@ -72,7 +72,10 @@ function HookProbe({
   onRender: (displaySrc: string | undefined) => void
   src: string
 }): null {
-  onRender(useLocalImageSrc(src, filePath))
+  const displaySrc = useLocalImageSrc(src, filePath)
+  useEffect(() => {
+    onRender(displaySrc)
+  })
   return null
 }
 
@@ -471,7 +474,10 @@ describe('useLocalImageSrc runtime owner', () => {
     onRender: (displaySrc: string | undefined) => void
     runtimeContext: RuntimeFileOperationArgs
   }): null {
-    onRender(useLocalImageSrc(imageSrc, documentPath, null, runtimeContext))
+    const displaySrc = useLocalImageSrc(imageSrc, documentPath, null, runtimeContext)
+    useEffect(() => {
+      onRender(displaySrc)
+    })
     return null
   }
 

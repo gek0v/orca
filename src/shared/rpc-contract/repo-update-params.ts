@@ -70,6 +70,22 @@ export function createRepoUpdateSchema<T extends Readonly<Record<string, z.ZodTy
           // Why: malformed bindings must omit the key (IPC deletes); never clear via undefined.
           return normalizeGhAccountBinding(value) ?? undefined
         }),
+      antigravityAccountId: z
+        .unknown()
+        .optional()
+        .transform((value) => {
+          if (value === undefined) {
+            return undefined
+          }
+          if (value === null) {
+            return null
+          }
+          if (typeof value === 'string') {
+            const trimmed = value.trim()
+            return trimmed.length > 0 ? trimmed : null
+          }
+          return undefined
+        }),
       forkSyncMode: z.enum(['ask', 'safe-auto', 'off']).optional(),
       externalWorktreeVisibility: z.enum(['hide', 'show']).nullable().optional(),
       externalWorktreeVisibilityPromptDismissedAt: z.number().finite().optional(),

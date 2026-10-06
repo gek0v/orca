@@ -80,7 +80,9 @@ if (ignoreModules.length > 0) {
 const NATIVE_MODULES = [
   'node-pty',
   'cpu-features',
-  ...(rebuildPlatform === 'win32' ? ['@orca/windows-registry', '@vscode/windows-process-tree'] : [])
+  ...(rebuildPlatform === 'win32'
+    ? ['@orca/windows-registry', '@orca/windows-credentials', '@vscode/windows-process-tree']
+    : [])
 ]
 const onlyModules = NATIVE_MODULES.filter((m) => !ignoreModules.includes(m))
 /** Whether this rebuild targets something other than the machine running it. */
@@ -592,6 +594,13 @@ function loadNativeModule(moduleName) {
     const registry = projectRequire(moduleName)
     // Why: the package defers loading its .node addon until the first registry call.
     registry.getRegistryKey(registry.HK.CU, 'Environment')
+    return
+  }
+  if (moduleName === '@orca/windows-credentials') {
+    const credentials = projectRequire(moduleName)
+    // Why: the package defers loading its .node addon until the first call; a
+    // missing-item read proves the ABI loads without touching a real secret.
+    credentials.readCredential('OrcaNativeRuntimeSelfCheck')
     return
   }
   if (moduleName === 'node-pty') {

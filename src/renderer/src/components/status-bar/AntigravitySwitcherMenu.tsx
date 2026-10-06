@@ -22,6 +22,7 @@ import {
   type CodexStatusSwitchGroup
 } from './status-bar-runtime-targets'
 import { AccountRuntimeToggle } from './StatusBarAccountControls'
+import { getRepoIdFromWorktreeId } from '../../../../shared/worktree/id'
 import { InlineUsageBars } from './InlineProviderUsage'
 import { ProviderDetailsMenu } from './ProviderDetailsMenu'
 
@@ -55,6 +56,9 @@ export function AntigravitySwitcherMenu({
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
+  const activeRepoId = useAppStore((s) => s.activeRepoId)
+  const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
+  const repos = useAppStore((s) => s.repos)
 
   const switchGroups = useMemo<CodexStatusSwitchGroup[]>(() => {
     const hostLabel = navigator.userAgent.includes('Windows') ? 'Windows' : 'This device'
@@ -92,8 +96,7 @@ export function AntigravitySwitcherMenu({
   }, [settings, windowsTerminalCapabilities.wslDistros])
 
   const selectedRuntimeKey = getCodexStatusRuntimeKey(selectedRuntimeTarget)
-  const selectedGroup =
-    switchGroups.find((g) => g.key === selectedRuntimeKey) ?? switchGroups[0]
+  const selectedGroup = switchGroups.find((g) => g.key === selectedRuntimeKey) ?? switchGroups[0]
 
   const handleSelectRuntime = (group: CodexStatusSwitchGroup): void => {
     setSelectedRuntimeTarget(group.runtimeTarget)
@@ -106,13 +109,11 @@ export function AntigravitySwitcherMenu({
       const target =
         selectedGroup.runtimeTarget.runtime === 'host'
           ? { runtime: 'host' as const }
-          : { runtime: 'wsl' as const, wslDistro: selectedGroup.runtimeTarget.wslDistro ?? undefined }
-      const res = await callAntigravityAccounts(
-        { kind: 'local' },
-        target,
-        'Select',
-        accountId
-      )
+          : {
+              runtime: 'wsl' as const,
+              wslDistro: selectedGroup.runtimeTarget.wslDistro ?? undefined
+            }
+      const res = await callAntigravityAccounts({ kind: 'local' }, target, 'Select', accountId)
       setCachedAntigravityAccountsState(res)
       if (refreshRateLimits) {
         void refreshRateLimits()
@@ -124,10 +125,26 @@ export function AntigravitySwitcherMenu({
     }
   }
 
-  const activeLabel = activeAccount?.alias || activeAccount?.email || translate(
-    'auto.components.status.bar.StatusBar.c676918adc',
-    'System default'
-  )
+  const activeLabel =
+    activeAccount?.alias ||
+    activeAccount?.email ||
+    translate('auto.components.status.bar.StatusBar.c676918adc', 'System default')
+
+  const projectDefaultAccountId = useMemo(() => {
+    const repoId = activeWorktreeId ? getRepoIdFromWorktreeId(activeWorktreeId) : activeRepoId
+    const activeRepo = repos?.find((r) => r.id === repoId)
+    return activeRepo?.antigravityAccountId ?? null
+  }, [activeWorktreeId, activeRepoId, repos])
+
+  const projectDefaultAccount = useMemo(() => {
+    if (!projectDefaultAccountId) {
+      return null
+    }
+    return accounts.find((a) => a.id === projectDefaultAccountId) ?? null
+  }, [accounts, projectDefaultAccountId])
+
+  const projectDefaultLabel =
+    projectDefaultAccount?.alias || projectDefaultAccount?.email || projectDefaultAccountId || ''
 
   return (
     <ProviderDetailsMenu
@@ -165,6 +182,45 @@ export function AntigravitySwitcherMenu({
           'Antigravity Account'
         )}
       </DropdownMenuLabel>
+      {projectDefaultAccountId && activeAccount?.id !== projectDefaultAccountId ? (
+        <div className="mx-1 mb-1 rounded-md border border-border/60 bg-muted/20 p-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                {translate(
+                  'auto.components.status.bar.StatusBar.antigravityProjectDefaultTitle',
+                  'Project Default'
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 truncate text-[11px] font-medium text-foreground">
+                {projectDefaultAccount?.emoji ? (
+                  <span className="shrink-0 text-xs">{projectDefaultAccount.emoji}</span>
+                ) : projectDefaultAccount?.color ? (
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: projectDefaultAccount.color }}
+                  />
+                ) : null}
+                <span className="truncate">{projectDefaultLabel}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isSwitching}
+              onClick={(e) => {
+                e.preventDefault()
+                void handleSelectAccount(projectDefaultAccountId)
+              }}
+              className="inline-flex shrink-0 items-center justify-center rounded bg-accent/60 px-2 py-1 text-[10px] font-medium text-accent-foreground transition-colors hover:bg-accent"
+            >
+              {translate(
+                'auto.components.status.bar.StatusBar.antigravitySwitchToProjectDefault',
+                'Switch'
+              )}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <DropdownMenuItem
         onSelect={(event) => {
           event.preventDefault()
@@ -230,6 +286,14 @@ export function AntigravitySwitcherMenu({
                       {isActive ? (
                         <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
                           {translate('auto.components.status.bar.StatusBar.ff0fbe9311', 'Active')}
+                        </span>
+                      ) : null}
+                      {!isActive && account.id === projectDefaultAccountId ? (
+                        <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+                          {translate(
+                            'auto.components.status.bar.StatusBar.antigravityProjectDefaultBadge',
+                            'Default'
+                          )}
                         </span>
                       ) : null}
                     </div>

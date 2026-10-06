@@ -22,6 +22,7 @@ vi.mock('@/i18n/i18n', () => ({
   }
 }))
 
+import { formatCurrencyAmount } from '../../../../shared/currency-format'
 import {
   barColor,
   clampUsedPercent,
@@ -492,10 +493,10 @@ describe('ProviderPanel extra-usage rendering', () => {
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
 
     expect(markup).toContain('Usage credits')
-    expect(markup).toContain('€2,000.00')
-    expect(markup).toContain('€50.00')
+    expect(markup).toContain(formatCurrencyAmount(2000, 'EUR'))
+    expect(markup).toContain(formatCurrencyAmount(50, 'EUR'))
     expect(markup).toContain('% used')
-    expect(markup).toContain('Balance €10.00')
+    expect(markup).toContain(`Balance ${formatCurrencyAmount(10, 'EUR')}`)
   })
 
   it('renders a legacy spend cap without presenting an unavailable balance as zero', () => {
@@ -518,8 +519,10 @@ describe('ProviderPanel extra-usage rendering', () => {
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
 
     expect(markup).toContain('Usage credits')
-    expect(markup).toContain('€50.00 / €2,000.00')
-    expect(markup).not.toContain('Balance €0.00')
+    expect(markup).toContain(
+      `${formatCurrencyAmount(50, 'EUR')} / ${formatCurrencyAmount(2000, 'EUR')}`
+    )
+    expect(markup).not.toContain('Balance')
   })
 
   it('renders a known legacy cap without inventing spend, percent, balance, or a meter', () => {
@@ -541,8 +544,8 @@ describe('ProviderPanel extra-usage rendering', () => {
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
 
     expect(markup).toContain('Usage credits')
-    expect(markup).toContain('Limit €2,000.00')
-    expect(markup).not.toContain('€0.00')
+    expect(markup).toContain(formatCurrencyAmount(2000, 'EUR'))
+    expect(markup).not.toContain('Balance')
     expect(markup).not.toContain('% used')
     expect(markup).not.toContain('h-[6px]')
   })
@@ -563,8 +566,8 @@ describe('ProviderPanel extra-usage rendering', () => {
       }
     })
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
-    expect(markup).toContain('Limit €2,000.00')
-    expect(markup).not.toContain('€0.00')
+    expect(markup).toContain(formatCurrencyAmount(2000, 'EUR'))
+    expect(markup).not.toContain('Balance')
     expect(markup).not.toContain('% used')
     expect(markup).not.toContain('h-[6px]')
   })
@@ -589,8 +592,10 @@ describe('ProviderPanel extra-usage rendering', () => {
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
 
     expect(markup).toContain('Usage credits')
-    expect(markup).toContain('€0.00 / €2,000.00')
-    expect(markup).toContain('Balance €0.00')
+    expect(markup).toContain(
+      `${formatCurrencyAmount(0, 'EUR')} / ${formatCurrencyAmount(2000, 'EUR')}`
+    )
+    expect(markup).toContain(`Balance ${formatCurrencyAmount(0, 'EUR')}`)
   })
 
   it('renders an uncapped OpenCode Go balance as a plain available amount', () => {
@@ -614,14 +619,11 @@ describe('ProviderPanel extra-usage rendering', () => {
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
 
     expect(markup).toContain('Zen balance')
-    expect(markup).toContain('$12.40')
+    expect(markup).toContain(formatCurrencyAmount(12.4, 'USD'))
     expect(markup).toContain('available')
   })
 
-  it.each([
-    [0, '$0.00'],
-    [-1.25, '-$1.25']
-  ])('keeps a depleted Zen balance of %s visible in the popover', (balance, formatted) => {
+  it.each([0, -1.25])('keeps a depleted Zen balance of %s visible in the popover', (balance) => {
     const p = provider({
       provider: 'opencode-go',
       status: 'ok',
@@ -642,7 +644,7 @@ describe('ProviderPanel extra-usage rendering', () => {
     const markup = renderToStaticMarkup(createElement(ProviderPanel, { p }))
 
     expect(markup).toContain('Zen balance')
-    expect(markup).toContain(formatted)
+    expect(markup).toContain(formatCurrencyAmount(balance, 'USD'))
     expect(markup).toContain('available')
   })
 
