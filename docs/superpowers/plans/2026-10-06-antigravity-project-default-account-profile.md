@@ -160,20 +160,20 @@
   - Surfaces a banner/chip: *"Project default: [Alias]"*.
   - Provides a 1-click button: *"Switch active to project default"*.
 
-- [ ] **Step 1: Write failing tests in `AntigravitySwitcherMenu.test.tsx`**
+- [x] **Step 1: Write failing tests in `AntigravitySwitcherMenu.test.tsx`**
   Assert that:
   1. If active repo has a default account and global active account differs, the menu shows the alignment suggestion.
   2. Clicking "Switch to project default" calls `selectAccount(repo.antigravityAccountId)`.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   `pnpm test src/renderer/src/components/status-bar/AntigravitySwitcherMenu.test.tsx`
 
-- [ ] **Step 3: Implement alignment chip and switch action in `AntigravitySwitcherMenu.tsx`**
+- [x] **Step 3: Implement alignment chip and switch action in `AntigravitySwitcherMenu.tsx`**
 
-- [ ] **Step 4: Run tests and verify they pass**
+- [x] **Step 4: Run tests and verify they pass**
   `pnpm test src/renderer/src/components/status-bar/AntigravitySwitcherMenu.test.tsx`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(status-bar): show project default account alignment in AntigravitySwitcherMenu"`
 
 ---

@@ -44,21 +44,33 @@ const mockOpenSettingsPage = vi.fn()
 const mockOpenSettingsTarget = vi.fn()
 const mockRefreshRateLimits = vi.fn()
 
+type MockStoreRepo = {
+  id: string
+  antigravityAccountId?: string | null
+}
+
 type MockAppStoreState = {
   openSettingsPage: () => void
   openSettingsTarget: (target: unknown) => void
   refreshRateLimits: () => void
   usagePercentageDisplay: 'used'
+  activeRepoId: string | null
+  activeWorktreeId: string | null
+  repos: MockStoreRepo[]
+}
+
+const mockStoreState: MockAppStoreState = {
+  openSettingsPage: mockOpenSettingsPage,
+  openSettingsTarget: mockOpenSettingsTarget,
+  refreshRateLimits: mockRefreshRateLimits,
+  usagePercentageDisplay: 'used',
+  activeRepoId: null,
+  activeWorktreeId: null,
+  repos: []
 }
 
 vi.mock('../../store', () => ({
-  useAppStore: (selector: (state: MockAppStoreState) => unknown) =>
-    selector({
-      openSettingsPage: mockOpenSettingsPage,
-      openSettingsTarget: mockOpenSettingsTarget,
-      refreshRateLimits: mockRefreshRateLimits,
-      usagePercentageDisplay: 'used'
-    })
+  useAppStore: (selector: (state: MockAppStoreState) => unknown) => selector(mockStoreState)
 }))
 
 const mockCallAntigravityAccounts = vi.fn()
@@ -69,8 +81,18 @@ vi.mock('@/runtime/runtime-antigravity-accounts-client', () => ({
 function createRateLimits(usedPercent = 25): ProviderRateLimits {
   return {
     provider: 'antigravity',
-    session: { windowMinutes: 300, usedPercent, resetsAt: Date.now() + 10000, resetDescription: null },
-    weekly: { windowMinutes: 10080, usedPercent: 40, resetsAt: Date.now() + 50000, resetDescription: null },
+    session: {
+      windowMinutes: 300,
+      usedPercent,
+      resetsAt: Date.now() + 10000,
+      resetDescription: null
+    },
+    weekly: {
+      windowMinutes: 10080,
+      usedPercent: 40,
+      resetsAt: Date.now() + 50000,
+      resetDescription: null
+    },
     updatedAt: Date.now(),
     error: null,
     status: 'ok'
@@ -84,6 +106,9 @@ describe('AntigravitySwitcherMenu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockStoreState.activeRepoId = null
+    mockStoreState.activeWorktreeId = null
+    mockStoreState.repos = []
     setCachedAntigravityAccountsState({
       accounts: [
         {
@@ -124,11 +149,7 @@ describe('AntigravitySwitcherMenu', () => {
 
   it('renders the active account with its alias and emoji', () => {
     render(
-      <AntigravitySwitcherMenu
-        antigravity={createRateLimits()}
-        compact={false}
-        iconOnly={false}
-      />
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
     )
 
     expect(screen.getAllByText('Personal').length).toBeGreaterThan(0)
@@ -137,11 +158,7 @@ describe('AntigravitySwitcherMenu', () => {
 
   it('expands accounts list and displays other accounts with usage or empty fallback', () => {
     render(
-      <AntigravitySwitcherMenu
-        antigravity={createRateLimits()}
-        compact={false}
-        iconOnly={false}
-      />
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
     )
 
     // Click to expand accounts (the dropdown item)
@@ -163,11 +180,7 @@ describe('AntigravitySwitcherMenu', () => {
     })
 
     render(
-      <AntigravitySwitcherMenu
-        antigravity={createRateLimits()}
-        compact={false}
-        iconOnly={false}
-      />
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
     )
 
     const trigger = screen.getAllByText('Personal')[1]
@@ -186,11 +199,7 @@ describe('AntigravitySwitcherMenu', () => {
 
   it('navigates to Settings when clicking Manage Accounts', () => {
     render(
-      <AntigravitySwitcherMenu
-        antigravity={createRateLimits()}
-        compact={false}
-        iconOnly={false}
-      />
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
     )
 
     const manageBtn = screen.getByText('Manage Accounts…')
@@ -206,11 +215,7 @@ describe('AntigravitySwitcherMenu', () => {
 
   it('renders restart notice when accounts list is expanded', () => {
     render(
-      <AntigravitySwitcherMenu
-        antigravity={createRateLimits()}
-        compact={false}
-        iconOnly={false}
-      />
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
     )
 
     const trigger = screen.getAllByText('Personal')[1]
@@ -221,5 +226,53 @@ describe('AntigravitySwitcherMenu', () => {
         'Restart live Antigravity terminals before continuing old conversations after switching.'
       )
     ).toBeTruthy()
+  })
+
+  it('displays project default alignment banner when active repo default differs from active account', () => {
+    mockStoreState.activeRepoId = 'repo-1'
+    mockStoreState.repos = [{ id: 'repo-1', antigravityAccountId: 'acc-2' }]
+
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    expect(screen.getByText('Project Default')).toBeDefined()
+    expect(screen.getByText('Trabajo')).toBeDefined()
+  })
+
+  it('switches account when clicking switch to project default button', async () => {
+    mockCallAntigravityAccounts.mockResolvedValueOnce({
+      accounts: [],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: null
+    })
+    mockStoreState.activeRepoId = 'repo-1'
+    mockStoreState.repos = [{ id: 'repo-1', antigravityAccountId: 'acc-2' }]
+
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    const switchBtn = screen.getByRole('button', { name: 'Switch' })
+    fireEvent.click(switchBtn)
+
+    expect(mockCallAntigravityAccounts).toHaveBeenCalledWith(
+      { kind: 'local' },
+      { runtime: 'host' },
+      'Select',
+      'acc-2'
+    )
+  })
+
+  it('does not display project default banner when active account matches project default', () => {
+    mockStoreState.activeRepoId = 'repo-1'
+    mockStoreState.repos = [{ id: 'repo-1', antigravityAccountId: 'acc-1' }]
+
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    expect(screen.queryByText('Project Default')).toBeNull()
   })
 })
