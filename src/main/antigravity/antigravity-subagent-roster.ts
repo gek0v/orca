@@ -1,68 +1,21 @@
-import { fileURLToPath } from 'node:url'
 import type {
   NativeChatSubagentEntry,
-  NativeChatSubagentGroupBlock,
-  NativeChatSubagentState
+  NativeChatSubagentGroupBlock
 } from '../../shared/native-chat-types'
 import {
   AntigravityTranscriptTailer,
   type AntigravityTranscriptStep
 } from './antigravity-transcript-tailer'
+import {
+  extractSubagentDetailsFromContent,
+  mapRawStateToSubagentState,
+  parseTranscriptUri,
+  type AntigravitySubagentRosterTrackerOptions,
+  type TrackedSubagent
+} from './antigravity-subagent-state'
 
 export type AntigravitySubagentRosterListener = (group: NativeChatSubagentGroupBlock) => void
-
-type TrackedSubagent = {
-  id: string
-  label: string
-  role: string
-  typeName: string
-  groupId: string
-  state: NativeChatSubagentState
-  tokens: number
-  startedAt?: number
-  settledAt?: number
-  transcriptPath?: string
-  childTailer?: AntigravityTranscriptTailer
-}
-
-export type AntigravitySubagentRosterTrackerOptions = {
-  now?: () => number
-}
-
-function mapRawStateToSubagentState(rawState: string): NativeChatSubagentState {
-  switch (rawState.toLowerCase()) {
-    case 'running':
-    case 'waiting_for_dependents':
-    case 'canceling':
-      return 'working'
-    case 'idle':
-    case 'waiting_for_input':
-    case 'waiting_for_message':
-      return 'idle'
-    case 'done':
-    case 'completed':
-      return 'completed'
-    case 'errored':
-    case 'failed':
-      return 'failed'
-    case 'killed':
-    case 'stopped':
-      return 'stopped'
-    default:
-      return 'working'
-  }
-}
-
-function parseTranscriptUri(uri: string): string {
-  if (uri.startsWith('file://')) {
-    try {
-      return fileURLToPath(uri)
-    } catch {
-      return uri.replace(/^file:\/\/\/?/, '')
-    }
-  }
-  return uri
-}
+export type { AntigravitySubagentRosterTrackerOptions } from './antigravity-subagent-state'
 
 export class AntigravitySubagentRosterTracker {
   private readonly now: () => number
@@ -136,12 +89,20 @@ export class AntigravitySubagentRosterTracker {
           const rawSubagents = Array.isArray(call.args.Subagents) ? call.args.Subagents : []
           for (let i = 0; i < rawSubagents.length; i++) {
             const spec = rawSubagents[i]
-            const role = typeof spec === 'object' && spec !== null && 'Role' in spec && typeof spec.Role === 'string'
-              ? spec.Role
-              : 'Subagent'
-            const typeName = typeof spec === 'object' && spec !== null && 'TypeName' in spec && typeof spec.TypeName === 'string'
-              ? spec.TypeName
-              : 'subagent'
+            const role =
+              typeof spec === 'object' &&
+              spec !== null &&
+              'Role' in spec &&
+              typeof spec.Role === 'string'
+                ? spec.Role
+                : 'Subagent'
+            const typeName =
+              typeof spec === 'object' &&
+              spec !== null &&
+              'TypeName' in spec &&
+              typeof spec.TypeName === 'string'
+                ? spec.TypeName
+                : 'subagent'
             const placeholderId = `pending-${step.step_index}-${i}`
             if (!this.agents.has(placeholderId)) {
               this.agents.set(placeholderId, {
@@ -245,31 +206,8 @@ export class AntigravitySubagentRosterTracker {
   }
 
   private extractSubagentDetailsFromContent(content: string, currentGroupId: string): void {
-    // Check for invoke_subagent return structure (contains conversationId, logAbsoluteUri)
-    const conversationIdMatches = content.match(/"conversationId":\s*"([^"]+)"/g)
-    if (conversationIdMatches) {
-      // Find objects containing conversationId, logAbsoluteUri, role
-      const jsonRegex = /\{[^{}]*"conversationId":\s*"([^"]+)"[^{}]*\}/g
-      let match: RegExpExecArray | null = null
-      while ((match = jsonRegex.exec(content)) !== null) {
-        const snippet = match[0]
-        const idMatch = snippet.match(/"conversationId":\s*"([^"]+)"/)
-        if (!idMatch) {
-          continue
-        }
-        const conversationId = idMatch[1]
-        const logUriMatch = snippet.match(/"(?:logAbsoluteUri|transcript)":\s*"([^"]+)"/)
-        const roleMatch = snippet.match(/"role":\s*"([^"]+)"/)
-        const stateMatch = snippet.match(/"state":\s*"([^"]+)"/)
-
-        this.bindSubagent({
-          conversationId,
-          role: roleMatch ? roleMatch[1] : undefined,
-          transcriptUri: logUriMatch ? logUriMatch[1] : undefined,
-          rawState: stateMatch ? stateMatch[1] : undefined,
-          groupId: currentGroupId
-        })
-      }
+    for (const details of extractSubagentDetailsFromContent(content, currentGroupId)) {
+      this.bindSubagent(details)
     }
   }
 
@@ -298,8 +236,12 @@ export class AntigravitySubagentRosterTracker {
       }
     }
 
-    const state = data.rawState ? mapRawStateToSubagentState(data.rawState) : (existing?.state ?? 'working')
-    const transcriptPath = data.transcriptUri ? parseTranscriptUri(data.transcriptUri) : existing?.transcriptPath
+    const state = data.rawState
+      ? mapRawStateToSubagentState(data.rawState)
+      : (existing?.state ?? 'working')
+    const transcriptPath = data.transcriptUri
+      ? parseTranscriptUri(data.transcriptUri)
+      : existing?.transcriptPath
 
     if (!existing) {
       existing = {
@@ -311,7 +253,10 @@ export class AntigravitySubagentRosterTracker {
         state,
         tokens: 0,
         startedAt: this.now(),
-        settledAt: state === 'completed' || state === 'failed' || state === 'stopped' ? this.now() : undefined,
+        settledAt:
+          state === 'completed' || state === 'failed' || state === 'stopped'
+            ? this.now()
+            : undefined,
         transcriptPath
       }
     } else {
@@ -323,7 +268,10 @@ export class AntigravitySubagentRosterTracker {
       if (transcriptPath && !existing.transcriptPath) {
         existing.transcriptPath = transcriptPath
       }
-      if ((state === 'completed' || state === 'failed' || state === 'stopped') && !existing.settledAt) {
+      if (
+        (state === 'completed' || state === 'failed' || state === 'stopped') &&
+        !existing.settledAt
+      ) {
         existing.settledAt = this.now()
       }
     }
