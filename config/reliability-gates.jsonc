@@ -325,24 +325,10 @@
         "terminal automation completion",
         "local and relayed cancellation"
       ],
-      "platforms": [
-        "macos",
-        "linux",
-        "windows"
-      ],
-      "providers": [
-        "local",
-        "ssh",
-        "wsl",
-        "remote-runtime"
-      ],
-      "coveredPlatforms": [
-        "macos"
-      ],
-      "coveredProviders": [
-        "local",
-        "remote-runtime"
-      ],
+      "platforms": ["macos", "linux", "windows"],
+      "providers": ["local", "ssh", "wsl", "remote-runtime"],
+      "coveredPlatforms": ["macos"],
+      "coveredProviders": ["local", "remote-runtime"],
       "coverageNotes": "Real HTTP hook ingress and relay forwarding, production runtime automation observer, and captured Claude native ready bytes run locally on macOS. SSH/WSL transport ownership is simulated; physical remote hosts and native Windows/Linux are not verified.",
       "motivatingLinks": [
         "https://github.com/stablyai/orca/pull/24878",
@@ -3788,9 +3774,7 @@
         },
         {
           "file": "src/main/system-resume-broadcast.test.ts",
-          "assertions": [
-            "publishes suspend and resume to main-process lifecycle consumers"
-          ]
+          "assertions": ["publishes suspend and resume to main-process lifecycle consumers"]
         },
         {
           "file": "src/main/system-power-lifecycle.test.ts",
@@ -5067,9 +5051,7 @@
         },
         {
           "file": "src/cli/runtime/serve-signal-exit-diagnostic.test.ts",
-          "assertions": [
-            "late update handoff failure cannot rearm termination after child exit"
-          ]
+          "assertions": ["late update handoff failure cannot rearm termination after child exit"]
         },
         {
           "file": "src/main/serve-update-handoff.test.ts",
@@ -12626,9 +12608,7 @@
         },
         {
           "file": "src/main/ipc/pty-startup-barrier-and-listing.test.ts",
-          "assertions": [
-            "global inventory starts local and SSH provider listings concurrently"
-          ]
+          "assertions": ["global inventory starts local and SSH provider listings concurrently"]
         },
         {
           "file": "src/renderer/src/components/status-bar/resource-session-inventory.test.ts",
@@ -21095,9 +21075,7 @@
         },
         {
           "file": "src/main/browser/agent-browser-bridge-tab-routing.test.ts",
-          "assertions": [
-            "closing a tab retires the exact named agent-browser session"
-          ]
+          "assertions": ["closing a tab retires the exact named agent-browser session"]
         },
         {
           "file": "src/main/startup/serve-signal-handlers.test.ts",
@@ -21536,9 +21514,7 @@
         },
         {
           "file": "config/scripts/verify-packaged-browser-participation.test.mjs",
-          "assertions": [
-            "reject missing, substituted, skipped and retried scenarios"
-          ]
+          "assertions": ["reject missing, substituted, skipped and retried scenarios"]
         }
       ],
       "evidenceRuns": [
@@ -21600,15 +21576,11 @@
         "gh run view 34074017928 --log",
         "pnpm exec playwright test --config tests/playwright.config.ts tests/e2e/terminal-hangul-terminating-digit-native.spec.ts --project=electron-headful --workers=1 --repeat-each=3 --retries=0 --reporter=list,json"
       ],
-      "testFiles": [
-        "tests/e2e/terminal-hangul-terminating-digit-native.spec.ts"
-      ],
+      "testFiles": ["tests/e2e/terminal-hangul-terminating-digit-native.spec.ts"],
       "assertionRefs": [
         {
           "file": "tests/e2e/terminal-hangul-terminating-digit-native.spec.ts",
-          "assertions": [
-            "a digit typed right after a Hangul syllable reaches the pty"
-          ]
+          "assertions": ["a digit typed right after a Hangul syllable reaches the pty"]
         }
       ],
       "evidenceRuns": [

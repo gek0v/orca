@@ -32,6 +32,7 @@ export type ComposerCardSourceProps = Pick<
   | 'normalizedLinkQuery'
   | 'tuiAgent'
   | 'detectedAgentIds'
+  | 'launchAccountId'
   | 'advancedOpen'
   | 'projectError'
   | 'creating'
@@ -93,6 +94,7 @@ export type ComposerCardActionProps = {
   onLinkQueryChange: ComposerModel['setLinkQuery']
   onSelectLinkedItem: ComposerModel['handleSelectLinkedItem']
   onTuiAgentChange: ComposerModel['setTuiAgent']
+  onLaunchAccountIdChange: (accountId: string | null) => void
   onOpenAgentSettings: ComposerModel['handleOpenAgentSettings']
   onToggleAdvanced: () => void
   createDisabled: boolean

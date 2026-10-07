@@ -6,8 +6,6 @@ import {
   type UsagePercentageDisplay
 } from '../../../../shared/usage-percentage-display'
 import type { StatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
-import { formatCurrencyAmount } from '../../../../shared/currency-format'
-import { formatCreditCount } from '../../../../shared/credit-count-format'
 import {
   ProviderIcon,
   USAGE_URGENT_PERCENT,
@@ -17,10 +15,28 @@ import {
   getProviderUsageStatusLabel
 } from './tooltip'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
+import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
-import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
-import { isCursorUsageBucket } from '../../../../shared/cursor-usage-buckets'
+import {
+  useActiveWindowAntigravityAccount,
+  useAntigravityAccounts
+} from '@/hooks/useAntigravityAccounts'
+import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
+import {
+  formatCompactExtraUsage,
+  formatStatusBarBucketLabel,
+  getAntigravityStatusTightestSection,
+  isExtraUsageActive,
+  isVisibleStatusBarBucket
+} from './status-bar-provider-buckets'
+
+export {
+  formatStatusBarBucketLabel,
+  getAntigravityStatusTightestSection,
+  isExternalAntigravityModel,
+  isVisibleStatusBarBucket
+} from './status-bar-provider-buckets'
 
 function MiniBar({
   usedPct,
@@ -32,10 +48,10 @@ function MiniBar({
   return (
     <div
       data-usage-bar
-      className="w-[48px] h-[6px] rounded-full bg-muted overflow-hidden flex-shrink-0"
+      className="h-[5px] w-[36px] flex-shrink-0 overflow-hidden rounded-full bg-muted/70"
     >
       <div
-        className="h-full rounded-full transition-all duration-300 bg-muted-foreground/40"
+        className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(usedPct)}`}
         style={{ width: `${getDisplayedUsagePercentage(usedPct, display)}%` }}
       />
     </div>
@@ -53,10 +69,11 @@ function WindowLabel({
   display: UsagePercentageDisplay
   showLabel?: boolean
 }): React.JSX.Element {
+  const pct = getDisplayedUsagePercentage(w.usedPercent, display)
   return (
-    <span className="tabular-nums">
-      {formatUsagePercentageLabel(w.usedPercent, display)}
-      {showLabel ? ` ${label}` : ''}
+    <span className="inline-flex items-center gap-1 font-medium tabular-nums">
+      <span className={getQuotaTextColorClass(w.usedPercent)}>{pct}%</span>
+      {showLabel ? <span className="text-[11px] text-muted-foreground">{label}</span> : null}
     </span>
   )
 }
@@ -80,7 +97,10 @@ export type UsageTone = 'urgent' | 'warning' | 'normal'
 
 /** Urgency by consumption, matching the usage bar colors, whatever % display the user chose. */
 export function getUsageTone(p: ProviderRateLimits): UsageTone {
-  const tightest = getTightestUsageSection(p)
+  const tightest =
+    p.provider === 'antigravity' && p.buckets && p.buckets.length > 0
+      ? getAntigravityStatusTightestSection(p)
+      : getTightestUsageSection(p)
   const used = tightest ? clampUsedPercent(tightest.window.usedPercent) : 0
   return used >= USAGE_URGENT_PERCENT
     ? 'urgent'
@@ -108,11 +128,16 @@ export function UsageOverflowChip({
       : 'normal'
   const names = hidden
     .map((p) => {
-      const tightest = getTightestUsageSection(p)
+      const tightest =
+        p.provider === 'antigravity' && p.buckets && p.buckets.length > 0
+          ? getAntigravityStatusTightestSection(p)
+          : getTightestUsageSection(p)
       const name = getProviderDisplayName(p.provider)
-      return tightest
-        ? `${name} ${formatUsagePercentageLabel(tightest.window.usedPercent, display)}`
-        : name
+      if (!tightest) {
+        return name
+      }
+      const pct = getDisplayedUsagePercentage(tightest.window.usedPercent, display)
+      return `${name} ${pct}%`
     })
     .join(', ')
   return (
@@ -160,26 +185,6 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Provider segment
-// ---------------------------------------------------------------------------
-
-// Why: Gemini exposes extra experimental buckets that made the pre-existing verbose footer noisy.
-const STATUS_BAR_BUCKET_NAMES = new Set(['Flash', 'Pro', '1.5 Pro'])
-
-/**
- * Why Antigravity is matched by provider and not by name: its pools are one per model group, and the
- * group names come from the account's own tier ("Gemini Models", "Claude and GPT models" today), so
- * there is no list to allow. Cursor stays name-matched on purpose — a pool Orca does not recognise
- * is filtered so the segment can fall back to the plan total instead of showing an unlabelled row.
- */
-function isVisibleStatusBarBucket(name: string, provider: ProviderRateLimits['provider']): boolean {
-  if (provider === 'antigravity') {
-    return true
-  }
-  return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
-}
-
 function VerboseProviderUsage({
   p,
   display
@@ -199,14 +204,20 @@ function VerboseProviderUsage({
     const fallbackWindow = p.session ?? p.monthly ?? p.weekly ?? null
     return (
       <>
-        {visibleBuckets.map((bucket, index) => (
-          <React.Fragment key={bucket.name}>
-            {index > 0 ? <span className="text-muted-foreground">·</span> : null}
-            <span className="tabular-nums">
-              {bucket.name} {formatUsagePercentageLabel(bucket.usedPercent, display)}
-            </span>
-          </React.Fragment>
-        ))}
+        {visibleBuckets.map((bucket, index) => {
+          const pct = getDisplayedUsagePercentage(bucket.usedPercent, display)
+          return (
+            <React.Fragment key={bucket.name}>
+              {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
+              <span className="inline-flex items-center gap-1 font-medium tabular-nums">
+                <span className="text-[11px] text-muted-foreground">
+                  {formatStatusBarBucketLabel(bucket.name, p.provider, bucket.windowMinutes)}
+                </span>
+                <span className={getQuotaTextColorClass(bucket.usedPercent)}>{pct}%</span>
+              </span>
+            </React.Fragment>
+          )
+        })}
         {visibleBuckets.length === 0 && fallbackWindow ? (
           <WindowLabel
             w={fallbackWindow}
@@ -256,7 +267,7 @@ function VerboseProviderUsage({
     <>
       {visibleWindows.map((window, index) => (
         <React.Fragment key={window.key}>
-          {index > 0 ? <span className="text-muted-foreground">·</span> : null}
+          {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
           <WindowLabel w={window.window} label={window.label} display={display} />
         </React.Fragment>
       ))}
@@ -264,41 +275,39 @@ function VerboseProviderUsage({
   )
 }
 
-// A plan spends into its overage balance only once an included window is
-// exhausted. Treat ~100% as capped to tolerate provider rounding.
-const CAP_THRESHOLD_PERCENT = 99.5
-
-// Why: only reveal the compact balance once a capped window can spend it.
-function isExtraUsageActive(p: ProviderRateLimits): boolean {
-  if (
-    !p.extraUsage ||
-    !p.extraUsage.enabled ||
-    (p.extraUsage.unit === 'currency' &&
-      (p.extraUsage.balance === null || p.extraUsage.balance <= 0))
-  ) {
-    return false
+function AntigravityStatusAccountBadge({
+  compact,
+  account
+}: {
+  compact: boolean
+  account?: AntigravityAccountSummary | null
+}): React.JSX.Element | null {
+  const activeWindowAccount = useActiveWindowAntigravityAccount()
+  const resolvedAccount = account !== undefined ? account : activeWindowAccount
+  if (!resolvedAccount) {
+    return null
   }
-  return [p.session, p.weekly, p.monthly, p.fableWeekly].some(
-    (w) => w != null && clampUsedPercent(w.usedPercent) >= CAP_THRESHOLD_PERCENT
+  const label = resolvedAccount.alias?.trim() || resolvedAccount.email?.split('@')[0] || ''
+  if (!label && !resolvedAccount.emoji) {
+    return null
+  }
+  return (
+    <span
+      data-antigravity-status-account
+      className={`inline-flex items-center gap-1 font-medium text-foreground ${compact ? 'max-w-[70px]' : 'max-w-[120px]'} truncate text-[11px]`}
+      title={resolvedAccount.email ?? undefined}
+    >
+      {resolvedAccount.emoji ? (
+        <span
+          className="select-none leading-none text-[12px]"
+          data-account-emoji={resolvedAccount.emoji}
+        >
+          {resolvedAccount.emoji}
+        </span>
+      ) : null}
+      {label ? <span className="truncate">{label}</span> : null}
+    </span>
   )
-}
-
-function formatCompactExtraUsage(balance: ProviderRateLimits['extraUsage']): string {
-  if (!balance) {
-    return ''
-  }
-  if (balance.unit === 'credits') {
-    return balance.unlimited
-      ? translate('auto.components.status.bar.StatusBar.4025a6f62f', 'Unlimited')
-      : translate('auto.components.status.bar.StatusBar.a95969101f', '{{value0}} credits', {
-          value0: formatCreditCount(balance.balance)
-        })
-  }
-  return balance.balance === null
-    ? ''
-    : translate('auto.components.status.bar.StatusBar.4fba7dc1e7', '{{value0}} bal', {
-        value0: formatCurrencyAmount(balance.balance, balance.currencyCode)
-      })
 }
 
 export function ProviderSegment({
@@ -313,44 +322,90 @@ export function ProviderSegment({
   mode?: StatusBarUsageMode
 }): React.JSX.Element {
   const provider = p?.provider ?? 'claude'
-  const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
+  const isAntigravity = provider === 'antigravity'
+  const displayedAccount = useActiveWindowAntigravityAccount()
+  const { activeAccount: systemActiveAccount } = useAntigravityAccounts()
+
+  let effectiveLimits = p
+  if (isAntigravity) {
+    if (displayedAccount) {
+      if (displayedAccount.id !== systemActiveAccount?.id) {
+        effectiveLimits = displayedAccount.lastUsage ?? null
+      } else if (
+        p?.usageMetadata?.authProvenance &&
+        p.usageMetadata.authProvenance !== displayedAccount.id
+      ) {
+        effectiveLimits = displayedAccount.lastUsage
+          ? {
+              ...displayedAccount.lastUsage,
+              status: p.status === 'fetching' ? 'fetching' : displayedAccount.lastUsage.status
+            }
+          : null
+      } else {
+        effectiveLimits = p
+      }
+    } else {
+      effectiveLimits = p
+    }
+  }
+
+  const limits = isAntigravity ? effectiveLimits : p
+  const statusLabel = limits ? getProviderUsageStatusLabel(limits) : ''
 
   // Idle / initial load
-  if (!p || p.status === 'idle') {
+  if (!limits || limits.status === 'idle') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}
         <span className="animate-pulse">···</span>
       </span>
     )
   }
 
-  const tightest = mode === 'compact' ? getUsageHeadlineSection(p) : getTightestUsageSection(p)
+  const tightest =
+    limits.provider === 'antigravity' && limits.buckets && limits.buckets.length > 0
+      ? getAntigravityStatusTightestSection(limits)
+      : mode === 'compact'
+        ? getUsageHeadlineSection(limits)
+        : getTightestUsageSection(limits)
 
   // Fetching with no prior data
-  if (p.status === 'fetching' && !tightest) {
+  if (limits.status === 'fetching' && !tightest) {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}
         <span className="animate-pulse">···</span>
       </span>
     )
   }
 
   // Unavailable (CLI not installed)
-  if (p.status === 'unavailable') {
+  if (limits.status === 'unavailable') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground/50">
-        <ProviderIcon provider={provider} /> --
+        <ProviderIcon provider={provider} />
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}{' '}
+        --
       </span>
     )
   }
 
   // Error with no data
-  if (p.status === 'error' && !tightest) {
+  if (limits.status === 'error' && !tightest) {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}
         <AlertTriangle size={11} className="text-muted-foreground/80" />
         {!compact && <span className="text-[11px] font-medium">{statusLabel}</span>}
       </span>
@@ -358,18 +413,21 @@ export function ProviderSegment({
   }
 
   // Has data (ok, fetching with stale data, or error with stale data)
-  const isStale = p.status === 'error'
-  const showBalance = isExtraUsageActive(p)
+  const isStale = limits.status === 'error'
+  const showBalance = isExtraUsageActive(limits)
 
   return (
     <span className="inline-flex items-center gap-1.5">
       <ProviderIcon provider={provider} />
+      {isAntigravity ? (
+        <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+      ) : null}
       {mode === 'verbose' ? (
         <>
           {tightest && !compact ? (
-            <MiniBar usedPct={clampUsedPercent(tightest.window.usedPercent)} display={display} />
+            <MiniBar usedPct={tightest.window.usedPercent} display={display} />
           ) : null}
-          <VerboseProviderUsage p={p} display={display} />
+          <VerboseProviderUsage p={limits} display={display} />
         </>
       ) : tightest ? (
         <WindowLabel
@@ -379,10 +437,10 @@ export function ProviderSegment({
           showLabel={!compact}
         />
       ) : null}
-      {showBalance && p.extraUsage ? (
+      {showBalance && limits.extraUsage ? (
         <>
           <span className="text-muted-foreground">·</span>
-          <span className="tabular-nums">{formatCompactExtraUsage(p.extraUsage)}</span>
+          <span className="tabular-nums">{formatCompactExtraUsage(limits.extraUsage)}</span>
         </>
       ) : null}
       {isStale && <AlertTriangle size={11} className="text-muted-foreground/80" />}

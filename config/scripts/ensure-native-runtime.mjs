@@ -26,7 +26,7 @@ const runtime = readRuntimeArg()
 const NATIVE_MODULES = [
   'node-pty',
   ...(process.platform === 'win32'
-    ? ['@orca/windows-registry', '@vscode/windows-process-tree']
+    ? ['@orca/windows-registry', '@orca/windows-credentials', '@vscode/windows-process-tree']
     : [])
 ]
 const NODE_PTY_CONPTY_RUNTIME_FILES = ['conpty.dll', 'OpenConsole.exe']
@@ -283,6 +283,13 @@ function loadNativeModule(moduleName) {
     const registry = require(moduleName)
     // Why: the package defers loading its .node addon until the first registry call.
     registry.getRegistryKey(registry.HK.CU, 'Environment')
+    return
+  }
+  if (moduleName === '@orca/windows-credentials') {
+    const credentials = require(moduleName)
+    // Why: the package defers loading its .node addon until the first call; a
+    // missing-item read proves the ABI loads without touching a real secret.
+    credentials.readCredential('OrcaNativeRuntimeSelfCheck')
     return
   }
   if (moduleName === 'node-pty') {

@@ -141,6 +141,9 @@ export function TerminalQuickCommandDialog({
           action: 'agent-prompt',
           agent: draft.agent,
           prompt: draft.prompt.trimEnd(),
+          ...(draft.agent === 'antigravity' && draft.launchAccountId !== undefined
+            ? { launchAccountId: draft.launchAccountId }
+            : {}),
           scope: selectedScope
         }
       : {

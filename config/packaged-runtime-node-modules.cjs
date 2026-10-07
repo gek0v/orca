@@ -37,7 +37,8 @@ const PACKAGED_RUNTIME_PACKAGE_ROOTS = [
 const DARWIN_PACKAGED_RUNTIME_PACKAGE_ROOTS = ['serve-sim']
 const WINDOWS_PACKAGED_RUNTIME_PACKAGE_ROOTS = [
   '@vscode/windows-process-tree',
-  '@orca/windows-registry'
+  '@orca/windows-registry',
+  '@orca/windows-credentials'
 ]
 
 const NODE_PTY_PREBUILD_PREFIX_BY_PLATFORM = {

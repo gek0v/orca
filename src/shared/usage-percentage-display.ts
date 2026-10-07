@@ -1,7 +1,7 @@
 export type UsagePercentageDisplay = 'used' | 'remaining'
 
-// Why: missing settings preserve the consumption-meter behavior introduced in #8167.
-export const DEFAULT_USAGE_PERCENTAGE_DISPLAY: UsagePercentageDisplay = 'used'
+// Why: default to remaining capacity (% left) for intuitive battery-style quota visibility.
+export const DEFAULT_USAGE_PERCENTAGE_DISPLAY: UsagePercentageDisplay = 'remaining'
 
 export function normalizeUsagePercentageDisplay(value: unknown): UsagePercentageDisplay {
   return value === 'used' || value === 'remaining' ? value : DEFAULT_USAGE_PERCENTAGE_DISPLAY

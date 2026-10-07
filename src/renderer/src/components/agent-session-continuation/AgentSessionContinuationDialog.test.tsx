@@ -23,8 +23,27 @@ vi.mock('@/lib/agent-catalog', () => ({
   getAgentLabel: () => 'Codex'
 }))
 vi.mock('@/components/agent/AgentCombobox', () => ({
-  default: ({ value }: { value: string | null }) =>
-    React.createElement('div', { 'data-agent': value ?? '' })
+  default: ({
+    value,
+    launchAccountId,
+    onLaunchAccountIdChange
+  }: {
+    value: string | null
+    launchAccountId?: string | null
+    onLaunchAccountIdChange?: (id: string | null) => void
+  }) =>
+    React.createElement(
+      'div',
+      {
+        'data-agent': value ?? '',
+        'data-launch-account-id': launchAccountId ?? ''
+      },
+      React.createElement('button', {
+        type: 'button',
+        'data-testid': 'set-account-btn',
+        onClick: () => onLaunchAccountIdChange?.('account-test-id')
+      })
+    )
 }))
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ open, children }: { open: boolean; children?: ReactNode }) =>
@@ -105,5 +124,80 @@ describe('AgentSessionContinuationDialog', () => {
 
     await act(async () => resolveSecond(['codex']))
     await vi.waitFor(() => expect(container.querySelector('[data-agent="codex"]')).not.toBeNull())
+  })
+
+  it('tracks launchAccountId and forwards it to launchAgentSessionContinuation', async () => {
+    mocks.detectAgents.mockResolvedValue(['codex'])
+    mocks.launchContinuation.mockResolvedValue(true)
+
+    await act(async () => {
+      root.render(
+        <AgentSessionContinuationDialog open request={request('wt-1')} onOpenChange={vi.fn()} />
+      )
+    })
+    await vi.waitFor(() => expect(container.querySelector('[data-agent="codex"]')).not.toBeNull())
+
+    const combobox = container.querySelector('[data-launch-account-id]')
+    expect(combobox?.getAttribute('data-launch-account-id')).toBe('')
+
+    const setAccountBtn = container.querySelector('[data-testid="set-account-btn"]')
+    expect(setAccountBtn instanceof HTMLButtonElement).toBe(true)
+    if (setAccountBtn instanceof HTMLButtonElement) {
+      act(() => {
+        setAccountBtn.click()
+      })
+    }
+
+    expect(
+      container.querySelector('[data-launch-account-id]')?.getAttribute('data-launch-account-id')
+    ).toBe('account-test-id')
+
+    const submitBtn = Array.from(container.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Start New Session')
+    )
+    expect(submitBtn).toBeDefined()
+    expect(submitBtn?.disabled).toBe(false)
+
+    await act(async () => {
+      submitBtn?.click()
+    })
+
+    expect(mocks.launchContinuation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'codex',
+        launchAccountId: 'account-test-id'
+      })
+    )
+  })
+
+  it('resets launchAccountId when a new request is opened', async () => {
+    mocks.detectAgents.mockResolvedValue(['codex'])
+
+    await act(async () => {
+      root.render(
+        <AgentSessionContinuationDialog open request={request('wt-1')} onOpenChange={vi.fn()} />
+      )
+    })
+    await vi.waitFor(() => expect(container.querySelector('[data-agent="codex"]')).not.toBeNull())
+
+    const setAccountBtn = container.querySelector('[data-testid="set-account-btn"]')
+    expect(setAccountBtn instanceof HTMLButtonElement).toBe(true)
+    if (setAccountBtn instanceof HTMLButtonElement) {
+      act(() => {
+        setAccountBtn.click()
+      })
+    }
+    expect(
+      container.querySelector('[data-launch-account-id]')?.getAttribute('data-launch-account-id')
+    ).toBe('account-test-id')
+
+    await act(async () => {
+      root.render(
+        <AgentSessionContinuationDialog open request={request('wt-2')} onOpenChange={vi.fn()} />
+      )
+    })
+    expect(
+      container.querySelector('[data-launch-account-id]')?.getAttribute('data-launch-account-id')
+    ).toBe('')
   })
 })

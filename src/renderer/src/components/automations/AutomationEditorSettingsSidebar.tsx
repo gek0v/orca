@@ -19,6 +19,7 @@ import { AutomationSchedulePicker } from './AutomationSchedulePicker'
 import { AutomationSessionField } from './AutomationSessionField'
 import { AutomationSetupDecisionField } from './AutomationSetupDecisionField'
 import { AutomationWorkspaceField } from './AutomationWorkspaceField'
+import { AutomationAntigravityAccountField } from './AutomationAntigravityAccountField'
 import { AutomationDestinationField } from './AutomationDestinationField'
 import type { AutomationCreateDestinationControl } from './use-automation-create-destination'
 import type { AutomationDraft } from './AutomationEditorDialog'
@@ -102,13 +103,21 @@ export function AutomationEditorSettingsSidebar({
                   agents={visibleAgents}
                   value={draft.agentId}
                   onValueChange={(agentId) =>
-                    agentId && onDraftChange((current) => ({ ...current, agentId }))
+                    agentId &&
+                    onDraftChange((current) => ({
+                      ...current,
+                      agentId,
+                      ...(agentId !== 'antigravity' ? { launchAccountId: null } : {})
+                    }))
                   }
                   defaultAgent={settings?.defaultTuiAgent ?? null}
                   triggerClassName={`h-9 w-full min-w-0 ${pickerTriggerClassName}`}
                   allowNarrowTrigger
                 />
               </Field>
+              {draft.agentId === 'antigravity' ? (
+                <AutomationAntigravityAccountField draft={draft} onDraftChange={onDraftChange} />
+              ) : null}
             </div>
           </div>
         </div>

@@ -288,7 +288,11 @@ const NATIVE_CACHE_FILES = new Set([
   'native/windows-registry/src/addon.cc',
   'native/windows-registry/binding.gyp',
   'native/windows-registry/package.json',
-  'native/windows-registry/index.js'
+  'native/windows-registry/index.js',
+  'native/windows-credentials/src/addon.cc',
+  'native/windows-credentials/binding.gyp',
+  'native/windows-credentials/package.json',
+  'native/windows-credentials/index.js'
 ])
 
 const NATIVE_CACHE_PREFIXES = [

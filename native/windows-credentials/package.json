@@ -1,0 +1,21 @@
+{
+  "name": "@orca/windows-credentials",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows Credential Manager generic-credential read/write for Orca",
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "binding.gyp",
+    "src"
+  ],
+  "os": [
+    "win32"
+  ],
+  "main": "index.js",
+  "types": "index.d.ts",
+  "dependencies": {
+    "node-addon-api": "^8.5.0"
+  }
+}

@@ -59,10 +59,13 @@ export function useAutomationEditorActions({
     setEditingDestination(null)
     setEditingHostStableKey(null)
     setCreateTarget('orca')
+    const targetRepo = repoMap.get(target.projectId)
     const baseDraft: AutomationDraft = {
       name: '',
       prompt: '',
       agentId: defaultAgent,
+      launchAccountId:
+        defaultAgent === 'antigravity' ? (targetRepo?.antigravityAccountId ?? null) : null,
       projectId: target.projectId,
       workspaceMode: 'existing',
       workspaceId: target.workspaceId,
@@ -193,11 +196,15 @@ export function useAutomationEditorActions({
           setEditingHostStableKey(target.entry.stableKey)
         }
       }
+      const nextRepo = repoMap.get(projectId)
       setDraft((current) => ({
         ...current,
         projectId,
         workspaceId: currentDefaultWorktree?.id ?? '',
-        baseBranch: ''
+        baseBranch: '',
+        ...(current.agentId === 'antigravity' && current.launchAccountId === null
+          ? { launchAccountId: nextRepo?.antigravityAccountId ?? null }
+          : {})
       }))
       void fetchWorktrees(projectId, worktreeFetchOptions).then(() => {
         const latestWorktrees = useAppStore.getState().worktreesByRepo[projectId] ?? []
@@ -218,6 +225,7 @@ export function useAutomationEditorActions({
       editingHostStableKey,
       editHostResolution,
       fetchWorktrees,
+      repoMap,
       setEditingHostStableKey,
       setEditingDestination,
       setDraft,

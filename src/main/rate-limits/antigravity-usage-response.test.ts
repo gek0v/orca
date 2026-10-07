@@ -25,7 +25,7 @@ describe('parseAntigravityUsageStdout', () => {
     expect(reading?.buckets).toEqual([
       {
         id: 'gemini-weekly',
-        name: 'Gemini Models',
+        name: 'GM · WL',
         usedPercent: 0,
         windowMinutes: 10_080,
         resetsAt: new Date('2026-10-07T08:08:35Z').getTime(),
@@ -114,10 +114,28 @@ describe('parseAntigravityUsageEnvelope', () => {
       ])
     )
 
-    expect(reading?.buckets.map((bucket) => bucket.name)).toEqual([
-      'Gemini Models · 5h',
-      'Gemini Models · Weekly'
-    ])
+    expect(reading?.buckets.map((bucket) => bucket.name)).toEqual(['GM · 5H', 'GM · WL'])
+  })
+
+  it('formats Gemini Models with "Weekly Limit Remaining" and "5h Limit Remaining" as "GM · WL" and "GM · 5H"', () => {
+    const reading = parseAntigravityUsageEnvelope(
+      envelope([
+        {
+          name: 'Gemini Models',
+          buckets: [
+            { id: 'gemini-5h', name: '5h Limit Remaining', window: '5h', remaining_fraction: 0.8 },
+            {
+              id: 'gemini-weekly',
+              name: 'Weekly Limit Remaining',
+              window: 'weekly',
+              remaining_fraction: 0.6
+            }
+          ]
+        }
+      ])
+    )
+
+    expect(reading?.buckets.map((bucket) => bucket.name)).toEqual(['GM · 5H', 'GM · WL'])
   })
 
   it('drops a disabled bucket instead of drawing it as unused', () => {
@@ -144,8 +162,8 @@ describe('parseAntigravityUsageEnvelope', () => {
     expect(reading?.buckets[0]).toMatchObject({ id: 'gemini-weekly', usedPercent: 100 })
     expect(reading?.session).toBeNull()
     expect(reading?.weekly?.usedPercent).toBe(100)
-    // Why the single bucket keeps the bare group name: the disabled sibling is not a row.
-    expect(reading?.buckets[0]?.name).toBe('Gemini Models')
+    // Why the single bucket keeps the GM · WL name: the disabled sibling is not a row.
+    expect(reading?.buckets[0]?.name).toBe('GM · WL')
   })
 
   it('summarises each window by its most constrained group', () => {

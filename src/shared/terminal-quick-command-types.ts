@@ -27,6 +27,7 @@ export type TerminalAgentQuickCommand = TerminalQuickCommandBase & {
   action: 'agent-prompt'
   agent: TuiAgent
   prompt: string
+  launchAccountId?: string | null
 }
 
 export type TerminalQuickCommand = TerminalCommandQuickCommand | TerminalAgentQuickCommand

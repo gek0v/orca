@@ -96,6 +96,8 @@ export type TerminalTab = {
    *  hook status overrides this once the agent does anything. Plain terminals
    *  and manually-started agents omit it. */
   launchAgent?: TuiAgent
+  /** The specific account identity that spawned this agent tab, if bound. */
+  launchAccountId?: string
   /**
    * The pane an `agent.launch` laid out before its agent existed, while its fate is open or once it
    * is final. Pending (no `outcome`): the pane's spawn reads the launch record. Cleared once the

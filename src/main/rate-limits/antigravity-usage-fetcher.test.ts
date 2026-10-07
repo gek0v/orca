@@ -93,7 +93,7 @@ describe('fetchAntigravityRateLimits', () => {
     expect(result.weekly).toMatchObject({ usedPercent: 60, windowMinutes: 10_080 })
     expect(result.buckets).toEqual([
       {
-        name: 'Gemini Models',
+        name: 'GM · WL',
         usedPercent: 60,
         windowMinutes: 10_080,
         resetsAt: new Date('2026-10-07T08:08:35Z').getTime(),
@@ -418,5 +418,74 @@ describe('quota read safety and diagnostic precedence', () => {
     expect((await h.fetch()).status).toBe('unavailable')
     expect((await h.fetch()).status).toBe('ok')
     expect(runCommand).toHaveBeenCalledTimes(3)
+  })
+
+  it('isolates USERPROFILE and HOME on win32 to prevent spawning configured MCP servers', async () => {
+    const runCommand = vi
+      .fn()
+      .mockImplementation(async (spec: { args?: readonly string[]; env?: NodeJS.ProcessEnv }) => {
+        if (spec.args?.[0] === '--version') {
+          return processResult({ stdout: 'agy version 1.2.16\n' })
+        }
+        return processResult({ stdout: USAGE_ENVELOPE })
+      })
+
+    const resolveCommand = vi
+      .fn()
+      .mockResolvedValue('C:\\Users\\test\\AppData\\Local\\agy\\bin\\agy.exe')
+    const resolveEnvironment = vi.fn().mockResolvedValue({
+      PATH: 'C:\\Windows\\System32;C:\\Users\\test\\AppData\\Local\\agy\\bin',
+      USERPROFILE: 'C:\\Users\\test',
+      HOME: 'C:\\Users\\test',
+      LOCALAPPDATA: 'C:\\Users\\test\\AppData\\Local',
+      SystemRoot: 'C:\\Windows'
+    })
+
+    const result = await fetchAntigravityRateLimits({
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      resolveCommand,
+      resolveEnvironment,
+      platform: 'win32',
+      probeDir: 'C:\\Temp\\orca-agy-probe',
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('ok')
+    expect(runCommand).toHaveBeenCalled()
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: verified mock call
+    const lastCallEnv = runCommand.mock.calls[0][0].env as NodeJS.ProcessEnv
+    expect(lastCallEnv.USERPROFILE).toBe('C:\\Temp\\orca-agy-probe')
+    expect(lastCallEnv.HOME).toBe('C:\\Temp\\orca-agy-probe')
+    expect(lastCallEnv.LOCALAPPDATA).toBe('C:\\Users\\test\\AppData\\Local')
+  })
+
+  it('does not redirect HOME on darwin or linux', async () => {
+    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[] }) => {
+      if (spec.args?.[0] === '--version') {
+        return processResult({ stdout: 'agy version 1.2.16\n' })
+      }
+      return processResult({ stdout: USAGE_ENVELOPE })
+    })
+    const resolveCommand = vi.fn().mockResolvedValue('/usr/local/bin/agy')
+    const resolveEnvironment = vi.fn().mockResolvedValue({
+      PATH: '/usr/local/bin:/usr/bin',
+      HOME: '/Users/test'
+    })
+
+    const result = await fetchAntigravityRateLimits({
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      resolveCommand,
+      resolveEnvironment,
+      platform: 'darwin',
+      probeDir: '/tmp/orca-agy-probe',
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('ok')
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: verified mock call
+    const lastCallEnv = runCommand.mock.calls[0][0].env as NodeJS.ProcessEnv
+    expect(lastCallEnv.HOME).toBe('/Users/test')
   })
 })

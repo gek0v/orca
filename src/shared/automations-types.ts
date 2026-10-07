@@ -96,6 +96,8 @@ export type Automation = {
   prompt: string
   precheck: AutomationPrecheck | null
   agentId: TuiAgent
+  /** Optional account ID for multi-account providers like Antigravity. */
+  launchAccountId?: string | null
   /** Why: runContext carries the logical project + host setup identity for
    *  multi-host projects; projectId remains only as the legacy repo-id storage
    *  field for pre-host-context automations.
@@ -198,6 +200,7 @@ export type AutomationCreateInput = {
   dtstart: number
   enabled?: boolean
   missedRunGraceMinutes?: number
+  launchAccountId?: string | null
 }
 
 export type AutomationUpdateInput = Partial<
@@ -207,6 +210,7 @@ export type AutomationUpdateInput = Partial<
     | 'prompt'
     | 'precheck'
     | 'agentId'
+    | 'launchAccountId'
     | 'runContext'
     | 'sourceContext'
     | 'projectId'

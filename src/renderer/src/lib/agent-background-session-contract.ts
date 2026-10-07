@@ -7,6 +7,8 @@ import type { AutomationTerminalOwnership } from '@/lib/automation-terminal-owne
 export type LaunchAgentBackgroundSessionArgs = {
   agent: TuiAgent
   worktreeId: string
+  /** Identity of the specific account that spawned this tab, if bound. */
+  launchAccountId?: string | null
   prompt?: string
   launchSource?: LaunchSource
   title?: string

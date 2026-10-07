@@ -107,6 +107,35 @@ export function getRepositoryPaneSearchEntries(
               ),
               ...translateSearchKeyword('auto.components.settings.repository.search.token', 'token')
             ]
+          },
+          {
+            title: translate(
+              'auto.components.settings.repository.search.antigravityAccount',
+              'Default Antigravity Account'
+            ),
+            description: translate(
+              'auto.components.settings.repository.search.antigravityAccountDescription',
+              'Choose the default account profile used when launching Antigravity sessions and agents in this project.'
+            ),
+            keywords: [
+              repo.displayName,
+              ...translateSearchKeyword(
+                'auto.components.settings.repository.search.antigravity',
+                'antigravity'
+              ),
+              ...translateSearchKeyword(
+                'auto.components.settings.repository.search.antigravityAccountKeyword',
+                'antigravity account'
+              ),
+              ...translateSearchKeyword(
+                'auto.components.settings.repository.search.accountProfile',
+                'account profile'
+              ),
+              ...translateSearchKeyword(
+                'auto.components.settings.repository.search.defaultAccount',
+                'default account'
+              )
+            ]
           }
         ]
       : []),

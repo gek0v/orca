@@ -7,6 +7,7 @@ import { CodexUsagePane } from './CodexUsagePane'
 import { GrokUsagePane } from './GrokUsagePane'
 import { OpenCodeUsagePane } from './OpenCodeUsagePane'
 import { MuseUsagePane } from './MuseUsagePane'
+import { AntigravityUsagePane } from './AntigravityUsagePane'
 import { UsageOverviewPane } from './UsageOverviewPane'
 import { Button } from '../ui/button'
 import {
@@ -53,7 +54,7 @@ function formatTrackingSince(timestamp: number | null): string {
   })
 }
 
-type UsageTab = 'overview' | 'claude' | 'codex' | 'opencode' | 'muse' | 'grok'
+type UsageTab = 'overview' | 'claude' | 'codex' | 'opencode' | 'muse' | 'antigravity' | 'grok'
 
 const USAGE_ANALYTICS_OPTIONS = [
   {
@@ -87,6 +88,12 @@ const USAGE_ANALYTICS_OPTIONS = [
     }
   },
   {
+    id: 'antigravity',
+    get label() {
+      return translate('auto.components.stats.StatsPane.antigravity', 'Antigravity')
+    }
+  },
+  {
     id: 'grok',
     get label() {
       return translate('auto.components.stats.StatsPane.grokUsageTab', 'Grok')
@@ -105,10 +112,22 @@ export function StatsPane(): React.JSX.Element {
   const summary = useAppStore((s) => s.statsSummary)
   const fetchStatsSummary = useAppStore((s) => s.fetchStatsSummary)
   const recordFeatureInteraction = useAppStore((s) => s.recordFeatureInteraction)
+  const settingsNavigationTarget = useAppStore((s) => s.settingsNavigationTarget)
   const [activeUsageTab, setActiveUsageTab] = useState<UsageTab>('overview')
   const activeUsageOption =
     USAGE_ANALYTICS_OPTIONS.find((option) => option.id === activeUsageTab) ??
     USAGE_ANALYTICS_OPTIONS[0]
+
+  useEffect(() => {
+    if (settingsNavigationTarget?.pane === 'stats' && settingsNavigationTarget.sectionId) {
+      const match = USAGE_ANALYTICS_OPTIONS.find(
+        (option) => option.id === settingsNavigationTarget.sectionId
+      )
+      if (match) {
+        setActiveUsageTab(match.id)
+      }
+    }
+  }, [settingsNavigationTarget])
 
   useEffect(() => {
     recordFeatureInteraction('usage-tracking')
@@ -208,7 +227,7 @@ export function StatsPane(): React.JSX.Element {
             vertical jitter below the usage card when switching disabled providers. */}
         <div>
           {activeUsageTab === 'overview' ? (
-            <UsageOverviewPane />
+            <UsageOverviewPane onSelectProvider={(tab) => setActiveUsageTab(tab)} />
           ) : activeUsageTab === 'claude' ? (
             <ClaudeUsagePane />
           ) : activeUsageTab === 'codex' ? (
@@ -217,6 +236,8 @@ export function StatsPane(): React.JSX.Element {
             <OpenCodeUsagePane />
           ) : activeUsageTab === 'muse' ? (
             <MuseUsagePane />
+          ) : activeUsageTab === 'antigravity' ? (
+            <AntigravityUsagePane />
           ) : (
             <GrokUsagePane />
           )}

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, createElement } from 'react'
+import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type * as AttachmentUploadModule from './native-chat-attachment-upload'
 
@@ -50,15 +50,16 @@ function Probe({
   setNotice: (notice: string | null) => void
   onReady: (api: HookApi) => void
 }): null {
-  onReady(
-    useNativeChatExternalAttachments({
-      terminalTabId: 'tab-1',
-      structuredWorktreeId,
-      disabled,
-      attachResolvedPaths,
-      setNotice
-    })
-  )
+  const api = useNativeChatExternalAttachments({
+    terminalTabId: 'tab-1',
+    structuredWorktreeId,
+    disabled,
+    attachResolvedPaths,
+    setNotice
+  })
+  useEffect(() => {
+    onReady(api)
+  })
   return null
 }
 

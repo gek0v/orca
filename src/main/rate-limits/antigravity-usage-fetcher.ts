@@ -1,3 +1,6 @@
+import { mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { runProcess } from '../../shared/child-process/run-process'
 import { hasReachedAppVersion, parseCliVersion } from '../../shared/app-version'
 import { resolveCommandOnLocalPath } from '../ipc/command-path-resolver'
@@ -48,6 +51,7 @@ export type AntigravityUsageDependencies = {
   resolveCommand?: typeof resolveCommandOnLocalPath
   resolveEnvironment?: () => Promise<NodeJS.ProcessEnv>
   platform?: NodeJS.Platform
+  probeDir?: string
   now?: () => number
 }
 
@@ -121,9 +125,9 @@ export async function fetchAntigravityRateLimits(
 
   // Why the login shell's env: agy installs to ~/.local/bin, which is on the user's PATH but not on
   // the PATH an Electron app inherits from the window server or a desktop launcher.
-  const env = await resolveEnvironment()
+  const rawEnv = await resolveEnvironment()
   const command = antigravityCommandName()
-  const program = await resolve(command, { platform, env })
+  const program = await resolve(command, { platform, env: rawEnv })
   if (!program) {
     return unavailable(
       `Antigravity usage is not available. The Antigravity CLI (\`${command}\`) was not found on this machine.`,
@@ -131,6 +135,18 @@ export async function fetchAntigravityRateLimits(
       now()
     )
   }
+
+  // Windows: isolate USERPROFILE/HOME to prevent agy loading user MCP servers (e.g. blender via uv)
+  // which spawn unhidden console windows. Win32 Credential Manager is OS-level and remains accessible.
+  const probeDir = options.probeDir ?? join(tmpdir(), 'orca-antigravity-probe')
+  if (platform === 'win32') {
+    try {
+      mkdirSync(probeDir, { recursive: true })
+    } catch {
+      // Best-effort directory creation
+    }
+  }
+  const env = platform === 'win32' ? { ...rawEnv, USERPROFILE: probeDir, HOME: probeDir } : rawEnv
 
   // Recheck each read: the CLI can be replaced while Orca runs; unsupported reads spend quota.
   let versionRun: Awaited<ReturnType<typeof runProcess>>

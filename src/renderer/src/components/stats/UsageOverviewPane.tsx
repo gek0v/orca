@@ -8,6 +8,7 @@ import { StatCard } from './StatCard'
 import { getRecentUsageDays } from './usage-overview-daily-series'
 import { buildUsageOverview, formatUsageCost, formatUsageTokens } from './usage-overview-model'
 import { DailyIntensityGrid, ProviderUsageRow, TokenMixBar } from './usage-overview-sections'
+import type { UsageProviderId } from './usage-overview-types'
 import { translate } from '@/i18n/i18n'
 
 const RECENT_DAY_COUNT = 42
@@ -26,7 +27,11 @@ function formatUpdatedAt(timestamp: number | null): string {
   return `Updated ${new Date(timestamp).toLocaleString()}`
 }
 
-export function UsageOverviewPane(): React.JSX.Element {
+export function UsageOverviewPane({
+  onSelectProvider
+}: {
+  onSelectProvider?: (id: UsageProviderId) => void
+} = {}): React.JSX.Element {
   const claudeScanState = useAppStore((state) => state.claudeUsageScanState)
   const claudeSummary = useAppStore((state) => state.claudeUsageSummary)
   const claudeDaily = useAppStore((state) => state.claudeUsageDaily)
@@ -39,18 +44,24 @@ export function UsageOverviewPane(): React.JSX.Element {
   const museScanState = useAppStore((state) => state.museUsageScanState)
   const museSummary = useAppStore((state) => state.museUsageSummary)
   const museDaily = useAppStore((state) => state.museUsageDaily)
+  const antigravityScanState = useAppStore((state) => state.antigravityUsageScanState)
+  const antigravitySummary = useAppStore((state) => state.antigravityUsageSummary)
+  const antigravityDaily = useAppStore((state) => state.antigravityUsageDaily)
   const fetchClaudeUsage = useAppStore((state) => state.fetchClaudeUsage)
   const fetchCodexUsage = useAppStore((state) => state.fetchCodexUsage)
   const fetchOpenCodeUsage = useAppStore((state) => state.fetchOpenCodeUsage)
   const fetchMuseUsage = useAppStore((state) => state.fetchMuseUsage)
+  const fetchAntigravityUsage = useAppStore((state) => state.fetchAntigravityUsage)
   const refreshClaudeUsage = useAppStore((state) => state.refreshClaudeUsage)
   const refreshCodexUsage = useAppStore((state) => state.refreshCodexUsage)
   const refreshOpenCodeUsage = useAppStore((state) => state.refreshOpenCodeUsage)
   const refreshMuseUsage = useAppStore((state) => state.refreshMuseUsage)
+  const refreshAntigravityUsage = useAppStore((state) => state.refreshAntigravityUsage)
   const enableClaudeUsage = useAppStore((state) => state.enableClaudeUsage)
   const enableCodexUsage = useAppStore((state) => state.enableCodexUsage)
   const enableOpenCodeUsage = useAppStore((state) => state.enableOpenCodeUsage)
   const enableMuseUsage = useAppStore((state) => state.enableMuseUsage)
+  const enableAntigravityUsage = useAppStore((state) => state.enableAntigravityUsage)
   const recordFeatureInteraction = useAppStore((state) => state.recordFeatureInteraction)
 
   useEffect(() => {
@@ -58,7 +69,8 @@ export function UsageOverviewPane(): React.JSX.Element {
     void fetchCodexUsage()
     void fetchOpenCodeUsage()
     void fetchMuseUsage()
-  }, [fetchClaudeUsage, fetchCodexUsage, fetchOpenCodeUsage, fetchMuseUsage])
+    void fetchAntigravityUsage()
+  }, [fetchClaudeUsage, fetchCodexUsage, fetchOpenCodeUsage, fetchMuseUsage, fetchAntigravityUsage])
 
   const overview = useMemo(
     () =>
@@ -82,9 +94,17 @@ export function UsageOverviewPane(): React.JSX.Element {
           scanState: museScanState,
           summary: museSummary,
           daily: museDaily
+        },
+        antigravity: {
+          scanState: antigravityScanState,
+          summary: antigravitySummary,
+          daily: antigravityDaily
         }
       }),
     [
+      antigravityDaily,
+      antigravityScanState,
+      antigravitySummary,
       claudeDaily,
       claudeScanState,
       claudeSummary,
@@ -110,7 +130,8 @@ export function UsageOverviewPane(): React.JSX.Element {
       claudeScanState?.enabled ? refreshClaudeUsage() : Promise.resolve(),
       codexScanState?.enabled ? refreshCodexUsage() : Promise.resolve(),
       openCodeScanState?.enabled ? refreshOpenCodeUsage() : Promise.resolve(),
-      museScanState?.enabled ? refreshMuseUsage() : Promise.resolve()
+      museScanState?.enabled ? refreshMuseUsage() : Promise.resolve(),
+      antigravityScanState?.enabled ? refreshAntigravityUsage() : Promise.resolve()
     ])
   }
 
@@ -213,6 +234,19 @@ export function UsageOverviewPane(): React.JSX.Element {
                 >
                   {translate('auto.components.stats.UsageOverviewPane.enableMuse', 'Enable Muse')}
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    recordFeatureInteraction('usage-tracking')
+                    void enableAntigravityUsage()
+                  }}
+                >
+                  {translate(
+                    'auto.components.stats.UsageOverviewPane.enableAntigravity',
+                    'Enable Antigravity'
+                  )}
+                </Button>
               </div>
             </div>
           </div>
@@ -254,7 +288,7 @@ export function UsageOverviewPane(): React.JSX.Element {
               <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-card/30 px-4 py-5 text-sm text-muted-foreground">
                 {translate(
                   'auto.components.stats.UsageOverviewPane.noLocalUsageYet',
-                  'No local Claude, Codex, OpenCode, or Muse usage found yet. The overview will populate after the next agent session writes token logs.'
+                  'No local Claude, Codex, OpenCode, Muse, or Antigravity usage found yet. The overview will populate after the next agent session writes token logs.'
                 )}
               </div>
             ) : (
@@ -292,6 +326,7 @@ export function UsageOverviewPane(): React.JSX.Element {
               key={provider.id}
               provider={provider}
               totalTokens={overview.totalTokens}
+              onSelect={onSelectProvider ? () => onSelectProvider(provider.id) : undefined}
               onEnable={() => {
                 recordFeatureInteraction('usage-tracking')
                 if (provider.id === 'claude') {
@@ -300,6 +335,8 @@ export function UsageOverviewPane(): React.JSX.Element {
                   void enableCodexUsage()
                 } else if (provider.id === 'opencode') {
                   void enableOpenCodeUsage()
+                } else if (provider.id === 'antigravity') {
+                  void enableAntigravityUsage()
                 } else {
                   void enableMuseUsage()
                 }

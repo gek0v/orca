@@ -17,6 +17,7 @@ import { STATUS_BAR_CONTEXT_MENU_EXEMPT_PROPS } from './status-bar-context-menu-
 
 export function ProviderDetailsMenu({
   provider,
+  title,
   compact,
   iconOnly,
   ariaLabel,
@@ -29,6 +30,7 @@ export function ProviderDetailsMenu({
   triggerContent
 }: {
   provider: ProviderRateLimits
+  title?: string
   compact: boolean
   iconOnly: boolean
   ariaLabel: string
@@ -63,6 +65,7 @@ export function ProviderDetailsMenu({
         {/* Why: provider-specific action sections may render richer reset-credit UI. */}
         <ProviderPanel
           p={provider}
+          title={title}
           showResetCredits={!hidePanelResetCredits}
           usagePercentageDisplay={usagePercentageDisplay}
         />

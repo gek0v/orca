@@ -32,6 +32,7 @@ import {
   type AgentSessionLaunchPlan
 } from '@/lib/agent-session-launch-plan'
 import type { AgentLaunchRequestId } from '@/lib/agent-launch-request-id'
+import { resolveDefaultLaunchAccountId } from '@/lib/launch-agent-account-resolution'
 
 /** The user action this launch serves: minted where that action is handled, or carried by the
  *  route the caller already planned for it. */
@@ -46,6 +47,8 @@ type LaunchAgentInNewTabRequest =
 export type LaunchAgentInNewTabArgs = LaunchAgentInNewTabRequest & {
   agent: TuiAgent
   worktreeId: string
+  /** Identity of the specific account that spawned this tab, if bound. */
+  launchAccountId?: string
   /** Tab group the user launched from; keeps split-group launches in that pane instead of the active group. */
   groupId?: string
   /** Optional initial prompt; delivery depends on `promptDelivery` and the agent's prompt mode. */
@@ -116,6 +119,7 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   const {
     agent,
     worktreeId,
+    launchAccountId,
     groupId,
     prompt,
     agentArgs,
@@ -278,8 +282,15 @@ function launchAgentInNewTabInternal(args: LaunchAgentInNewTabArgs): LaunchAgent
   }
   // Why: queue startup BEFORE TerminalPane mounts — it snapshots pendingStartupByTabId in useState on first render.
   // Why: followup path pastes an unsubmitted draft, so gate the initial chat view like a draft launch, not auto-submit.
+  const resolvedLaunchAccountId = resolveDefaultLaunchAccountId(
+    store,
+    agent,
+    worktreeId,
+    launchAccountId
+  )
   const tab = store.createTab(worktreeId, groupId, undefined, {
     launchAgent: agent,
+    ...(resolvedLaunchAccountId ? { launchAccountId: resolvedLaunchAccountId } : {}),
     quickCommandLabel,
     ...(pendingActivationSpawn ? { pendingActivationSpawn: true } : {}),
     ...(activate === false ? { activate: false } : {}),

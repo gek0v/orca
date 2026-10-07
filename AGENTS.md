@@ -12,6 +12,30 @@ Rebuild modified launch-policy code before running an app; stale build wrappers 
 
 Use the `$electron` skill and Playwright CDP for rendered Orca UI checks. Do not use computer-use for Orca UI validation.
 
+## Status Bar & Popover UI Consistency
+
+When designing or modifying status bar segments, menus, and popovers:
+
+- **Status Bar Triggers**:
+  - Proportions: `px-1 py-0.5 text-[11px] font-medium tabular-nums rounded hover:bg-accent/70 text-muted-foreground focus-visible:outline-none`.
+  - Trigger Icons: Canonical `size-3 text-muted-foreground` (12px), matching hardware and host indicators.
+  - Context Menu Safety: Always attach `{...STATUS_BAR_CONTEXT_MENU_EXEMPT_PROPS}` to status bar triggers and floating popovers.
+- **Popover Containers & Spacing**:
+  - Standard width: `w-[22rem] max-w-[calc(100vw-2rem)]` (or `w-80`).
+  - Radix / shadcn Invariants: Never add `p-0` or `shadow-floating` to `<PopoverContent>` (it owns its spacing and glassmorphism backdrop blur). Place inner padding directly on child sections.
+- **Popover Header**:
+  - Compact header: `flex items-center justify-between gap-2 border-b border-border px-3 py-1.5`.
+  - Title: `text-[11px] font-medium text-foreground`, optional project badge: `rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground`.
+  - Ghost Action Buttons: `inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground` with `size-3` icons.
+- **Metric Summaries & Strips**:
+  - Prefer integrated strips (`bg-muted/15 px-3 py-2 border-b border-border`) with `text-sm font-semibold tabular-nums text-foreground` for totals and `tabular-nums` for secondary metrics.
+  - Category indicators: Use theme chart tokens (`bg-chart-1` through `bg-chart-5`), never raw Tailwind colors or heavy nested card boxes.
+- **Section Headers & List Rows**:
+  - Category labels: `text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground px-3 pt-2.5 pb-1`.
+  - Item rows: Clean hairline dividers (`divide-y divide-border/30`), hover state `hover:bg-accent/40 transition-colors`, padding `px-3 py-1.5 text-[11px]`, secondary info in `text-[10px] text-muted-foreground`.
+- **Footer Navigation**:
+  - Border separator `border-t border-border/70`, single-line full-width action button (`px-3 py-2 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground`) accompanied by a `ChevronRight` icon (`size-3.5 text-muted-foreground`).
+
 # Style
 
 ## Reuse Before Reimplementing

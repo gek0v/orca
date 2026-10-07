@@ -270,6 +270,57 @@ describe('LinkActionPopover', () => {
     expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull()
   })
 
+  it('offers copy path in header and action row for file destinations', async () => {
+    vi.stubGlobal('navigator', { userAgent: 'Macintosh' })
+    Object.assign(window, { api: { ui: { writeClipboardText: mocks.writeClipboardText } } })
+    mocks.writeClipboardText.mockResolvedValue(undefined)
+    const onClose = vi.fn()
+    const restoreFocus = vi.fn()
+    const request: LinkActionRequest = {
+      anchorX: 100,
+      anchorY: 200,
+      destination: '/tmp/example.ts',
+      kind: 'file',
+      primary: { label: 'Open file', run: vi.fn() },
+      restoreFocus
+    }
+
+    render(<LinkActionPopover request={request} onClose={onClose} />)
+
+    const copyButtons = screen.getAllByRole('button', { name: 'Copy path' })
+    expect(copyButtons).toHaveLength(2)
+
+    // Test header copy button
+    fireEvent.click(copyButtons[0]!)
+    await waitFor(() => expect(mocks.writeClipboardText).toHaveBeenCalledWith(request.destination))
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Copied path')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(restoreFocus).not.toHaveBeenCalled()
+
+    // Test action row copy button
+    fireEvent.click(copyButtons[1]!)
+    await waitFor(() => expect(mocks.writeClipboardText).toHaveBeenCalledTimes(2))
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(restoreFocus).toHaveBeenCalledOnce()
+  })
+
+  it('does not offer copy for task destinations', () => {
+    vi.stubGlobal('navigator', { userAgent: 'Macintosh' })
+    const request: LinkActionRequest = {
+      anchorX: 100,
+      anchorY: 200,
+      destination: 'task-123',
+      kind: 'task',
+      primary: { label: 'Open task', run: vi.fn() },
+      restoreFocus: vi.fn()
+    }
+
+    render(<LinkActionPopover request={request} onClose={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Copy path' })).toBeNull()
+  })
+
   it('opens the terminal link setting from the compact settings button', () => {
     vi.stubGlobal('navigator', { userAgent: 'Macintosh' })
     const onClose = vi.fn()

@@ -156,4 +156,96 @@ describe('Antigravity native account identity and selection', () => {
     await expect(h.service.removeAccount(id)).rejects.toThrow('Select another')
     expect(h.getVault().accounts).toHaveLength(1)
   })
+
+  it('updates account metadata alias, color, and emoji atomically', async () => {
+    const h = harness()
+    const first = await h.service.addCurrentAccount()
+    const id = first.activeAccountId!
+
+    const updated = await h.service.updateAccountMetadata(id, {
+      alias: 'Trabajo',
+      color: '#3b82f6',
+      emoji: '💼'
+    })
+    expect(updated.accounts[0].alias).toBe('Trabajo')
+    expect(updated.accounts[0].color).toBe('#3b82f6')
+    expect(updated.accounts[0].emoji).toBe('💼')
+
+    const listed = await h.service.listAccounts()
+    expect(listed.accounts[0].alias).toBe('Trabajo')
+    expect(listed.accounts[0].color).toBe('#3b82f6')
+    expect(listed.accounts[0].emoji).toBe('💼')
+
+    const cleared = await h.service.updateAccountMetadata(id, { emoji: null })
+    expect(cleared.accounts[0].emoji).toBeNull()
+  })
+
+  it('records and preserves account usage snapshots across listing', async () => {
+    const h = harness()
+    const first = await h.service.addCurrentAccount()
+    const id = first.activeAccountId!
+
+    const usage = {
+      provider: 'antigravity' as const,
+      status: 'ok' as const,
+      session: {
+        windowMinutes: 300,
+        usedPercent: 15,
+        resetsAt: Date.now() + 10000,
+        resetDescription: null
+      },
+      weekly: {
+        windowMinutes: 10080,
+        usedPercent: 60,
+        resetsAt: Date.now() + 50000,
+        resetDescription: null
+      },
+      updatedAt: 7777,
+      error: null
+    }
+
+    const recorded = await h.service.recordUsageSnapshot(id, usage)
+    expect(recorded.accounts[0].lastUsage).toEqual(usage)
+    expect(typeof recorded.accounts[0].lastUsageAt).toBe('number')
+
+    const listed = await h.service.listAccounts()
+    expect(listed.accounts[0].lastUsage).toEqual(usage)
+    expect(listed.accounts[0].lastUsageAt).toBe(recorded.accounts[0].lastUsageAt)
+  })
+
+  it('identifies and reconciles account when access token is refreshed without an ID token', async () => {
+    const h = harness()
+    const first = await h.service.addCurrentAccount()
+    const id = first.activeAccountId!
+
+    const refreshedWithoutIdToken = JSON.stringify({
+      auth_method: 'consumer',
+      token: {
+        access_token: 'new-access-token-999',
+        refresh_token: 'refresh-1',
+        expiry: 9999
+      }
+    })
+    h.setNative(refreshedWithoutIdToken)
+
+    const state = await h.service.listAccounts()
+    expect(state.activeAccountId).toBe(id)
+    expect(state.accounts[0].email).toBe('a@example.invalid')
+    expect(h.getVault().accounts[0].credentials).toBe(refreshedWithoutIdToken)
+  })
+
+  it('auto-syncs selectedAccountId on prepareForLaunch if current matches another saved account', async () => {
+    const h = harness()
+    const a = (await h.service.addCurrentAccount()).activeAccountId!
+    h.setNative(credential('b'))
+    const b = (await h.service.addCurrentAccount()).activeAccountId!
+
+    await h.service.selectAccount(a)
+    expect(h.getVault().selectedAccountId).toBe(a)
+
+    h.setNative(credential('b'))
+
+    await expect(h.service.prepareForLaunch()).resolves.toBeUndefined()
+    expect(h.getVault().selectedAccountId).toBe(b)
+  })
 })

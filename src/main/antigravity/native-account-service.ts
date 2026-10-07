@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { AntigravityAccountState } from '../../shared/antigravity-account-types'
+import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import {
   parseAntigravityNativeCredential,
   type AntigravityNativeCredential
@@ -15,9 +16,23 @@ export type AntigravityCredentialBackend = {
   write(contents: string, expected: string | null): Promise<void>
 }
 
+function extractRefreshToken(credentials: string): string | null {
+  try {
+    return parseAntigravityNativeCredential(credentials).refreshToken
+  } catch {
+    return null
+  }
+}
+
 function matches(account: StoredAntigravityAccount, current: AntigravityNativeCredential): boolean {
   if (current.identity && account.subject) {
     return account.subject === current.identity.subject && account.authMethod === current.authMethod
+  }
+  if (current.refreshToken) {
+    const storedRefreshToken = extractRefreshToken(account.credentials)
+    if (storedRefreshToken && storedRefreshToken === current.refreshToken) {
+      return account.authMethod === current.authMethod
+    }
   }
   return account.credentials === current.contents
 }
@@ -121,6 +136,48 @@ export class AntigravityAccountService {
     })
   }
 
+  updateAccountMetadata(
+    id: string,
+    metadata: { alias?: string | null; color?: string | null; emoji?: string | null }
+  ): Promise<AntigravityAccountState> {
+    return this.serialize(async () => {
+      const { vault, current } = await this.reconcile()
+      const account = vault.accounts.find((entry) => entry.id === id)
+      if (!account) {
+        throw new Error('Antigravity account was not found.')
+      }
+      if (metadata.alias !== undefined) {
+        account.alias = metadata.alias?.trim() || null
+      }
+      if (metadata.color !== undefined) {
+        account.color = metadata.color?.trim() || null
+      }
+      if (metadata.emoji !== undefined) {
+        account.emoji = metadata.emoji?.trim() || null
+      }
+      account.updatedAt = this.now()
+      this.store.write(vault)
+      return this.state({ vault, current })
+    })
+  }
+
+  recordUsageSnapshot(
+    accountId: string,
+    usage: ProviderRateLimits
+  ): Promise<AntigravityAccountState> {
+    return this.serialize(async () => {
+      const { vault, current } = await this.reconcile()
+      const account = vault.accounts.find((entry) => entry.id === accountId)
+      if (!account) {
+        return this.state({ vault, current })
+      }
+      account.lastUsage = usage
+      account.lastUsageAt = this.now()
+      this.store.write(vault)
+      return this.state({ vault, current })
+    })
+  }
+
   prepareForLaunch(): Promise<void> {
     return this.serialize(async () => {
       const { vault, current } = await this.reconcile()
@@ -128,11 +185,25 @@ export class AntigravityAccountService {
         return
       }
       const selected = vault.accounts.find((account) => account.id === vault.selectedAccountId)
-      if (!selected || !current || !matches(selected, current)) {
-        throw new Error(
-          'The native Antigravity account changed. Select the account again in Accounts before launching agy.'
-        )
+      if (selected && current && matches(selected, current)) {
+        return
       }
+      if (current) {
+        const matching = vault.accounts.find((entry) => matches(entry, current))
+        if (matching) {
+          vault.selectedAccountId = matching.id
+          this.store.write(vault)
+          return
+        }
+      }
+      if (!selected) {
+        vault.selectedAccountId = null
+        this.store.write(vault)
+        return
+      }
+      throw new Error(
+        'The native Antigravity account changed. Select the account again in Accounts before launching agy.'
+      )
     })
   }
 

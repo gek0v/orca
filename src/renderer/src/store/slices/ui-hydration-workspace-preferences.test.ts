@@ -225,7 +225,7 @@ describe('createUISlice hydratePersistedUI', () => {
     expect(setUI).not.toHaveBeenCalled()
   })
 
-  it('defaults invalid usage percentage display values to used', () => {
+  it('defaults invalid usage percentage display values to remaining', () => {
     const store = createUIStore()
 
     store.getState().hydratePersistedUI(
@@ -234,7 +234,7 @@ describe('createUISlice hydratePersistedUI', () => {
       })
     )
 
-    expect(store.getState().usagePercentageDisplay).toBe('used')
+    expect(store.getState().usagePercentageDisplay).toBe('remaining')
   })
 
   it('persists and hydrates the status bar usage mode', () => {

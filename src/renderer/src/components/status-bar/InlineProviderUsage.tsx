@@ -8,9 +8,8 @@ import {
   normalizeUsagePercentageDisplay
 } from '../../../../shared/usage-percentage-display'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
-import { barColor, clampUsedPercent } from './tooltip'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
-import { formatUsagePercentageLabel } from './usage-percentage-label'
+import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { translate } from '@/i18n/i18n'
 
 export function InlineUsageBars({
@@ -29,7 +28,7 @@ export function InlineUsageBars({
     limits.session
       ? {
           key: 'session',
-          used: clampUsedPercent(limits.session.usedPercent),
+          used: limits.session.usedPercent,
           // Why: live reset countdown (matches popover); '5h' window length only when resetsAt is unknown (#5399).
           label: formatRateLimitWindowChipLabel(limits.session, now)
         }
@@ -37,14 +36,14 @@ export function InlineUsageBars({
     limits.weekly
       ? {
           key: 'weekly',
-          used: clampUsedPercent(limits.weekly.usedPercent),
+          used: limits.weekly.usedPercent,
           label: translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
         }
       : null,
     limits.fableWeekly
       ? {
           key: 'fableWeekly',
-          used: clampUsedPercent(limits.fableWeekly.usedPercent),
+          used: limits.fableWeekly.usedPercent,
           label: translate('auto.components.status.bar.StatusBar.54e8d6bb2d', 'Fable')
         }
       : null
@@ -57,20 +56,24 @@ export function InlineUsageBars({
         gridTemplateColumns: `repeat(${Math.max(1, usageWindows.length)}, minmax(0, 1fr))`
       }}
     >
-      {usageWindows.map((window) => (
-        <div key={window.key} className="flex min-w-0 items-center gap-1">
-          <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-            {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
-            <div
-              className={`h-full rounded-full ${barColor(window.used)}`}
-              style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
-            />
+      {usageWindows.map((window) => {
+        const pct = getDisplayedUsagePercentage(window.used, display)
+        return (
+          <div key={window.key} className="flex min-w-0 items-center gap-1.5">
+            <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(window.used)}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] tabular-nums font-medium inline-flex items-center gap-1">
+              <span className={getQuotaTextColorClass(window.used)}>{pct}%</span>
+              <span className="text-muted-foreground">{window.label}</span>
+            </span>
           </div>
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-            {formatUsagePercentageLabel(window.used, display)} {window.label}
-          </span>
-        </div>
-      ))}
+        )
+      })}
       {usageWindows.length === 0 && limits.status === 'error' ? (
         <span className="text-[10px] text-muted-foreground">
           {translate('auto.components.status.bar.StatusBar.f19a63e7cd', 'Sign in to see usage')}

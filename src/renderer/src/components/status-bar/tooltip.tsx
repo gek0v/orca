@@ -18,14 +18,19 @@ import {
 } from '../../../../shared/usage-percentage-display'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
-import { barColor, ProviderExtraUsageSection } from './provider-extra-usage-section'
+import { ProviderExtraUsageSection, getExtraUsageLabel } from './provider-extra-usage-section'
+import {
+  getQuotaBarColorClass,
+  USAGE_URGENT_PERCENT,
+  USAGE_WARNING_PERCENT
+} from './status-bar-quota-tones'
 
 export {
-  barColor,
+  getQuotaBarColorClass as barColor,
   getExtraUsageLabel,
   USAGE_URGENT_PERCENT,
   USAGE_WARNING_PERCENT
-} from './provider-extra-usage-section'
+}
 
 // Re-exported from its shared home so status-bar callers keep a single import.
 export { clampUsedPercent }
@@ -236,8 +241,7 @@ function ProviderRateLimitWindowSection({
   if (!window) {
     return null
   }
-  const usedPct = clampUsedPercent(window.usedPercent)
-  const displayedPct = getDisplayedUsagePercentage(usedPct, usagePercentageDisplay)
+  const displayedPct = getDisplayedUsagePercentage(window.usedPercent, usagePercentageDisplay)
   const resetLabel = window.resetsAt ? formatResetCountdown(window.resetsAt - now) : null
 
   return (
@@ -246,12 +250,12 @@ function ProviderRateLimitWindowSection({
       <div className={`h-[6px] w-full overflow-hidden rounded-full ${emptyBarClass}`}>
         {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
         <div
-          className={`h-full rounded-full ${barColor(usedPct)} transition-all duration-300`}
+          className={`h-full rounded-full ${getQuotaBarColorClass(window.usedPercent)} transition-all duration-300`}
           style={{ width: `${displayedPct}%` }}
         />
       </div>
       <div className={`flex justify-between ${mutedClass}`}>
-        <span>{formatUsagePercentageLabel(usedPct, usagePercentageDisplay)}</span>
+        <span>{formatUsagePercentageLabel(window.usedPercent, usagePercentageDisplay)}</span>
         {resetLabel && <span>{resetLabel}</span>}
       </div>
     </div>
@@ -260,12 +264,14 @@ function ProviderRateLimitWindowSection({
 
 export function ProviderPanel({
   p,
+  title,
   inverted = false,
   className,
   showResetCredits = true,
   usagePercentageDisplay = 'used'
 }: {
   p: ProviderRateLimits | null
+  title?: string
   inverted?: boolean
   className?: string
   showResetCredits?: boolean
@@ -288,13 +294,14 @@ export function ProviderPanel({
   }
 
   const name = getProviderDisplayName(p.provider)
+  const displayName = title ?? name
 
   if (p.status === 'unavailable') {
     return (
       <div className={`text-xs ${className ?? 'w-full'}`}>
         <div className={`flex items-center gap-1.5 font-medium ${textClass}`}>
           <ProviderIcon provider={p.provider} />
-          {name}
+          {displayName}
         </div>
         <div className={mutedClass}>
           {p.error ?? translate('auto.components.status.bar.tooltip.1292d4f2ee', 'Unavailable')}
@@ -308,7 +315,7 @@ export function ProviderPanel({
       <div className={`text-xs ${className ?? 'w-full'}`}>
         <div className={`flex items-center gap-1.5 font-medium ${textClass}`}>
           <ProviderIcon provider={p.provider} />
-          {name}
+          {displayName}
         </div>
         <div className="mt-2">
           <ErrorMessage
@@ -336,7 +343,7 @@ export function ProviderPanel({
       <div>
         <div className={`flex items-center gap-1.5 text-[13px] font-medium ${textClass}`}>
           <ProviderIcon provider={p.provider} />
-          {name}
+          {displayName}
         </div>
         <div className={faintClass}>{updatedAgo}</div>
         {resetCreditCount !== null && resetCreditCount !== undefined ? (

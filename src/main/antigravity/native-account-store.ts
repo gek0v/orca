@@ -3,6 +3,7 @@ import { dirname } from 'node:path'
 import { getSecretStore } from '../../shared/secret-store'
 import { writeCredentialFileAtomic } from '../integration-credential-file'
 import type { AntigravityAccountSummary } from '../../shared/antigravity-account-types'
+import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import { parseAntigravityNativeCredential } from './native-credential-codec'
 
 export type StoredAntigravityAccount = AntigravityAccountSummary & { credentials: string }
@@ -13,6 +14,7 @@ export type AntigravityAccountVault = {
 export type AntigravityAccountStore = {
   read(): AntigravityAccountVault
   write(vault: AntigravityAccountVault): void
+  updateAccountUsage(accountId: string, usage: ProviderRateLimits, timestamp: number): void
 }
 
 const MAX_VAULT_BYTES = 4 * 1024 * 1024
@@ -29,6 +31,13 @@ function isAccount(value: unknown): value is StoredAntigravityAccount {
     (value.email === null || typeof value.email === 'string') &&
     (value.subject === null || typeof value.subject === 'string') &&
     typeof value.authMethod === 'string' &&
+    (value.alias === undefined || value.alias === null || typeof value.alias === 'string') &&
+    (value.color === undefined || value.color === null || typeof value.color === 'string') &&
+    (value.emoji === undefined || value.emoji === null || typeof value.emoji === 'string') &&
+    (value.lastUsage === undefined || value.lastUsage === null || isRecord(value.lastUsage)) &&
+    (value.lastUsageAt === undefined ||
+      value.lastUsageAt === null ||
+      typeof value.lastUsageAt === 'number') &&
     typeof value.createdAt === 'number' &&
     typeof value.updatedAt === 'number' &&
     typeof value.credentials === 'string'
@@ -60,7 +69,19 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
         ) {
           throw new Error('unsafe vault')
         }
-        const value: unknown = JSON.parse(getSecretStore().decryptString(readFileSync(path)))
+        const raw = readFileSync(path)
+        let plaintext: string
+        try {
+          plaintext = getSecretStore().decryptString(raw)
+        } catch (decryptError) {
+          const asText = raw.toString('utf8').trim()
+          if (asText.startsWith('{') && asText.endsWith('}')) {
+            plaintext = asText
+          } else {
+            throw decryptError
+          }
+        }
+        const value: unknown = JSON.parse(plaintext)
         if (
           !isRecord(value) ||
           !Array.isArray(value.accounts) ||
@@ -80,7 +101,7 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
           const credential = parseAntigravityNativeCredential(account.credentials)
           if (
             credential.authMethod !== account.authMethod ||
-            credential.identity?.subject !== account.subject
+            (credential.identity && credential.identity.subject !== account.subject)
           ) {
             throw new Error('inconsistent identity')
           }
@@ -107,6 +128,16 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
       } catch {
         throw new Error('Antigravity account snapshots could not be saved.')
       }
+    },
+    updateAccountUsage(accountId, usage, timestamp) {
+      const vault = this.read()
+      const account = vault.accounts.find((a) => a.id === accountId)
+      if (!account) {
+        return
+      }
+      account.lastUsage = usage
+      account.lastUsageAt = timestamp
+      this.write(vault)
     }
   }
 }

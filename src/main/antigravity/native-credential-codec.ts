@@ -42,7 +42,7 @@ export function encodeAntigravityKeychainValue(contents: string): string {
   return `go-keyring-base64:${Buffer.from(contents, 'utf8').toString('base64')}`
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
@@ -88,6 +88,7 @@ export type AntigravityNativeCredential = {
   contents: string
   authMethod: string
   identity: AntigravityCredentialIdentity | null
+  refreshToken: string | null
 }
 
 export function parseAntigravityNativeCredential(contents: string): AntigravityNativeCredential {
@@ -114,6 +115,10 @@ export function parseAntigravityNativeCredential(contents: string): AntigravityN
     // Keep the exact native blob: a CLI upgrade may depend on fields Orca does not know.
     contents,
     authMethod: value.auth_method,
-    identity: readIdentity(value.id_token ?? value.token.id_token)
+    identity: readIdentity(value.id_token ?? value.token.id_token),
+    refreshToken:
+      typeof value.token.refresh_token === 'string' && value.token.refresh_token.trim()
+        ? value.token.refresh_token.trim()
+        : null
   }
 }

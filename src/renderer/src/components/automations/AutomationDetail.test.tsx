@@ -12,6 +12,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import type { Automation } from '../../../../shared/automations-types'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import { AutomationDetail } from './AutomationDetail'
 import { makeAutomation } from './automations-page-fixtures'
 
@@ -72,5 +73,59 @@ describe('AutomationDetail enablement', () => {
 
     expect(container.textContent).toContain('Enabled')
     expect(notice(container)).toBeNull()
+  })
+
+  it('renders account details when agent is antigravity and has launchAccountId', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'test@example.com',
+          subject: '123',
+          authMethod: 'oauth',
+          alias: 'Work Account',
+          color: '#10b981',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    const container = await render({
+      agentId: 'antigravity',
+      launchAccountId: 'acc-1'
+    })
+
+    expect(container.textContent).toContain('Work Account (test@example.com)')
+  })
+
+  it('renders current active account when agent is antigravity without explicit launchAccountId', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'active@example.com',
+          subject: '123',
+          authMethod: 'oauth',
+          alias: 'Active',
+          color: '#3b82f6',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    const container = await render({
+      agentId: 'antigravity',
+      launchAccountId: null
+    })
+
+    expect(container.textContent).toContain('Current active account')
   })
 })

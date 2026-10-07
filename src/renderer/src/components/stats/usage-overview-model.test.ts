@@ -288,6 +288,7 @@ describe('usage overview model', () => {
           codexTokens: 2_000,
           openCodeTokens: 0,
           museTokens: 0,
+          antigravityTokens: 0,
           intensity: 4
         }
       ],
@@ -303,6 +304,7 @@ describe('usage overview model', () => {
         codexTokens: 0,
         openCodeTokens: 0,
         museTokens: 0,
+        antigravityTokens: 0,
         intensity: 0
       },
       {
@@ -312,6 +314,7 @@ describe('usage overview model', () => {
         codexTokens: 2_000,
         openCodeTokens: 0,
         museTokens: 0,
+        antigravityTokens: 0,
         intensity: 4
       },
       {
@@ -321,6 +324,7 @@ describe('usage overview model', () => {
         codexTokens: 0,
         openCodeTokens: 0,
         museTokens: 0,
+        antigravityTokens: 0,
         intensity: 0
       }
     ])

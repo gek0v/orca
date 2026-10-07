@@ -43,7 +43,17 @@ import { runtimeWaitExitCode, settleTabPtyBinding } from '@/lib/agent-background
 export async function launchAgentBackgroundSession(
   args: LaunchAgentBackgroundSessionArgs
 ): Promise<LaunchAgentBackgroundSessionResult | null> {
-  const { agent, worktreeId, prompt, launchSource, title, onData, onExit, onAgentStatus } = args
+  const {
+    agent,
+    worktreeId,
+    prompt,
+    launchAccountId,
+    launchSource,
+    title,
+    onData,
+    onExit,
+    onAgentStatus
+  } = args
   const store = useAppStore.getState()
   // Folder workspaces exist only in getKnownWorktreeById (#2989).
   const worktree = store.getKnownWorktreeById(worktreeId)
@@ -210,6 +220,8 @@ export async function launchAgentBackgroundSession(
       launchRegistration,
       runtimeTarget,
       runtimeTerminalHandle,
+      launchAgent: agent,
+      launchAccountId,
       onRetire: () => {
         exitHandled = true
         store.clearAgentLaunchConfig(paneKey)

@@ -19,6 +19,7 @@ export type WorktreeStartupPayload = {
   resumeProviderSession?: AgentProviderSessionMetadata
   launchToken?: string
   launchAgent?: TuiAgent
+  launchAccountId?: string
   draftPrompt?: string
   /**
    * The unsent launch context, for the initial view-mode decision ONLY.

@@ -3396,9 +3396,12 @@
             "orcaBrowser": "Orca Browser",
             "terminalLinkSettings": "Terminal link settings",
             "copyLink": "Copy link",
+            "copyPath": "Copy path",
             "copied": "Copied",
             "copiedLink": "Copied link",
+            "copiedPath": "Copied path",
             "copyLinkFailed": "Failed to copy link",
+            "copyPathFailed": "Failed to copy path",
             "downloadOpenWithDefaultApp": "Download & open with default app",
             "downloadOpenFailed": "Failed to download '{{value0}}'."
           },
@@ -3933,6 +3936,10 @@
             "c98ea88392": "No other accounts",
             "9332ba8684": "Switch to",
             "d450654fa2": "Claude Account",
+            "antigravityAccountTitle": "Antigravity Account",
+            "antigravityOpenDetails": "Open Antigravity details and account switcher",
+            "antigravityNoUsageData": "No usage data yet",
+            "antigravityClickToActivate": "Click to activate",
             "11e2354daf": "Claude usage runtime",
             "3dd7ddfae1": "Open Claude details and account switcher",
             "59c6e7b4e0": "Visible sessions restart now. Others restart when their worktree becomes active.",
@@ -3973,7 +3980,12 @@
             "codexSignInError": "Codex sign-in failed. Please try again.",
             "cursorUsageMenu": "Cursor Usage",
             "hiddenUsageProviders": "Also: {{value0}}",
-            "zcodeUsageMenu": "ZCode Usage"
+            "zcodeUsageMenu": "ZCode Usage",
+            "antigravityUsageRuntime": "Antigravity usage runtime",
+            "antigravityProjectDefaultTitle": "Project Default",
+            "antigravitySwitchToProjectDefault": "Switch",
+            "antigravityProjectDefaultBadge": "Default",
+            "antigravityRestartNotice": "Restart live Antigravity terminals before continuing old conversations after switching."
           },
           "StatusBarUsageEmptyCta": {
             "828c764a79": "Connect an account",
@@ -4298,6 +4310,24 @@
             "resumingAriaOne": "Resuming 1 chat. Click to open details.",
             "resumingAria": "Resuming {{value0}} chats. Click to open details.",
             "resumingTooltip": "Restoring interrupted chats and asking them to carry on…"
+          },
+          "TokenUsageStatusSegment": {
+            "ariaLabel": "Token usage",
+            "label": "Tokens",
+            "tooltip": "Token usage: {{project}} ({{tokens}} tokens)",
+            "title": "Token Usage",
+            "refresh": "Refresh",
+            "details": "View full stats",
+            "projectTokens": "Project Tokens",
+            "estimatedCost": "Est.",
+            "input": "Input",
+            "output": "Output",
+            "cache": "Cache",
+            "actions": "actions",
+            "recentSessions": "Recent Sessions",
+            "noSessions": "No sessions recorded yet.",
+            "turns": "turns",
+            "viewAnalytics": "Usage details & history"
           }
         }
       },
@@ -4486,7 +4516,8 @@
           "eb6a066185": "claude",
           "eee19cfade": "overview",
           "grokUsageTab": "Grok",
-          "trackingSince": "Tracking since {{value0}}"
+          "trackingSince": "Tracking since {{value0}}",
+          "antigravity": "Antigravity"
         },
         "UsageOverviewPane": {
           "22ed1b7669": "sessions",
@@ -4507,7 +4538,8 @@
           "c760c481c5": "Usage Overview",
           "55c910f4f1": "- some model prices are unavailable",
           "enableMuse": "Enable Muse",
-          "noLocalUsageYet": "No local Claude, Codex, OpenCode, or Muse usage found yet. The overview will populate after the next agent session writes token logs."
+          "noLocalUsageYet": "No local Claude, Codex, OpenCode, or Muse usage found yet. The overview will populate after the next agent session writes token logs.",
+          "enableAntigravity": "Enable Antigravity"
         },
         "share": {
           "card": {
@@ -4545,7 +4577,8 @@
             "d6e9f0a1b2": "credits",
             "a3b6c7d8e9": "grok usage",
             "9f2a3b4c5d": "xai",
-            "museKeyword": "muse"
+            "museKeyword": "muse",
+            "antigravityKeyword": "antigravity"
           }
         },
         "usage": {
@@ -4623,6 +4656,60 @@
           "emptyMessage": "No local Muse usage found yet for this scope.",
           "noCostNote": "Muse session logs record tokens but not cost, so no cost estimate is shown.",
           "recentSessionsDescription": "Most recent local Muse sessions in this scope."
+        },
+        "AntigravityUsageDailyChart": {
+          "dailyUsage": "Daily usage",
+          "chartDescription": "Input, cached input, and output totals by day.",
+          "input": "Input",
+          "output": "Output",
+          "cachedInput": "Cached input",
+          "tokens": "tokens"
+        },
+        "AntigravityUsagePane": {
+          "byToolCategory": "By tool category",
+          "totalActions": "Total actions:",
+          "noActions": "No tool activity recorded.",
+          "mostActiveFiles": "Most active files",
+          "filesTouched": "Files touched:",
+          "noFilesTouched": "No file activity recorded in this scope.",
+          "reads": "reads",
+          "edits": "edits",
+          "byModel": "By model",
+          "topModel": "Top model:",
+          "byProject": "By project",
+          "topProject": "Top project:",
+          "recentSessions": "Recent sessions",
+          "recentSessionsDescription": "Most recent local Antigravity sessions in this scope.",
+          "lastActive": "Last active",
+          "project": "Project",
+          "model": "Model",
+          "turns": "Turns",
+          "input": "Input",
+          "output": "Output",
+          "total": "Total",
+          "unknown": "Unknown",
+          "scopeOrca": "Orca worktrees only",
+          "scopeAll": "All local Antigravity usage",
+          "rangeLast7Days": "Last 7 days",
+          "rangeLast30Days": "Last 30 days",
+          "rangeLast90Days": "Last 90 days",
+          "rangeAllTime": "All time",
+          "title": "Antigravity Usage Tracking",
+          "enableLabel": "Enable Antigravity usage analytics",
+          "disabledDescription": "Reads local Antigravity (agy) CLI logs to show token, model, and session stats.",
+          "estCost": "Est. API-equivalent cost",
+          "scanError": " • Last scan error: {{value0}}",
+          "optionsLabel": "Antigravity usage options",
+          "filtersLabel": "Filters",
+          "refreshAria": "Refresh Antigravity usage",
+          "refreshLabel": "Refresh",
+          "scope": "Scope",
+          "range": "Range",
+          "emptyMessage": "No local Antigravity usage found yet for this scope.",
+          "inputTokens": "Input tokens",
+          "outputTokens": "Output tokens",
+          "cachedInput": "Cached input",
+          "sessionsTurns": "Sessions / Turns"
         }
       },
       "sparse": {
@@ -10694,7 +10781,24 @@
             "wsl": "wsl",
             "distro": "distro",
             "agentRuntime": "agent runtime",
-            "skillRuntime": "skill runtime"
+            "skillRuntime": "skill runtime",
+            "antigravityAccount": "Default Antigravity Account",
+            "antigravityAccountDescription": "Choose the default account profile used when launching Antigravity sessions and agents in this project.",
+            "antigravity": "antigravity",
+            "antigravityAccountKeyword": "antigravity account",
+            "accountProfile": "account profile",
+            "defaultAccount": "default account"
+          },
+          "antigravityAccount": {
+            "title": "Default Antigravity Account",
+            "description": "Choose the default account profile used when launching Antigravity sessions and agents in this project.",
+            "longDescription": "Sessions and agents launched within this repository will use this account profile by default unless explicitly overridden.",
+            "selectLabel": "Account profile",
+            "refresh": "Refresh Antigravity accounts",
+            "selectPlaceholder": "Select an account",
+            "ambient": "Ambient active account",
+            "missingOption": "Missing account ({{id}})",
+            "notFound": "Bound account not found on this machine. Falling back to ambient account."
           }
         },
         "runtime": {
@@ -19239,7 +19343,9 @@
     }
   },
   "common": {
-    "retry": "Retry"
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save"
   },
   "terminal": {
     "sessionSaveFailure": {
@@ -19290,6 +19396,13 @@
       "confirmStopDescription": "This closes any open Codex sessions that share it, including ones outside Orca.",
       "cancel": "Cancel",
       "runs": "Runs"
+    },
+    "antigravityQuotaFailoverBanner": {
+      "title": "Quota exhausted on '{{account}}'",
+      "alternateAvailable": "Alternate account available: {{nextAccount}}. Switch now to resume without waiting for reset.",
+      "noAlternates": "No alternate accounts configured. Add another account in Settings to enable instant failover.",
+      "switchAndRestart": "Switch to {{account}} & Restart",
+      "dismiss": "Dismiss"
     },
     "paneMove": {
       "failed": "Couldn't move the pane to a new tab."
@@ -19365,6 +19478,13 @@
       "save": "Save current account",
       "refresh": "Refresh accounts",
       "usage": "Refresh usage",
+      "usageAll": "Refresh all accounts usage",
+      "usageTitle": "Usage",
+      "noUsageData": "No usage data yet",
+      "session": "Session",
+      "weekly": "Weekly",
+      "refreshingUsage": "Updating usage…",
+      "lastUpdated": "Updated {{time}}",
       "working": "Updating account",
       "usageReading": "Session: {{session}} · Weekly: {{weekly}}",
       "saved": "Saved Google account",
@@ -19376,12 +19496,29 @@
       "searchTitle": "Antigravity Accounts",
       "searchDescription": "Save and select native agy Google accounts on the execution host.",
       "title": "Antigravity",
+      "account": "Account",
+      "currentActive": "Current active account",
+      "openCurrent": "Current account",
       "keyword": {
         "antigravity": "antigravity",
         "agy": "agy",
         "google": "google",
         "accounts": "accounts"
-      }
+      },
+      "editTitle": "Edit account details",
+      "aliasLabel": "Account alias",
+      "aliasPlaceholder": "Account alias",
+      "colorLabel": "Account color",
+      "edit": "Edit",
+      "switchFailed": "Could not switch Antigravity account",
+      "manageAccounts": "Manage accounts…",
+      "switchedAndRestarted": "Switched Antigravity account and restarted session",
+      "switched": "Switched to Antigravity account {{account}}",
+      "switchConfirmTitle": "Switch Antigravity account?",
+      "switchConfirmActiveSession": "Switching to {{account}} will close your active Antigravity session and open a new conversation with the selected account. Are you sure you want to continue?",
+      "switchConfirmNoSession": "Are you sure you want to switch the active Antigravity account to {{account}}?",
+      "switchConfirmAction": "Switch account",
+      "switchConfirmActionRestart": "Switch & restart session"
     },
     "managedData": {
       "description": "Add accounts by running this command in a terminal on the Orca host. Selection applies to new explicit agent launches on that host; direct SSH relay and Windows-hosted WSL launches use their own credentials.",

@@ -34,7 +34,7 @@ export type AiVaultSubagentResumeActions = {
 
 function isIndependentlyResumableSubagent(session: AiVaultSession): boolean {
   return (
-    session.agent === 'omp' &&
+    (session.agent === 'omp' || session.agent === 'antigravity') &&
     Boolean(session.subagent) &&
     Boolean(session.sessionId.trim()) &&
     session.sessionId !== session.subagent?.parentSessionId &&

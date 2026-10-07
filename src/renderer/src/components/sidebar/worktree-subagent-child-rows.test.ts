@@ -52,4 +52,21 @@ describe('shared CLI and structured child freshness', () => {
       expect(parentEntry.subagents).toEqual([{ id: 'child', state, startedAt: 20 }])
     }
   )
+
+  it('drops antigravity subagent rows when parent entry state is done', () => {
+    const parentEntry: AgentStatusEntry = {
+      paneKey: 'parent-pane',
+      tabId: tab.id,
+      worktreeId: tab.worktreeId,
+      state: 'done',
+      agentType: 'antigravity',
+      prompt: 'parent prompt',
+      updatedAt: 100,
+      stateStartedAt: 10,
+      stateHistory: [],
+      subagents: [{ id: 'child', state: 'working', startedAt: 20 }]
+    }
+    const rows = buildSubagentChildRows({ parentEntry, tab, parentIsFresh: true })
+    expect(rows).toEqual([])
+  })
 })

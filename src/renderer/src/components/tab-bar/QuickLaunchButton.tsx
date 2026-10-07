@@ -1,7 +1,14 @@
-import React, { useCallback } from 'react'
-import { Settings as SettingsIcon } from 'lucide-react'
+import React, { useCallback, useEffect, useState } from 'react'
+import { Check, Settings as SettingsIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import { DropdownMenuItem, DropdownMenuShortcut } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger
+} from '@/components/ui/dropdown-menu'
 import { getAgentCatalog, AgentIcon } from '@/lib/agent-catalog'
 import { useAppStore } from '@/store'
 import { useAgentDetectionTargetForWorktree } from '@/hooks/useAgentDetectionTarget'
@@ -16,6 +23,8 @@ import {
   filterEnabledTuiAgents
 } from '../../../../shared/tui-agent-selection'
 import { translate } from '@/i18n/i18n'
+import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
+import type { AntigravityAccountState } from '../../../../shared/antigravity-account-types'
 import { newAgentPromptOutcome } from '@/lib/new-agent-prompt-outcome'
 
 export type QuickLaunchAgentMenuItemsProps = {
@@ -130,8 +139,30 @@ function QuickLaunchAgentMenuItemsInner({
     openSettingsPage()
   }, [openSettingsPage, openSettingsTarget])
 
+  const [antigravityState, setAntigravityState] = useState<AntigravityAccountState | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'List').then(
+      (res) => {
+        if (!cancelled) {
+          setAntigravityState(res)
+        }
+      },
+      () => {}
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const openAntigravityAccountSettings = useCallback(() => {
+    openSettingsTarget({ pane: 'accounts', repoId: null, sectionId: 'accounts-antigravity' })
+    openSettingsPage()
+  }, [openSettingsPage, openSettingsTarget])
+
   const runLaunch = useCallback(
-    (agent: TuiAgent) => {
+    (agent: TuiAgent, launchAccountId?: string) => {
       if (disabled) {
         return
       }
@@ -142,6 +173,7 @@ function QuickLaunchAgentMenuItemsInner({
         agent,
         worktreeId,
         groupId,
+        ...(launchAccountId ? { launchAccountId } : {}),
         ...(prompt !== undefined ? { prompt } : {}),
         ...(promptDelivery !== undefined ? { promptDelivery } : {}),
         ...(launchSource !== undefined ? { launchSource } : {}),
@@ -207,6 +239,29 @@ function QuickLaunchAgentMenuItemsInner({
     ]
   )
 
+  const launchAntigravity = useCallback(
+    async (accountId?: string) => {
+      const resolvedAccountId = accountId ?? antigravityState?.activeAccountId ?? undefined
+      if (accountId && accountId !== antigravityState?.activeAccountId) {
+        try {
+          await callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'Select', accountId)
+        } catch (cause) {
+          toast.error(
+            cause instanceof Error
+              ? cause.message
+              : translate(
+                  'accounts.antigravity.switchFailed',
+                  'Could not switch Antigravity account'
+                )
+          )
+          return
+        }
+      }
+      runLaunch('antigravity', resolvedAccountId)
+    },
+    [antigravityState?.activeAccountId, runLaunch]
+  )
+
   const enabledDetectedIds = detectedIds ? filterEnabledTuiAgents(detectedIds, disabledAgents) : []
   const agents = detectedIds ? orderAgents(defaultAgent, enabledDetectedIds) : []
 
@@ -230,6 +285,106 @@ function QuickLaunchAgentMenuItemsInner({
         const label = entry?.label ?? agent
         const showsDefaultAgentShortcut =
           newAgentShortcut !== null && defaultAgent !== 'blank' && agent === defaultAgent
+
+        if (agent === 'antigravity') {
+          const accounts = antigravityState?.accounts ?? []
+          const activeAccount = antigravityState?.currentAccount
+          const activeId = antigravityState?.activeAccountId
+          const activeSummary = accounts.find((a) => a.id === activeId)
+          return (
+            <DropdownMenuSub key={agent}>
+              <DropdownMenuSubTrigger
+                title={translate(
+                  'auto.components.tab.bar.QuickLaunchButton.ec2adf093e',
+                  'Launch {{value0}} in a new terminal',
+                  { value0: label }
+                )}
+              >
+                <AgentIcon agent={agent} size={14} />
+                <span className="flex-1">{label}</span>
+                {showsDefaultAgentShortcut ? (
+                  <DropdownMenuShortcut>{newAgentShortcut}</DropdownMenuShortcut>
+                ) : null}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {accounts.length > 0 ? (
+                  accounts.map((acc) => {
+                    const isActive = acc.id === activeId
+                    const dotColor = acc.color?.trim() || '#3b82f6'
+                    const displayLabel = acc.alias?.trim()
+                      ? `${acc.alias.trim()} (${acc.email ?? acc.subject ?? ''})`
+                      : (acc.email ??
+                        acc.subject ??
+                        translate('accounts.antigravity.saved', 'Saved Google account'))
+                    return (
+                      <DropdownMenuItem
+                        key={acc.id}
+                        onSelect={() => void launchAntigravity(acc.id)}
+                        className="justify-between"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {acc.emoji ? (
+                            <span
+                              className="text-[12px] leading-none select-none"
+                              data-account-emoji={acc.emoji}
+                            >
+                              {acc.emoji}
+                            </span>
+                          ) : (
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: dotColor }}
+                              data-account-color={dotColor}
+                            />
+                          )}
+                          <span className="truncate">{displayLabel}</span>
+                        </span>
+                        {isActive ? (
+                          <Check className="size-3.5 shrink-0 text-muted-foreground ml-2" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    )
+                  })
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => void launchAntigravity()}
+                    className="justify-between"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      {activeSummary?.emoji ? (
+                        <span
+                          className="text-[12px] leading-none select-none"
+                          data-account-emoji={activeSummary.emoji}
+                        >
+                          {activeSummary.emoji}
+                        </span>
+                      ) : (
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: activeSummary?.color?.trim() || '#3b82f6' }}
+                        />
+                      )}
+                      <span className="truncate">
+                        {activeSummary?.alias?.trim()
+                          ? `${activeSummary.alias.trim()} (${activeAccount?.email ?? ''})`
+                          : (activeAccount?.email ??
+                            translate('accounts.antigravity.openCurrent', 'Current account'))}
+                      </span>
+                    </span>
+                    <Check className="size-3.5 shrink-0 text-muted-foreground ml-2" />
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={openAntigravityAccountSettings}>
+                  <SettingsIcon className="size-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    {translate('accounts.antigravity.manageAccounts', 'Manage accounts…')}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )
+        }
         return (
           <DropdownMenuItem
             key={agent}

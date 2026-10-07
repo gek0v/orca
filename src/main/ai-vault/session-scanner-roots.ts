@@ -41,6 +41,20 @@ export function ompSessionsRootDirs(args: {
   )
 }
 
+const ANTIGRAVITY_BRAIN_DIR = join(homedir(), '.gemini', 'antigravity-cli', 'brain')
+
+export function antigravityBrainRootDirs(args: {
+  antigravityBrainDir?: string
+  wslHomeDirs?: readonly string[]
+}): string[] {
+  return [
+    args.antigravityBrainDir ?? ANTIGRAVITY_BRAIN_DIR,
+    ...(args.wslHomeDirs ?? []).map((homeDir) =>
+      join(homeDir, '.gemini', 'antigravity-cli', 'brain')
+    )
+  ]
+}
+
 export function normalizedWslHomeDirs(homeDirs: readonly string[] | undefined): string[] {
   const seen = new Set<string>()
   const unique: string[] = []

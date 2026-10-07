@@ -9,7 +9,7 @@ export type TabBarCreateEntryProps = {
   menuOpen: boolean
   menuOptions?: readonly TabCreateMenuOption[]
   onDidOpenEntry?: () => void
-  onLaunchAgent?: (agent: TuiAgent) => void
+  onLaunchAgent?: (agent: TuiAgent, accountId?: string) => void
   onOpenDefaultTerminal?: () => void
   onOpenEntry?: (args: TabCreateEntryArgs) => Promise<void>
   onQueryChange?: (query: string) => void

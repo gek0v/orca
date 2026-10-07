@@ -41,6 +41,7 @@ vi.mock('./claude/claude-folder-trust-file', async (importOriginal) => {
 })
 
 import { applyAgentWorkspaceTrust, type AgentTrustLaunchContext } from './agent-workspace-trust'
+import { toClaudeTrustKey } from './claude/claude-folder-trust-file'
 import { clearWslHomeCache, rememberWslHome } from './wsl-home-cache'
 import {
   AGENT_TRUST_WRITE_DEADLINE_MS,
@@ -229,6 +230,20 @@ describe('applyAgentWorkspaceTrust on this machine', () => {
       await applyAgentWorkspaceTrust('claude', '\\\\wsl.localhost\\Ubuntu\\home\\u\\wt', wsl)
       expect(mocks.claudeGrant).toHaveBeenCalledTimes(1)
     })
+
+    it('writes antigravity preset under known WSL guest home', async () => {
+      rememberWslHome('Ubuntu', '\\\\wsl.localhost\\Ubuntu\\home\\u')
+      const wslContext = { ...local, wslDistro: 'Ubuntu' }
+      await applyAgentWorkspaceTrust(
+        'antigravity',
+        '\\\\wsl.localhost\\Ubuntu\\home\\u\\wt',
+        wslContext
+      )
+      expect(mocks.antigravity).toHaveBeenCalledWith(
+        '/home/u/wt',
+        '\\\\wsl.localhost\\Ubuntu\\home\\u'
+      )
+    })
   })
 })
 
@@ -249,8 +264,9 @@ describe('applyAgentWorkspaceTrust for Claude', () => {
       ...local,
       env: { CLAUDE_CONFIG_DIR: root }
     })
+    const key = toClaudeTrustKey(root, process.platform === 'win32' ? 'win32' : 'posix')
     expect(JSON.parse(readFileSync(join(root, '.claude.json'), 'utf-8'))).toEqual({
-      projects: { [root]: { hasTrustDialogAccepted: true } }
+      projects: { [key]: { hasTrustDialogAccepted: true } }
     })
   })
 

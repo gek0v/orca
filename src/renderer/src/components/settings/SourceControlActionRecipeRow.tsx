@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Terminal } from 'lucide-react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
@@ -8,6 +9,7 @@ import {
   type AiActionId
 } from '../../../../shared/source-control-ai-actions'
 import { AgentIcon } from '@/lib/agent-catalog'
+import { AntigravityAccountSelector } from '@/components/agent/AntigravityAccountSelector'
 import { SourceControlActionVariableChips } from '../source-control/SourceControlActionVariableChips'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -38,6 +40,7 @@ type SourceControlActionRecipeRowProps<ActionId extends AiActionId> = {
   onAgentChange: (actionId: ActionId, value: string) => void
   onTemplateChange: (actionId: ActionId, value: string) => void
   onAgentArgsChange: (actionId: ActionId, value: string) => void
+  onLaunchAccountIdChange?: (actionId: ActionId, value: string | null) => void
   onAppendVariable: (actionId: ActionId, variable: string) => void
   onDiscard: (actionId: ActionId) => void
   onSave: (actionId: ActionId) => void
@@ -51,6 +54,19 @@ function resolveAgentArgsPlaceholderAgent(
     return selectedAgent
   }
   return defaultTuiAgent && defaultTuiAgent !== 'blank' ? defaultTuiAgent : null
+}
+
+function resolveSourceControlRecipeAgent(
+  selectedAgent: TuiAgent | CustomAgentId | null | undefined,
+  defaultTuiAgent: GlobalSettings['defaultTuiAgent']
+): TuiAgent | null {
+  if (selectedAgent && !isCustomAgentId(selectedAgent)) {
+    return selectedAgent
+  }
+  if (selectedAgent === null || selectedAgent === undefined) {
+    return defaultTuiAgent && defaultTuiAgent !== 'blank' ? defaultTuiAgent : null
+  }
+  return null
 }
 
 function getActionLabel(actionId: AiActionId): string {
@@ -71,10 +87,21 @@ export function SourceControlActionRecipeRow<ActionId extends AiActionId>({
   onAgentChange,
   onTemplateChange,
   onAgentArgsChange,
+  onLaunchAccountIdChange,
   onAppendVariable,
   onDiscard,
   onSave
 }: SourceControlActionRecipeRowProps<ActionId>): React.JSX.Element {
+  const [internalLaunchAccountId, setInternalLaunchAccountId] = useState<string | null>(null)
+  const resolvedAgent = resolveSourceControlRecipeAgent(selectedAgent, defaultTuiAgent)
+  const launchAccountId =
+    draftValue.launchAccountId !== undefined ? draftValue.launchAccountId : internalLaunchAccountId
+
+  const handleLaunchAccountIdChange = (accountId: string | null): void => {
+    setInternalLaunchAccountId(accountId)
+    onLaunchAccountIdChange?.(actionId, accountId)
+  }
+
   const templateDirty =
     hasUnsavedChanges ?? JSON.stringify(draftValue) !== JSON.stringify(baseValue)
   const agentArgsPlaceholder = getSourceControlAgentArgsPlaceholder(
@@ -130,6 +157,12 @@ export function SourceControlActionRecipeRow<ActionId extends AiActionId>({
               ))}
             </SelectContent>
           </Select>
+          {resolvedAgent === 'antigravity' ? (
+            <AntigravityAccountSelector
+              value={launchAccountId}
+              onValueChange={handleLaunchAccountIdChange}
+            />
+          ) : null}
           {agentWarningText ? (
             <p className="text-[11px] text-destructive">{agentWarningText}</p>
           ) : agentSupportText ? (

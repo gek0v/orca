@@ -6,11 +6,18 @@ import { ANTIGRAVITY_ACCOUNTS_RUNTIME_CAPABILITY } from '../../../shared/protoco
 import type { RuntimeClientTarget } from './runtime-client-target'
 import { assertRuntimeEnvironmentCapability, callRuntimeRpc } from './runtime-rpc-client'
 
+export type AntigravityAccountUpdateOptions = {
+  accountId: string
+  alias?: string | null
+  color?: string | null
+  emoji?: string | null
+}
+
 export async function callAntigravityAccounts(
   owner: RuntimeClientTarget,
   target: AntigravityAccountTarget,
-  action: 'List' | 'AddCurrent' | 'Select' | 'Remove',
-  accountId?: string
+  action: 'List' | 'AddCurrent' | 'Select' | 'Remove' | 'Update',
+  payload?: string | AntigravityAccountUpdateOptions
 ): Promise<AntigravityAccountState> {
   if (owner.kind === 'environment') {
     await assertRuntimeEnvironmentCapability(
@@ -19,10 +26,11 @@ export async function callAntigravityAccounts(
       'This execution host does not support native Antigravity Accounts yet. Update Orca on that host.'
     )
   }
-  return callRuntimeRpc(
-    owner,
-    `accounts.antigravity${action}`,
-    action === 'List' || action === 'AddCurrent' ? target : { target, accountId },
-    { timeoutMs: 20_000 }
-  )
+  const params =
+    action === 'List' || action === 'AddCurrent'
+      ? target
+      : typeof payload === 'string'
+        ? { target, accountId: payload }
+        : { target, ...payload }
+  return callRuntimeRpc(owner, `accounts.antigravity${action}`, params, { timeoutMs: 20_000 })
 }

@@ -6,17 +6,16 @@ import { formatCurrencyAmount } from '../../../../shared/currency-format'
 import { translate } from '@/i18n/i18n'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 
-export const USAGE_WARNING_PERCENT = 60
-export const USAGE_URGENT_PERCENT = 80
+import {
+  getQuotaBarColorClass,
+  USAGE_URGENT_PERCENT,
+  USAGE_WARNING_PERCENT
+} from './status-bar-quota-tones'
+
+export { USAGE_URGENT_PERCENT, USAGE_WARNING_PERCENT }
 
 export function barColor(usedPct: number): string {
-  if (usedPct < USAGE_WARNING_PERCENT) {
-    return 'bg-muted-foreground/40'
-  }
-  if (usedPct < USAGE_URGENT_PERCENT) {
-    return 'bg-yellow-500'
-  }
-  return 'bg-red-500'
+  return getQuotaBarColorClass(usedPct)
 }
 
 export function getExtraUsageLabel(provider: ProviderRateLimits['provider']): string {

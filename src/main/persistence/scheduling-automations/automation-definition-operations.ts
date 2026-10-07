@@ -111,6 +111,7 @@ export function createAutomation(
     nextRunAt: nextAutomationOccurrenceAfter(input.rrule, input.dtstart, now),
     missedRunPolicy: 'run_once_within_grace',
     missedRunGraceMinutes: input.missedRunGraceMinutes ?? 720,
+    launchAccountId: input.launchAccountId ?? null,
     createdAt: now,
     updatedAt: now
   }

@@ -249,6 +249,10 @@ export function AgentsPane({
         catalog={catalog}
         description={getSettingOwnershipSummary('agentLaunchDefaults').description}
         onSetDefault={(agent) => updateSettings({ defaultTuiAgent: agent })}
+        defaultAntigravityAccountId={settings.defaultAntigravityAccountId}
+        onSetDefaultAntigravityAccountId={(accountId) =>
+          updateSettings({ defaultAntigravityAccountId: accountId })
+        }
       />
       <AgentRuntimeSetting
         settings={settings}

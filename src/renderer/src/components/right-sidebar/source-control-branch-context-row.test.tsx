@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { getIntlLocale } from '@/i18n/i18n'
 import { SourceControlBranchContextRow } from './source-control/panel/branch-context-row'
 import type { GitBranchCompareSummary } from '../../../../shared/git-diff-compare-types'
 import type { GitBranchLineTotal } from '../../../../shared/git-status-types'
@@ -321,7 +322,7 @@ describe('SourceControlBranchContextRow branch line total', () => {
   it('keeps full precision instead of a compact 8.3k form', () => {
     const markup = renderWithLineTotal({ added: 123456, removed: 0, mergeBase: 'base' })
 
-    expect(markup).toContain(`+${(123456).toLocaleString()}`)
+    expect(markup).toContain(`+${(123456).toLocaleString(getIntlLocale())}`)
     expect(markup).not.toContain('123k')
     expect(markup).not.toContain('123.5')
   })

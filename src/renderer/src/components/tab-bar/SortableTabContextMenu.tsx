@@ -7,7 +7,9 @@ import {
   Pencil,
   SquareTerminal,
   X,
-  ListX
+  ListX,
+  User,
+  Check
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -15,6 +17,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
@@ -23,6 +28,7 @@ import { formatShortcutLabel, useOptionalShortcutLabel } from '@/hooks/useShortc
 import { translate } from '@/i18n/i18n'
 import { TerminalTabSplitMenuSection } from './TerminalTabSplitMenuSection'
 import { TAB_CONTEXT_MENU_CONTENT_CLASS } from './tab-context-menu-sizing'
+import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
 
 const TAB_COLORS = [
   {
@@ -151,6 +157,44 @@ export function SortableTabContextMenu({
   const closeShortcut = useOptionalShortcutLabel('tab.close')
   const renameShortcut = useOptionalShortcutLabel('tab.rename')
 
+  const isAntigravity = tab.launchAgent === 'antigravity'
+  const { accounts: antigravityAccounts, activeAccount: activeAntigravityAccount } =
+    useAntigravityAccounts()
+  const currentAccountId = tab.launchAccountId ?? activeAntigravityAccount?.id ?? null
+
+  const handleSelectAccount = (accountId: string): void => {
+    useAppStore.setState((state) => {
+      let changed = false
+      const nextTabsByWorktree = { ...state.tabsByWorktree }
+      for (const [wId, tabs] of Object.entries(nextTabsByWorktree)) {
+        const idx = tabs.findIndex((t) => t.id === tab.id)
+        if (idx !== -1) {
+          const nextTabs = [...tabs]
+          nextTabs[idx] = { ...nextTabs[idx], launchAccountId: accountId }
+          nextTabsByWorktree[wId] = nextTabs
+          changed = true
+          break
+        }
+      }
+      const nextUnified = { ...state.unifiedTabsByWorktree }
+      for (const [wId, tabs] of Object.entries(nextUnified)) {
+        const idx = tabs.findIndex(
+          (t) => (t.contentType === 'terminal' && t.entityId === tab.id) || t.id === unifiedTabId
+        )
+        if (idx !== -1) {
+          const nextTabs = [...tabs]
+          nextTabs[idx] = { ...nextTabs[idx], launchAccountId: accountId }
+          nextUnified[wId] = nextTabs
+          changed = true
+          break
+        }
+      }
+      return changed
+        ? { tabsByWorktree: nextTabsByWorktree, unifiedTabsByWorktree: nextUnified }
+        : state
+    })
+  }
+
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange} modal={false}>
       <DropdownMenuTrigger asChild>
@@ -191,6 +235,64 @@ export function SortableTabContextMenu({
                     'Switch to chat view'
                   )}
             </DropdownMenuItem>
+          </>
+        ) : null}
+        {isAntigravity ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="[&>svg:last-child]:size-3.5">
+                <User className="size-3.5 shrink-0" />
+                <span>
+                  {translate('auto.components.tab.bar.SortableTabContextMenu.account', 'Account')}
+                </span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-w-[calc(100vw-1rem)] whitespace-nowrap">
+                {antigravityAccounts.length > 0 ? (
+                  antigravityAccounts.map((acc) => {
+                    const isSelected = acc.id === currentAccountId
+                    const dotColor = acc.color?.trim() || '#3b82f6'
+                    const displayLabel = acc.alias?.trim()
+                      ? `${acc.alias.trim()} (${acc.email ?? acc.subject ?? ''})`
+                      : (acc.email ??
+                        acc.subject ??
+                        translate('accounts.antigravity.saved', 'Saved Google account'))
+                    return (
+                      <DropdownMenuItem
+                        key={acc.id}
+                        onSelect={() => handleSelectAccount(acc.id)}
+                        className="justify-between"
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {acc.emoji ? (
+                            <span
+                              className="text-[12px] leading-none select-none"
+                              data-account-emoji={acc.emoji}
+                            >
+                              {acc.emoji}
+                            </span>
+                          ) : (
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: dotColor }}
+                              data-account-color={dotColor}
+                            />
+                          )}
+                          <span className="truncate">{displayLabel}</span>
+                        </span>
+                        {isSelected ? (
+                          <Check className="size-3.5 shrink-0 text-muted-foreground ml-2" />
+                        ) : null}
+                      </DropdownMenuItem>
+                    )
+                  })
+                ) : (
+                  <DropdownMenuItem disabled>
+                    {translate('accounts.antigravity.noAccounts', 'No saved accounts')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </>
         ) : null}
         <DropdownMenuSeparator />

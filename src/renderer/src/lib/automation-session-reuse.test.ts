@@ -212,4 +212,52 @@ describe('automation session reuse', () => {
 
     expect(session).toBeNull()
   })
+
+  it('rejects sessions whose tab launchAccountId does not match the automation account', () => {
+    const session = findReusableAutomationSession({
+      automationId: 'auto-1',
+      agentId: 'antigravity',
+      launchAccountId: 'acc-work',
+      worktreeId: 'wt-1',
+      currentRunId: 'run-current',
+      runs: [run({ id: 'run-new', terminalSessionId: 'tab-1', createdAt: 2 })],
+      state: {
+        agentStatusByPaneKey: { [paneKey]: status({ agentType: 'antigravity' }) },
+        ptyIdsByTabId: { 'tab-1': ['pty-1'] },
+        terminalLayoutsByTabId: { 'tab-1': { ptyIdsByLeafId: { [leafId]: 'pty-1' } } },
+        unifiedTabsByWorktree: {
+          'wt-1': [{ contentType: 'terminal', entityId: 'tab-1' }]
+        },
+        tabsByWorktree: {
+          'wt-1': [{ id: 'tab-1', launchAccountId: 'acc-personal' }]
+        }
+      }
+    })
+
+    expect(session).toBeNull()
+  })
+
+  it('reuses sessions when the tab launchAccountId matches the automation account', () => {
+    const session = findReusableAutomationSession({
+      automationId: 'auto-1',
+      agentId: 'antigravity',
+      launchAccountId: 'acc-work',
+      worktreeId: 'wt-1',
+      currentRunId: 'run-current',
+      runs: [run({ id: 'run-new', terminalSessionId: 'tab-1', createdAt: 2 })],
+      state: {
+        agentStatusByPaneKey: { [paneKey]: status({ agentType: 'antigravity' }) },
+        ptyIdsByTabId: { 'tab-1': ['pty-1'] },
+        terminalLayoutsByTabId: { 'tab-1': { ptyIdsByLeafId: { [leafId]: 'pty-1' } } },
+        unifiedTabsByWorktree: {
+          'wt-1': [{ contentType: 'terminal', entityId: 'tab-1' }]
+        },
+        tabsByWorktree: {
+          'wt-1': [{ id: 'tab-1', launchAccountId: 'acc-work' }]
+        }
+      }
+    })
+
+    expect(session).toEqual({ tabId: 'tab-1', ptyId: 'pty-1', paneKey })
+  })
 })

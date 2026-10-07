@@ -138,4 +138,73 @@ describe('protected Antigravity account snapshots', () => {
       expect(() => store.read()).toThrow('preserved')
     }
   )
+
+  it('updates and persists account usage snapshots atomically', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const path = join(dir, 'vault')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(h.getVault())
+    const accountId = h.getVault().accounts[0].id
+
+    const usage = {
+      provider: 'antigravity' as const,
+      status: 'ok' as const,
+      session: {
+        windowMinutes: 300,
+        usedPercent: 20,
+        resetsAt: Date.now() + 10000,
+        resetDescription: null
+      },
+      weekly: {
+        windowMinutes: 10080,
+        usedPercent: 45,
+        resetsAt: Date.now() + 50000,
+        resetDescription: null
+      },
+      updatedAt: 123456,
+      error: null
+    }
+
+    store.updateAccountUsage(accountId, usage, 9999)
+    const readback = store.read()
+    const updated = readback.accounts.find((a) => a.id === accountId)
+    expect(updated?.lastUsage).toEqual(usage)
+    expect(updated?.lastUsageAt).toBe(9999)
+
+    // Updating a non-existent account is safe and no-ops
+    store.updateAccountUsage('non-existent-id', usage, 10000)
+    expect(store.read().accounts).toHaveLength(1)
+  })
+
+  it('reads vault containing an account whose token was refreshed without an ID token', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    vault.accounts[0].credentials = JSON.stringify({
+      auth_method: 'consumer',
+      token: {
+        access_token: 'refreshed-token',
+        refresh_token: 'refresh-1'
+      }
+    })
+    const path = join(dir, 'vault-refreshed')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(vault)
+    const readback = store.read()
+    expect(readback.accounts).toHaveLength(1)
+    expect(readback.accounts[0].subject).toBe(vault.accounts[0].subject)
+  })
+
+  it('reads vault when stored as valid plaintext JSON and preserves account structure', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    const path = join(dir, 'vault-plaintext')
+    writeFileSync(path, JSON.stringify(vault), { mode: 0o600 })
+    const store = createEncryptedAntigravityAccountStore(path)
+    const readback = store.read()
+    expect(readback.accounts).toHaveLength(1)
+    expect(readback.accounts[0].id).toBe(vault.accounts[0].id)
+  })
 })

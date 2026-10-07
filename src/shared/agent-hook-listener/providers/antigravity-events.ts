@@ -7,8 +7,49 @@ import type { HookListenerState } from '../listener-state'
 import { resolvePrompt, resolveToolState } from '../prompt-fields'
 import { extractToolFields, isNewTurnEvent } from '../provider-event-routing'
 import { readLastUserPromptFromTranscript } from '../transcript-lines'
+import {
+  antigravityRosterToSnapshots,
+  type AntigravitySubagentRoster
+} from '../../antigravity-subagent-roster'
+import {
+  createAntigravitySubagentTranscriptState,
+  reconcileAntigravitySubagentTranscript,
+  type AntigravitySubagentTranscriptState
+} from '../../antigravity-subagent-transcript'
 import { readAntigravityToolCall } from './antigravity-tool-fields'
 import { isAntigravityStopStillBusy } from './antigravity-event-rules'
+
+export function getOrCreateAntigravitySubagentRoster(
+  state: HookListenerState,
+  paneKey: string
+): AntigravitySubagentRoster {
+  let roster = state.antigravitySubagentRosterByPaneKey.get(paneKey)
+  if (!roster) {
+    roster = new Map()
+    state.antigravitySubagentRosterByPaneKey.set(paneKey, roster)
+  }
+  return roster
+}
+
+export function getOrCreateAntigravitySubagentTranscriptState(
+  state: HookListenerState,
+  paneKey: string
+): AntigravitySubagentTranscriptState {
+  let transcriptState = state.antigravitySubagentTranscriptByPaneKey.get(paneKey)
+  if (!transcriptState) {
+    transcriptState = createAntigravitySubagentTranscriptState()
+    state.antigravitySubagentTranscriptByPaneKey.set(paneKey, transcriptState)
+  }
+  return transcriptState
+}
+
+export function hasAntigravityTranscriptSubagents(
+  state: HookListenerState,
+  paneKey: string
+): boolean {
+  const roster = state.antigravitySubagentRosterByPaneKey.get(paneKey)
+  return Boolean(roster && roster.size > 0)
+}
 
 export function isAntigravityFeedbackTool(toolName: string | undefined): boolean {
   return toolName === 'ask_question' || toolName === 'ask_permission'
@@ -65,6 +106,27 @@ export function normalizeAntigravityEvent(
     { resetOnNewTurn: resetsTurn }
   )
 
+  if (resetsTurn) {
+    state.antigravitySubagentRosterByPaneKey.delete(paneKey)
+    state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
+  }
+
+  if (transcriptPath) {
+    const roster = getOrCreateAntigravitySubagentRoster(state, paneKey)
+    const transcriptState = getOrCreateAntigravitySubagentTranscriptState(state, paneKey)
+    reconcileAntigravitySubagentTranscript(transcriptState, roster, transcriptPath)
+  }
+
+  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop is terminal.
+  const hasRunningSubagents = hasAntigravityTranscriptSubagents(state, paneKey)
+  if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
+    if (!hasRunningSubagents) {
+      state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
+      state.antigravitySubagentRosterByPaneKey.delete(paneKey)
+      state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
+    }
+  }
+
   const payload = normalizeAgentStatusPayload({
     state: stateName,
     prompt: resolvePrompt(state, paneKey, effectivePrompt, {
@@ -75,11 +137,8 @@ export function normalizeAntigravityEvent(
     toolInput: snapshot.toolInput,
     interactivePrompt: snapshot.interactivePrompt,
     lastAssistantMessage: snapshot.lastAssistantMessage,
-    lastAssistantMessageIsToolOutput: snapshot.lastAssistantMessageIsToolOutput
+    lastAssistantMessageIsToolOutput: snapshot.lastAssistantMessageIsToolOutput,
+    subagents: antigravityRosterToSnapshots(state.antigravitySubagentRosterByPaneKey.get(paneKey))
   })
-  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop is terminal, else the sidebar bounces done -> working and ignores later tool updates.
-  if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
-    state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
-  }
   return payload
 }

@@ -65,6 +65,22 @@ describe('openDefaultAgentChatInEmptyWorkspace', () => {
     )
   })
 
+  it('forwards launchAccountId to launchAgentInNewTab', () => {
+    seedSettings({})
+
+    expect(openDefaultAgentChatInEmptyWorkspace('wt-1', 'account-123')).toEqual({
+      primaryTabId: 'chat-tab'
+    })
+    expect(mocks.launchAgentInNewTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'codex',
+        worktreeId: 'wt-1',
+        pendingActivationSpawn: true,
+        launchAccountId: 'account-123'
+      })
+    )
+  })
+
   it('does nothing unless new agent tabs open as chat', () => {
     seedSettings({ openAgentTabsInChatByDefault: false })
 

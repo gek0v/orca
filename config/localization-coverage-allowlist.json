@@ -1,5 +1,61 @@
 [
   {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "jsx-attribute:aria-label",
+    "text": "Account icon emoji",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "object-property:label",
+    "text": "Amber",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "object-property:label",
+    "text": "Blue",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "jsx-attribute:aria-label",
+    "text": "Clear emoji",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "object-property:label",
+    "text": "Cyan",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "object-property:label",
+    "text": "Emerald",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "object-property:label",
+    "text": "Purple",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/settings/AntigravityAccountEditDialog.tsx",
+    "kind": "object-property:label",
+    "text": "Rose",
+    "dynamic": false,
+    "count": 1
+  },
+  {
     "filePath": "src/renderer/src/components/settings/appearance-search.ts",
     "kind": "object-property:keywords",
     "text": "Idioma",
@@ -73,6 +129,76 @@
     "filePath": "src/renderer/src/components/sidebar/worktree-card-meta-row.tsx",
     "kind": "jsx-attribute:label",
     "text": "sidebar",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/stats/usage-provider-normalization.ts",
+    "kind": "object-property:label",
+    "text": "Antigravity",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/AntigravitySwitcherMenu.tsx",
+    "kind": "object-property:label",
+    "text": "WSL",
+    "dynamic": true,
+    "count": 2
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/TokenUsageStatusSegment.tsx",
+    "kind": "jsx-text",
+    "text": "cmds",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/TokenUsageStatusSegment.tsx",
+    "kind": "jsx-text",
+    "text": "edits ·",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/TokenUsageStatusSegment.tsx",
+    "kind": "jsx-text",
+    "text": "reads ·",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/TokenUsageStatusSegment.tsx",
+    "kind": "jsx-expression",
+    "text": "session",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/TokenUsageStatusSegment.tsx",
+    "kind": "jsx-expression",
+    "text": "sessions",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/status-bar/TokenUsageStatusSegment.tsx",
+    "kind": "jsx-text",
+    "text": "tokens",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/tab-bar/AntigravityAccountTabBadge.tsx",
+    "kind": "jsx-expression",
+    "text": "Antigravity",
+    "dynamic": false,
+    "count": 1
+  },
+  {
+    "filePath": "src/renderer/src/components/terminal/TerminalQuotaFailoverBanner.tsx",
+    "kind": "user-visible-call",
+    "text": "Could not switch Antigravity account",
     "dynamic": false,
     "count": 1
   }

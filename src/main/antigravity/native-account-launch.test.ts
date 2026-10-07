@@ -20,7 +20,8 @@ beforeEach(() => {
   vi.mocked(getAntigravityAccountService).mockClear()
   vi.mocked(createEncryptedAntigravityAccountStore).mockReturnValue({
     read: () => ({ accounts: [], selectedAccountId: 'selected' }),
-    write: vi.fn()
+    write: vi.fn(),
+    updateAccountUsage: vi.fn()
   })
   prepareForLaunch.mockReset().mockResolvedValue(undefined)
 })

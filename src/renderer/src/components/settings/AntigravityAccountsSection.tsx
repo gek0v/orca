@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import { AgentIcon } from '@/lib/agent-catalog'
@@ -6,11 +6,16 @@ import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-
 import { callRuntimeRpc, type RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
 import type {
   AntigravityAccountState,
+  AntigravityAccountSummary,
   AntigravityAccountTarget
 } from '../../../../shared/antigravity-account-types'
 import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate-limit-types'
 import { Button } from '../ui/button'
-import { Badge } from '../ui/badge'
+import { AntigravityAccountEditDialog } from './AntigravityAccountEditDialog'
+import { AntigravityAccountRow } from './AntigravityAccountRow'
+import { refreshAllAntigravityAccountsUsage } from './antigravity-accounts-usage-refresh'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
+import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 
 export function AntigravityAccountsSection({
   owner,
@@ -27,6 +32,8 @@ export function AntigravityAccountsSection({
     authMethod: string
     limits: ProviderRateLimits | null
   } | null>(null)
+  const [accountUsageMap, setAccountUsageMap] = useState<Record<string, ProviderRateLimits>>({})
+  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null)
   const current = state?.currentAccount
   const usage =
     current?.subject === usageSnapshot?.subject && current?.authMethod === usageSnapshot?.authMethod
@@ -34,12 +41,31 @@ export function AntigravityAccountsSection({
       : null
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<AntigravityAccountSummary | null>(null)
   const pending = useRef(false)
   const mounted = useRef(true)
   const ownerKind = owner.kind
   const environmentId = owner.kind === 'environment' ? owner.environmentId : null
   const runtime = target.runtime
   const wslDistro = target.wslDistro ?? null
+
+  const resetTimes = useMemo(() => {
+    const times: (number | null | undefined)[] = []
+    for (const acc of state?.accounts ?? []) {
+      const accUsage =
+        state?.activeAccountId === acc.id && usage
+          ? usage
+          : (accountUsageMap[acc.id] ?? acc.lastUsage ?? null)
+      if (accUsage?.session?.resetsAt) {
+        times.push(accUsage.session.resetsAt)
+      }
+      if (accUsage?.weekly?.resetsAt) {
+        times.push(accUsage.weekly.resetsAt)
+      }
+    }
+    return times
+  }, [state?.accounts, state?.activeAccountId, usage, accountUsageMap])
+  const now = useResetCountdownClock(resetTimes)
 
   useEffect(() => {
     mounted.current = true
@@ -69,7 +95,7 @@ export function AntigravityAccountsSection({
   }, [ownerKind, environmentId, runtime, wslDistro])
 
   async function run(
-    action: 'List' | 'AddCurrent' | 'Select' | 'Remove' | 'Usage',
+    action: 'List' | 'AddCurrent' | 'Select' | 'Remove' | 'Usage' | 'UsageAll',
     accountId?: string
   ) {
     if (pending.current) {
@@ -90,6 +116,7 @@ export function AntigravityAccountsSection({
         const after = await callAntigravityAccounts(owner, target, 'List')
         if (mounted.current) {
           setState(after)
+          setCachedAntigravityAccountsState(after)
         }
         if (
           !before.currentAccount?.subject ||
@@ -99,11 +126,36 @@ export function AntigravityAccountsSection({
           throw new Error('The native account changed while reading usage. Refresh usage again.')
         }
         if (mounted.current) {
+          const limits = snapshot.rateLimits.antigravity
           setUsageSnapshot({
             subject: before.currentAccount.subject,
             authMethod: before.currentAccount.authMethod,
-            limits: snapshot.rateLimits.antigravity
+            limits
           })
+          if (before.activeAccountId && limits) {
+            setAccountUsageMap((prev) => ({
+              ...prev,
+              [before.activeAccountId!]: limits
+            }))
+          }
+        }
+      } else if (action === 'UsageAll') {
+        const after = await refreshAllAntigravityAccountsUsage({
+          owner,
+          target,
+          isMounted: () => mounted.current,
+          onRefreshingAccountId: (id) => setRefreshingAccountId(id),
+          onStateUpdate: (nextState) => {
+            setState(nextState)
+            setCachedAntigravityAccountsState(nextState)
+          },
+          onAccountUsageUpdate: (accId, limits) => {
+            setAccountUsageMap((prev) => ({ ...prev, [accId]: limits }))
+          }
+        })
+        if (after && mounted.current) {
+          setState(after)
+          setCachedAntigravityAccountsState(after)
         }
       } else {
         if (action === 'Select') {
@@ -112,6 +164,7 @@ export function AntigravityAccountsSection({
         const next = await callAntigravityAccounts(owner, target, action, accountId)
         if (mounted.current) {
           setState(next)
+          setCachedAntigravityAccountsState(next)
         }
       }
     } catch (cause) {
@@ -133,7 +186,29 @@ export function AntigravityAccountsSection({
     } finally {
       pending.current = false
       if (mounted.current) {
+        setRefreshingAccountId(null)
         setBusy(false)
+      }
+    }
+  }
+
+  async function handleUpdateMetadata(
+    accountId: string,
+    metadata: { alias?: string | null; color?: string | null }
+  ) {
+    setError(null)
+    try {
+      const next = await callAntigravityAccounts(owner, target, 'Update', {
+        accountId,
+        alias: metadata.alias,
+        color: metadata.color
+      })
+      if (mounted.current) {
+        setState(next)
+      }
+    } catch (cause) {
+      if (mounted.current) {
+        setError(cause instanceof Error ? cause.message : 'Could not update account metadata.')
       }
     }
   }
@@ -210,6 +285,14 @@ export function AntigravityAccountsSection({
             >
               {translate('accounts.antigravity.usage', 'Refresh usage')}
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy || state.accounts.length === 0 || target.runtime === 'wsl'}
+              onClick={() => void run('UsageAll')}
+            >
+              {translate('accounts.antigravity.usageAll', 'Refresh all accounts usage')}
+            </Button>
             {busy && (
               <Loader2
                 className="size-4 animate-spin"
@@ -230,47 +313,31 @@ export function AntigravityAccountsSection({
                 )}
             </p>
           )}
-          {state.accounts.map((account) => (
-            <div
-              key={account.id}
-              className="flex items-center justify-between gap-3 rounded-md border p-3"
-            >
-              <div className="space-y-1">
-                <p className="text-xs font-medium">
-                  {account.email ?? translate('accounts.antigravity.saved', 'Saved Google account')}
-                </p>
-                {state.activeAccountId === account.id && (
-                  <Badge variant="secondary">
-                    {translate('accounts.antigravity.nativeActive', 'Native account')}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void run('Select', account.id)}
-                >
-                  {state.selectedAccountId === account.id && state.activeAccountId === account.id
-                    ? translate('accounts.antigravity.selected', 'Selected')
-                    : translate('accounts.antigravity.select', 'Select')}
-                </Button>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  disabled={
-                    busy ||
-                    state.activeAccountId === account.id ||
-                    state.selectedAccountId === account.id
-                  }
-                  onClick={() => void run('Remove', account.id)}
-                >
-                  {translate('accounts.antigravity.remove', 'Remove')}
-                </Button>
-              </div>
-            </div>
-          ))}
+          {state.accounts.map((account) => {
+            const accountUsage =
+              state.activeAccountId === account.id && usage
+                ? usage
+                : (accountUsageMap[account.id] ?? account.lastUsage ?? null)
+            const isAccountRefreshing = refreshingAccountId === account.id
+            const lastUpdated = accountUsage?.updatedAt ?? account.lastUsageAt ?? null
+
+            return (
+              <AntigravityAccountRow
+                key={account.id}
+                account={account}
+                isActive={state.activeAccountId === account.id}
+                isSelected={state.selectedAccountId === account.id}
+                accountUsage={accountUsage}
+                isAccountRefreshing={isAccountRefreshing}
+                lastUpdated={lastUpdated}
+                now={now}
+                busy={busy}
+                onEdit={() => setEditingAccount(account)}
+                onSelect={() => void run('Select', account.id)}
+                onRemove={() => void run('Remove', account.id)}
+              />
+            )
+          })}
         </div>
       )}
       <p className="text-xs text-muted-foreground">
@@ -279,6 +346,16 @@ export function AntigravityAccountsSection({
           'Selection applies to new agy sessions on this host. Existing sessions may keep their previous account.'
         )}
       </p>
+      <AntigravityAccountEditDialog
+        account={editingAccount}
+        open={editingAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingAccount(null)
+          }
+        }}
+        onSave={handleUpdateMetadata}
+      />
     </section>
   )
 }

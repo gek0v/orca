@@ -165,4 +165,94 @@ describe('native Antigravity Accounts', () => {
     expect(screen.queryByText('Native account')).toBeNull()
     expect(screen.getByText(/The native account changed/)).toBeTruthy()
   })
+
+  it('allows editing an account alias and color preset, calling Update RPC', async () => {
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+    await screen.findByText('Native account')
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const input = await screen.findByPlaceholderText('Account alias')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Personal')
+    await userEvent.click(screen.getByTestId('color-emerald'))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(callAntigravityAccounts).toHaveBeenCalledWith(
+      owner,
+      target,
+      'Update',
+      expect.objectContaining({ accountId: 'a', alias: 'Personal', color: '#10b981' })
+    )
+  })
+
+  it('renders "No usage data yet" when account has no recorded usage', async () => {
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+    await screen.findByText('Native account')
+    expect(screen.getByText('No usage data yet')).toBeInTheDocument()
+  })
+
+  it('refreshes all accounts usage sequentially and restores the active account', async () => {
+    const multiAccountState: AntigravityAccountState = {
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'first@example.com',
+          subject: 'sub-1',
+          authMethod: 'consumer',
+          createdAt: 1,
+          updatedAt: 2,
+          lastUsage: null
+        },
+        {
+          id: 'acc-2',
+          email: 'second@example.com',
+          subject: 'sub-2',
+          authMethod: 'consumer',
+          createdAt: 3,
+          updatedAt: 4,
+          lastUsage: null
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1',
+      currentAccount: {
+        email: 'first@example.com',
+        subject: 'sub-1',
+        authMethod: 'consumer',
+        identityKnown: true
+      }
+    }
+
+    vi.mocked(callAntigravityAccounts).mockResolvedValue(multiAccountState)
+    vi.mocked(callRuntimeRpc).mockResolvedValue({
+      rateLimits: {
+        antigravity: {
+          provider: 'antigravity',
+          session: { usedPercent: 45, windowMinutes: 300, resetsAt: null, resetDescription: null },
+          weekly: { usedPercent: 15, windowMinutes: 10080, resetsAt: null, resetDescription: null },
+          updatedAt: 1,
+          error: null,
+          status: 'ok'
+        }
+      }
+    })
+
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+    await screen.findAllByText('first@example.com')
+    await screen.findByText('second@example.com')
+
+    const refreshAllButton = screen.getByRole('button', { name: 'Refresh all accounts usage' })
+    expect(refreshAllButton).toBeEnabled()
+
+    await userEvent.click(refreshAllButton)
+
+    await waitFor(() => {
+      // Account 2 was switched to
+      expect(callAntigravityAccounts).toHaveBeenCalledWith(owner, target, 'Select', 'acc-2')
+      // Original active account (acc-1) was restored
+      expect(callAntigravityAccounts).toHaveBeenCalledWith(owner, target, 'Select', 'acc-1')
+    })
+    // Both accounts show usage percentages
+    expect(screen.getAllByText('45%')).toHaveLength(2)
+    expect(screen.getAllByText('15%')).toHaveLength(2)
+  })
 })

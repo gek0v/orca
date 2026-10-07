@@ -20,11 +20,13 @@ import { UpdateStatusSegment } from './UpdateStatusSegment'
 import { SkillUpdateStatusSegment } from './SkillUpdateStatusSegment'
 import { NativeChatResumeStatusSegment } from './NativeChatResumeStatusSegment'
 import { CaffeinateStatusSegment } from './CaffeinateStatusSegment'
+import { TokenUsageStatusSegment } from './TokenUsageStatusSegment'
 import { RemoteServerUpdateStatusSegment } from './RemoteServerUpdateStatusSegment'
 import { TOGGLE_FLOATING_TERMINAL_EVENT } from '@/lib/floating-terminal'
 import { FloatingTerminalIconContextMenu } from '@/components/floating-terminal/FloatingTerminalIconContextMenu'
 import { ClaudeSwitcherMenu } from './ClaudeSwitcherMenu'
 import { CodexSwitcherMenu } from './CodexSwitcherMenu'
+import { AntigravitySwitcherMenu } from './AntigravitySwitcherMenu'
 import { ProviderDetailsMenu } from './ProviderDetailsMenu'
 import { CLOSE_ALL_CONTEXT_MENUS_EVENT } from '@/lib/close-all-context-menus'
 import { ProviderSegment, UsageOverflowChip, getUsageTone } from './StatusBarProviderSegment'
@@ -219,6 +221,17 @@ export function StatusBarSurface({
                           />
                         )
                       }
+                      if (p.provider === 'antigravity') {
+                        return (
+                          <AntigravitySwitcherMenu
+                            antigravity={p}
+                            compact={compact}
+                            iconOnly={false}
+                            asSubmenu
+                            triggerContent={rowNode}
+                          />
+                        )
+                      }
                       return (
                         <ProviderDetailsMenu
                           provider={p}
@@ -270,6 +283,7 @@ export function StatusBarSurface({
         data-overflowing={overflowing}
       >
         <div ref={segmentsRef} className="flex w-max items-center gap-3">
+          <TokenUsageStatusSegment iconOnly={segmentsIconOnly} />
           {!isPairedWebClientWindow() ? (
             <CaffeinateStatusSegment iconOnly={segmentsIconOnly} />
           ) : null}

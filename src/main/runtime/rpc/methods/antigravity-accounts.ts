@@ -1,7 +1,8 @@
 import { defineMethod } from '../core'
 import {
   AntigravityAccountMutationParams,
-  AntigravityAccountTargetParams
+  AntigravityAccountTargetParams,
+  AntigravityAccountUpdateParams
 } from '../../../../shared/rpc-contract/antigravity-accounts-params'
 import { getAntigravityAccountService } from '../../../antigravity/native-account-host'
 
@@ -27,5 +28,11 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     params: AntigravityAccountMutationParams,
     handler: async ({ target, accountId }) =>
       getAntigravityAccountService(target).removeAccount(accountId)
+  }),
+  defineMethod({
+    name: 'accounts.antigravityUpdate',
+    params: AntigravityAccountUpdateParams,
+    handler: async ({ target, accountId, alias, color, emoji }) =>
+      getAntigravityAccountService(target).updateAccountMetadata(accountId, { alias, color, emoji })
   })
 ]

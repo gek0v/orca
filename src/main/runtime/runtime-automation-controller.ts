@@ -137,7 +137,8 @@ export class RuntimeAutomationController {
         rrule: input.rrule,
         dtstart: input.dtstart,
         enabled: input.enabled,
-        missedRunGraceMinutes: input.missedRunGraceMinutes
+        missedRunGraceMinutes: input.missedRunGraceMinutes,
+        launchAccountId: input.launchAccountId
       },
       (destination ?? input.destination)
         ? { destination: destination ?? input.destination }
@@ -237,6 +238,7 @@ export class RuntimeAutomationController {
       'prompt',
       'precheck',
       'agentId',
+      'launchAccountId',
       'runContext',
       'sourceContext',
       'baseBranch',

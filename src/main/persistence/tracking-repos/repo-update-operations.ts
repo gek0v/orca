@@ -100,6 +100,7 @@ export class RepoUpdatePersistenceOperations {
         | 'projectGroupId'
         | 'projectGroupOrder'
         | 'projectHostSetupMethod'
+        | 'antigravityAccountId'
       >
     > & {
       externalWorktreeVisibility?: Repo['externalWorktreeVisibility'] | null
@@ -175,6 +176,13 @@ export class RepoUpdatePersistenceOperations {
     if ('ghAccount' in sanitizedUpdates && sanitizedUpdates.ghAccount == null) {
       delete repo.ghAccount
       delete sanitizedUpdates.ghAccount
+    }
+    if (
+      'antigravityAccountId' in sanitizedUpdates &&
+      sanitizedUpdates.antigravityAccountId == null
+    ) {
+      delete repo.antigravityAccountId
+      delete sanitizedUpdates.antigravityAccountId
     }
     if ('worktreeBasePath' in sanitizedUpdates && sanitizedUpdates.worktreeBasePath === undefined) {
       delete repo.worktreeBasePath

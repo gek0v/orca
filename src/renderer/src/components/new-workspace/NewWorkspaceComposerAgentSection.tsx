@@ -11,6 +11,8 @@ type NewWorkspaceComposerAgentSectionProps = Pick<
   NewWorkspaceComposerCardProps,
   | 'quickAgent'
   | 'onQuickAgentChange'
+  | 'launchAccountId'
+  | 'onLaunchAccountIdChange'
   | 'onOpenAgentSettings'
   | 'createDisabled'
   | 'onCreate'
@@ -28,6 +30,8 @@ type NewWorkspaceComposerAgentSectionProps = Pick<
 export function NewWorkspaceComposerAgentSection({
   quickAgent,
   onQuickAgentChange,
+  launchAccountId,
+  onLaunchAccountIdChange,
   onOpenAgentSettings,
   createDisabled,
   onCreate,
@@ -71,6 +75,8 @@ export function NewWorkspaceComposerAgentSection({
           agents={visibleQuickAgents}
           value={quickAgent}
           onValueChange={onQuickAgentChange}
+          launchAccountId={launchAccountId}
+          onLaunchAccountIdChange={onLaunchAccountIdChange}
           onOpenManageAgents={onOpenAgentSettings}
           defaultAgent={defaultTuiAgent}
           onSetDefault={handleSetDefaultAgent}

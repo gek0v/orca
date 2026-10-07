@@ -95,4 +95,22 @@ describe('updateRepo host guard', () => {
     expect(state.repos[0].displayName).toBe('Renamed')
     expect(errors).toEqual([])
   })
+
+  it('updates and clears antigravityAccountId', () => {
+    const { operations, state } = makeOperations([
+      makeRepo({ id: 'repo-1', antigravityAccountId: 'old-acc' })
+    ])
+
+    const updated = operations.updateRepo('repo-1', {
+      antigravityAccountId: '  new-acc  '
+    })
+    expect(updated?.antigravityAccountId).toBe('new-acc')
+    expect(state.repos[0].antigravityAccountId).toBe('new-acc')
+
+    const cleared = operations.updateRepo('repo-1', {
+      antigravityAccountId: null
+    })
+    expect(cleared?.antigravityAccountId).toBeUndefined()
+    expect(state.repos[0].antigravityAccountId).toBeUndefined()
+  })
 })

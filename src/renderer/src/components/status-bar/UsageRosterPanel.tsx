@@ -3,6 +3,7 @@ import { ChevronRight, RefreshCw } from 'lucide-react'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { SettingsSegmentedControl } from '@/components/settings/SettingsFormControls'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
+import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
 import { translate } from '@/i18n/i18n'
 import { formatRateLimitWindowChipLabel, formatWindowLabel } from '@/lib/window-label-formatter'
 import { CURSOR_MODELS_BUCKET_NAME } from '../../../../shared/cursor-usage-buckets'
@@ -139,6 +140,11 @@ export function UsageRow({
   now: number
   mode?: StatusBarUsageMode
 }): React.JSX.Element {
+  const { activeAccount } = useAntigravityAccounts()
+  const antigravityAlias =
+    p.provider === 'antigravity'
+      ? activeAccount?.alias?.trim() || activeAccount?.email?.split('@')[0] || null
+      : null
   const sections = usedSections(p)
   const hasUsage = sections.length > 0
   const name = getProviderDisplayName(p.provider)
@@ -154,6 +160,7 @@ export function UsageRow({
         </span>
         <span className="min-w-0 shrink truncate text-[13px] font-medium text-foreground">
           {name}
+          {antigravityAlias ? ` (${antigravityAlias})` : ''}
           {plan ? <span className="font-normal text-muted-foreground"> · {plan}</span> : null}
         </span>
         {!hasUsage ? (
