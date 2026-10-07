@@ -11,7 +11,9 @@ import type {
   GoalsToggleSubtaskRequest,
   GoalsToggleSubtaskResponse,
   GoalsUpdateGoalRequest,
-  GoalsUpdateGoalResponse
+  GoalsUpdateGoalResponse,
+  GoalsDeleteGoalRequest,
+  GoalsDeleteGoalResponse
 } from '../../shared/goals/goals-ipc'
 
 export type GoalsApi = {
@@ -20,6 +22,7 @@ export type GoalsApi = {
   setActive: (args: GoalsSetActiveRequest) => Promise<GoalsSetActiveResponse>
   toggleSubtask: (args: GoalsToggleSubtaskRequest) => Promise<GoalsToggleSubtaskResponse>
   updateGoal: (args: GoalsUpdateGoalRequest) => Promise<GoalsUpdateGoalResponse>
+  deleteGoal: (args: GoalsDeleteGoalRequest) => Promise<GoalsDeleteGoalResponse>
   runValidation: (args: GoalsRunValidationRequest) => Promise<GoalsRunValidationResponse>
   onChanged: (callback: (event: GoalsChangedEvent) => void) => () => void
 }

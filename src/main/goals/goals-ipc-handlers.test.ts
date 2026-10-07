@@ -415,6 +415,45 @@ describe('goals-ipc-handlers', () => {
     expect(stateHolder.current.goals[0].subtasks[0].completed).toBe(true)
   })
 
+  it('handles goals:delete-goal and clears activeGoalId if active goal is deleted', async () => {
+    registerGoalsIpcHandlers(fakeIpcMain, mockManager, mockRunner, broadcastEvent)
+
+    const initialData: WorkspaceGoalsData = {
+      activeGoalId: 'g-1',
+      goals: [
+        {
+          id: 'g-1',
+          title: 'Goal 1',
+          status: 'in_progress',
+          subtasks: [],
+          createdAt: 10,
+          updatedAt: 10
+        },
+        {
+          id: 'g-2',
+          title: 'Goal 2',
+          status: 'pending',
+          subtasks: [],
+          createdAt: 20,
+          updatedAt: 20
+        }
+      ]
+    }
+
+    const stateHolder = { current: initialData }
+    mockService.updateGoals.mockImplementation(async (updater) => {
+      stateHolder.current = await updater(stateHolder.current)
+      return stateHolder.current
+    })
+
+    const deleteHandler = handlers.get(GOALS_IPC_CHANNELS.DELETE_GOAL)
+    await deleteHandler!(null, { workspacePath: '/mock/workspace', goalId: 'g-1' })
+
+    expect(stateHolder.current.goals).toHaveLength(1)
+    expect(stateHolder.current.goals[0].id).toBe('g-2')
+    expect(stateHolder.current.activeGoalId).toBe('g-2')
+  })
+
   it('throws descriptive errors on missing required fields', async () => {
     registerGoalsIpcHandlers(fakeIpcMain, mockManager, mockRunner, broadcastEvent)
 
@@ -450,6 +489,7 @@ describe('goals-ipc-handlers', () => {
     expect(fakeIpcMain.removeHandler).toHaveBeenCalledWith(GOALS_IPC_CHANNELS.SET_ACTIVE)
     expect(fakeIpcMain.removeHandler).toHaveBeenCalledWith(GOALS_IPC_CHANNELS.TOGGLE_SUBTASK)
     expect(fakeIpcMain.removeHandler).toHaveBeenCalledWith(GOALS_IPC_CHANNELS.UPDATE_GOAL)
+    expect(fakeIpcMain.removeHandler).toHaveBeenCalledWith(GOALS_IPC_CHANNELS.DELETE_GOAL)
     expect(fakeIpcMain.removeHandler).toHaveBeenCalledWith(GOALS_IPC_CHANNELS.RUN_VALIDATION)
   })
 })
