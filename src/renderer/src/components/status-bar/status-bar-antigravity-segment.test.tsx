@@ -480,4 +480,208 @@ describe('Antigravity status-bar segment', () => {
 
     unsubscribe()
   })
+
+  it('renders tab account lastUsage and NOT p when active tab launchAccountId differs from activeAccountId', async () => {
+    const workUsage = antigravityLimits({
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(80) }]
+    })
+    const personalUsage = antigravityLimits({
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(15) }]
+    })
+
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@co.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: workUsage,
+          lastUsageAt: 1000
+        },
+        {
+          id: 'acc-personal',
+          email: 'personal@gmail.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#10b981',
+          emoji: '🚀',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: personalUsage,
+          lastUsageAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: 'tab-pers',
+      tabsByWorktree: {
+        'wt-1': [{ id: 'tab-pers', launchAgent: 'antigravity', launchAccountId: 'acc-personal' }]
+      }
+    }
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={workUsage} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('Personal')
+    expect(markup).toContain('15%')
+    expect(markup).not.toContain('80%')
+
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: null,
+      tabsByWorktree: {}
+    }
+  })
+
+  it('falls back to activeAccount lastUsage when p authProvenance differs from active account', async () => {
+    const activeUsage = antigravityLimits({
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(25) }]
+    })
+    const mismatchedUsage = antigravityLimits({
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(95) }],
+      usageMetadata: { authProvenance: 'acc-other' }
+    })
+
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@co.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: activeUsage,
+          lastUsageAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: null,
+      tabsByWorktree: {}
+    }
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={mismatchedUsage} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('Trabajo')
+    expect(markup).toContain('25%')
+    expect(markup).not.toContain('95%')
+  })
+
+  it('renders loading placeholder when p authProvenance differs and active account has no lastUsage', async () => {
+    const mismatchedUsage = antigravityLimits({
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(95) }],
+      usageMetadata: { authProvenance: 'acc-other' }
+    })
+
+    setCachedAntigravityAccountsState(null)
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@co.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: null,
+          lastUsageAt: null
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: null,
+      tabsByWorktree: {}
+    }
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={mismatchedUsage} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('···')
+    expect(markup).not.toContain('95%')
+  })
+
+  it('preserves fetching status when falling back to activeAccount lastUsage with mismatched authProvenance', async () => {
+    const activeUsage = antigravityLimits({
+      status: 'ok',
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(25) }]
+    })
+    const fetchingMismatchedUsage = antigravityLimits({
+      status: 'fetching',
+      buckets: [{ name: 'Gemini Models', ...weeklyWindow(95) }],
+      usageMetadata: { authProvenance: 'acc-other' }
+    })
+
+    setCachedAntigravityAccountsState(null)
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@co.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#3b82f6',
+          emoji: '💼',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: activeUsage,
+          lastUsageAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-work',
+      currentAccount: null,
+      selectedAccountId: 'acc-work'
+    })
+
+    mockStoreState = {
+      ...mockStoreState,
+      activeTabId: null,
+      tabsByWorktree: {}
+    }
+
+    const { ProviderSegment } = await import('./StatusBar')
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={fetchingMismatchedUsage} compact={false} display="used" mode="verbose" />
+    )
+
+    expect(markup).toContain('Trabajo')
+    expect(markup).toContain('25%')
+    expect(markup).not.toContain('95%')
+  })
 })

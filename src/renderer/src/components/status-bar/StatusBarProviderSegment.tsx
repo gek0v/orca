@@ -18,7 +18,11 @@ import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterP
 import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { translate } from '@/i18n/i18n'
-import { useActiveWindowAntigravityAccount } from '@/hooks/useAntigravityAccounts'
+import {
+  useActiveWindowAntigravityAccount,
+  useAntigravityAccounts
+} from '@/hooks/useAntigravityAccounts'
+import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
 import {
   formatCompactExtraUsage,
   formatStatusBarBucketLabel,
@@ -272,27 +276,33 @@ function VerboseProviderUsage({
 }
 
 function AntigravityStatusAccountBadge({
-  compact
+  compact,
+  account
 }: {
   compact: boolean
+  account?: AntigravityAccountSummary | null
 }): React.JSX.Element | null {
-  const account = useActiveWindowAntigravityAccount()
-  if (!account) {
+  const activeWindowAccount = useActiveWindowAntigravityAccount()
+  const resolvedAccount = account !== undefined ? account : activeWindowAccount
+  if (!resolvedAccount) {
     return null
   }
-  const label = account.alias?.trim() || account.email?.split('@')[0] || ''
-  if (!label && !account.emoji) {
+  const label = resolvedAccount.alias?.trim() || resolvedAccount.email?.split('@')[0] || ''
+  if (!label && !resolvedAccount.emoji) {
     return null
   }
   return (
     <span
       data-antigravity-status-account
       className={`inline-flex items-center gap-1 font-medium text-foreground ${compact ? 'max-w-[70px]' : 'max-w-[120px]'} truncate text-[11px]`}
-      title={account.email ?? undefined}
+      title={resolvedAccount.email ?? undefined}
     >
-      {account.emoji ? (
-        <span className="select-none leading-none text-[12px]" data-account-emoji={account.emoji}>
-          {account.emoji}
+      {resolvedAccount.emoji ? (
+        <span
+          className="select-none leading-none text-[12px]"
+          data-account-emoji={resolvedAccount.emoji}
+        >
+          {resolvedAccount.emoji}
         </span>
       ) : null}
       {label ? <span className="truncate">{label}</span> : null}
@@ -313,53 +323,89 @@ export function ProviderSegment({
 }): React.JSX.Element {
   const provider = p?.provider ?? 'claude'
   const isAntigravity = provider === 'antigravity'
-  const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
+  const displayedAccount = useActiveWindowAntigravityAccount()
+  const { activeAccount: systemActiveAccount } = useAntigravityAccounts()
+
+  let effectiveLimits = p
+  if (isAntigravity) {
+    if (displayedAccount) {
+      if (displayedAccount.id !== systemActiveAccount?.id) {
+        effectiveLimits = displayedAccount.lastUsage ?? null
+      } else if (
+        p?.usageMetadata?.authProvenance &&
+        p.usageMetadata.authProvenance !== displayedAccount.id
+      ) {
+        effectiveLimits = displayedAccount.lastUsage
+          ? {
+              ...displayedAccount.lastUsage,
+              status: p.status === 'fetching' ? 'fetching' : displayedAccount.lastUsage.status
+            }
+          : null
+      } else {
+        effectiveLimits = p
+      }
+    } else {
+      effectiveLimits = p
+    }
+  }
+
+  const limits = isAntigravity ? effectiveLimits : p
+  const statusLabel = limits ? getProviderUsageStatusLabel(limits) : ''
 
   // Idle / initial load
-  if (!p || p.status === 'idle') {
+  if (!limits || limits.status === 'idle') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
-        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}
         <span className="animate-pulse">···</span>
       </span>
     )
   }
 
   const tightest =
-    p.provider === 'antigravity' && p.buckets && p.buckets.length > 0
-      ? getAntigravityStatusTightestSection(p)
+    limits.provider === 'antigravity' && limits.buckets && limits.buckets.length > 0
+      ? getAntigravityStatusTightestSection(limits)
       : mode === 'compact'
-        ? getUsageHeadlineSection(p)
-        : getTightestUsageSection(p)
+        ? getUsageHeadlineSection(limits)
+        : getTightestUsageSection(limits)
 
   // Fetching with no prior data
-  if (p.status === 'fetching' && !tightest) {
+  if (limits.status === 'fetching' && !tightest) {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
-        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}
         <span className="animate-pulse">···</span>
       </span>
     )
   }
 
   // Unavailable (CLI not installed)
-  if (p.status === 'unavailable') {
+  if (limits.status === 'unavailable') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground/50">
         <ProviderIcon provider={provider} />
-        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null} --
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}{' '}
+        --
       </span>
     )
   }
 
   // Error with no data
-  if (p.status === 'error' && !tightest) {
+  if (limits.status === 'error' && !tightest) {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
         <ProviderIcon provider={provider} />
-        {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
+        {isAntigravity ? (
+          <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+        ) : null}
         <AlertTriangle size={11} className="text-muted-foreground/80" />
         {!compact && <span className="text-[11px] font-medium">{statusLabel}</span>}
       </span>
@@ -367,19 +413,21 @@ export function ProviderSegment({
   }
 
   // Has data (ok, fetching with stale data, or error with stale data)
-  const isStale = p.status === 'error'
-  const showBalance = isExtraUsageActive(p)
+  const isStale = limits.status === 'error'
+  const showBalance = isExtraUsageActive(limits)
 
   return (
     <span className="inline-flex items-center gap-1.5">
       <ProviderIcon provider={provider} />
-      {isAntigravity ? <AntigravityStatusAccountBadge compact={compact} /> : null}
+      {isAntigravity ? (
+        <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
+      ) : null}
       {mode === 'verbose' ? (
         <>
           {tightest && !compact ? (
             <MiniBar usedPct={tightest.window.usedPercent} display={display} />
           ) : null}
-          <VerboseProviderUsage p={p} display={display} />
+          <VerboseProviderUsage p={limits} display={display} />
         </>
       ) : tightest ? (
         <WindowLabel
@@ -389,10 +437,10 @@ export function ProviderSegment({
           showLabel={!compact}
         />
       ) : null}
-      {showBalance && p.extraUsage ? (
+      {showBalance && limits.extraUsage ? (
         <>
           <span className="text-muted-foreground">·</span>
-          <span className="tabular-nums">{formatCompactExtraUsage(p.extraUsage)}</span>
+          <span className="tabular-nums">{formatCompactExtraUsage(limits.extraUsage)}</span>
         </>
       ) : null}
       {isStale && <AlertTriangle size={11} className="text-muted-foreground/80" />}
