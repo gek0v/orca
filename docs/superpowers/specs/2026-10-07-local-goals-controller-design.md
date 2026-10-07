@@ -50,8 +50,7 @@ flowchart TD
         OrcaCLI["orca goal ..."]
         Agent --> OrcaCLI
         OrcaCLI --> Service
-        Agent -. lectura directa .-> MD
-        Agent -. edición opcional .-> JSON
+        Agent -. lectura de contexto .-> MD
     end
 
     Store <--> Channels
@@ -60,10 +59,22 @@ flowchart TD
 
 ### 2.1. Persistencia y Aislamiento por Workspace
 * **Fuente de la Verdad (*Source of Truth*):** `<workspaceRoot>/.orca/goals.json`.
-* **Aislamiento en Git:** Al inicializarse el servicio en un repositorio Git, Orca registra `.orca/` en `.git/info/exclude`. Esto garantiza que los archivos de metas no ensucien `git status`, no generen conflictos al cambiar de rama y no modifiquen el archivo `.gitignore` del proyecto.
-* **Escritura Atómica:** El guardado de `.orca/goals.json` se realiza escribiendo primero en un archivo temporal (`.orca/goals.json.tmp`) seguido de un renombramiento atómico (`fs.promises.rename`), evitando lecturas corruptas por procesos concurrentes.
-* **Proyección Reactiva para el Agente:** Cada mutación del estado proyecta inmediatamente el archivo de contexto legible para LLMs: `<workspaceRoot>/.orca/CURRENT_GOAL.md`.
-* **Observador de Archivos (*Watcher*):** `WorktreeGoalsService` mantiene un `fs.watch` con debounce (150 ms) sobre `.orca/goals.json`. Si un agente CLI o el usuario edita el archivo externamente, el servicio valida la sintaxis, actualiza la caché en memoria y difunde el evento `goals:changed` a la UI.
+* **Aislamiento en Git (Soporte Linked Worktrees y Repos Estándar):**
+  * Al inicializarse el servicio, Orca no asume que `.git` sea un directorio. Para resolver la ruta correcta del archivo de exclusión, ejecuta:
+    ```bash
+    git rev-parse --git-path info/exclude
+    ```
+    (o en fallback inspecciona si `.git` es un archivo con `gitdir: <path>` hacia el directorio administrativo del worktree).
+  * Orca registra `.orca/` dentro del archivo resuelto. Esto garantiza compatibilidad tanto en repositorios normales como en *linked worktrees* (`git worktree add`), sin causar errores `ENOTDIR` y manteniendo `git status` limpio sin tocar `.gitignore`.
+  * En *folder workspaces* (sin Git), se omite este paso y el directorio `.orca/` opera localmente.
+* **Escritura Atómica y Cola de Mutaciones:**
+  * Toda modificación en `goals.json` pasa por una cola serializada (*mutation mutex*) en el proceso Main.
+  * La persistencia en disco escribe en un archivo temporal (`.orca/goals.json.tmp`) y renombra atómicamente (`fs.promises.rename`).
+* **Supresión de Bucles de Eventos (*Feedback Loop Protection*):**
+  * Al escribir el archivo, `WorktreeGoalsService` registra en memoria el hash criptográfico (SHA-256) del contenido escrito (`lastWrittenContentHash`).
+  * Cuando el observador `fs.watch` detecta una modificación en disco, calcula el hash del archivo actual. Si coincide con `lastWrittenContentHash`, el evento se descarta inmediatamente, evitando recargas redundantes y emisiones en bucle de `goals:changed` hacia la UI.
+* **Proyección Reactiva para el Agente:**
+  * Cada mutación confirmada proyecta inmediatamente el archivo de contexto para LLMs: `<workspaceRoot>/.orca/CURRENT_GOAL.md`.
 
 ---
 
@@ -95,8 +106,7 @@ export const GoalValidationSchema = z.object({
   status: z.enum(['idle', 'running', 'success', 'failed']),
   lastRunAt: z.number().optional(),
   exitCode: z.number().optional(),
-  stdout: z.string().optional(),
-  stderr: z.string().optional()
+  summaryTail: z.string().optional() // Últimas 5-10 líneas del log para contexto rápido
 })
 export type GoalValidation = z.infer<typeof GoalValidationSchema>
 
@@ -121,9 +131,15 @@ export type WorkspaceGoalsData = z.infer<typeof WorkspaceGoalsDataSchema>
 
 ---
 
-## 4. Inyección de Contexto al Agente: `.orca/CURRENT_GOAL.md`
+## 4. Inyección de Contexto al Agente: `.orca/CURRENT_GOAL.md` y Gestión de Tokens
 
-Generado automáticamente por `WorktreeGoalsService.projectActiveGoalFile()`:
+Para evitar la saturación de la ventana de contexto del LLM (~12.000 tokens por 50 KB de logs), el resultado de la validación se divide en dos niveles:
+1. **Resumen ligero en `CURRENT_GOAL.md`:** Solo incluye el estado, el código de salida y un extracto de las últimas 5–10 líneas de error (~300 bytes).
+2. **Registro completo en `.orca/last_validation.log`:** Contiene la salida completa de `stdout` y `stderr` para inspección bajo demanda.
+
+Además, **se prohíbe explícitamente al agente editar `goals.json` directamente**, canalizando todas las mutaciones a través del CLI de Orca para garantizar validación con esquemas Zod y prevenir corrupción de JSON.
+
+### Formato generado de `.orca/CURRENT_GOAL.md`:
 
 ```markdown
 # Objetivo Activo: [Título de la Meta]
@@ -140,10 +156,18 @@ Generado automáticamente por `WorktreeGoalsService.projectActiveGoalFile()`:
 
 ## Validación Técnica
 - Comando: `[comando de validación]`
-- Estado: No ejecutado | Exitoso | Fallido
+- Estado: Exitoso | Fallido (exit code: 1)
+- Resumen del error (últimas líneas):
+```text
+[Extracto de las últimas 5-10 líneas de error si falló]
+```
+*(Log completo disponible en `.orca/last_validation.log` si se requiere depuración detallada)*
 
 ---
-*Nota para el agente: Puedes marcar subtareas ejecutando `orca goal complete <id-o-índice>` o editando `.orca/goals.json`. Para validar formalmente, ejecuta `orca goal validate`.*
+> ⚠️ **REGLA PARA EL AGENTE:** NO modifiques manualmente el archivo `.orca/goals.json`.
+> Para marcar tareas completadas ejecuta: `orca goal complete <id-o-índice>`.
+> Para añadir nuevas tareas ejecuta: `orca goal add-task "<título>"`.
+> Para validar el objetivo ejecuta: `orca goal validate`.
 ```
 
 ---
@@ -152,19 +176,31 @@ Generado automáticamente por `WorktreeGoalsService.projectActiveGoalFile()`:
 
 ### 5.1. `WorktreeGoalsManager` (`src/main/goals/worktree-goals-manager.ts`)
 * Singleton que gestiona instancias de `WorktreeGoalsService` por `workspacePath`.
-* Libera *watchers* y recursos al cerrarse un workspace.
+* Mantiene la cola de mutaciones y libera los *watchers* de archivos cuando se cierra un espacio de trabajo.
 
 ### 5.2. `GoalsValidationRunner` (`src/main/goals/goals-validation-runner.ts`)
-* Lanza el comando de validación usando `runProcess` (`src/shared/child-process/`) en el directorio del workspace (`cwd: workspacePath`).
-* Respeta las reglas multiplataforma de Orca (`windowsHide: true`, sin `shell: true`, resolución de `.cmd`/`.bat` shims).
-* Aplica un timeout preventivo (5 minutos por defecto).
-* Trunca las salidas `stdout` y `stderr` a un máximo de 50 KB para evitar degradación de memoria.
-* Actualiza el estado de la meta y re-proyecta `CURRENT_GOAL.md` con los resultados.
+* **Resolución de Comandos con Intérprete Shell Seguro:**
+  * Los comandos de validación definidos por el usuario (ej. `pnpm test && pnpm lint`) requieren evaluación de shell (operadores lógicos `&&`, `|`, pipes y variables de entorno).
+  * Para mantener `shell: false` a nivel de Node y respetar las políticas de `runProcess` (`src/shared/child-process/`, `windowsHide: true`), el comando se invoca pasando el intérprete de shell de la plataforma como programa explícito:
+    * **Windows:** `{ program: process.env.COMSPEC || 'cmd.exe', args: ['/d', '/s', '/c', command], cwd: workspacePath }`
+    * **macOS / Linux:** `{ program: '/bin/sh', args: ['-c', command], cwd: workspacePath }`
+* **Persistencia de Logs y Resumen:**
+  * Vuelca la salida completa en `<workspaceRoot>/.orca/last_validation.log`.
+  * Extrae las últimas 5–10 líneas de salida relevante para el campo `summaryTail`.
+* **Protección contra Procesos Bloqueados:**
+  * Timeout preventivo de 5 minutos por defecto.
+  * Cancela cualquier validación previa si el usuario o agente solicita una nueva ejecución sobre la misma meta.
 
 ### 5.3. Contrato IPC (`src/shared/goals/goals-ipc.ts`)
-* Canales tipados:
-  * Invocación: `goals:get`, `goals:create-goal`, `goals:set-active`, `goals:toggle-subtask`, `goals:update-goal`, `goals:run-validation`.
-  * Evento hacia Renderer: `goals:changed`.
+* Invocaciones:
+  * `goals:get(worktreePath)` $\rightarrow$ `WorkspaceGoalsData`
+  * `goals:create-goal(worktreePath, goalDraft)` $\rightarrow$ `Goal`
+  * `goals:set-active(worktreePath, goalId)` $\rightarrow$ `void`
+  * `goals:toggle-subtask(worktreePath, goalId, subtaskId, completed)` $\rightarrow$ `void`
+  * `goals:update-goal(worktreePath, goalId, updates)` $\rightarrow$ `void`
+  * `goals:run-validation(worktreePath, goalId)` $\rightarrow$ `GoalValidation`
+* Evento hacia Renderer:
+  * `goals:changed(worktreePath, WorkspaceGoalsData)`
 
 ---
 
@@ -208,10 +244,18 @@ Ubicación: `src/renderer/src/components/goals/DockedGoalBar.tsx` montado en `sr
 
 ## 8. Gestión de Casos Extremos
 
-1. **Ediciones concurrentes de archivo:** Si el agente escribe en `goals.json` mientras el usuario interactúa con la UI, las escrituras atómicas evitan archivos truncados, y el *file watcher* sincroniza la UI de inmediato.
-2. **JSON malformado por el agente:** Si la sintaxis de `goals.json` queda rota, el parser registra el error en logs, mantiene intacta la copia en memoria y no sobrescribe el archivo para evitar pérdida de datos.
-3. **Workspaces sin Git / Folder Workspaces:** El sistema verifica si existe el directorio `.git`; si no existe, omite la actualización de `.git/info/exclude` y opera de forma segura dentro de `.orca/`.
-4. **Validaciones en bucle o colgadas:** Timeout por defecto de 5 minutos y rechazo de ejecuciones paralelas concurrentes sobre la misma meta.
+1. **Linked Worktrees y Folder Workspaces:**
+   * En worktrees secundarios (`.git` es un archivo plano apuntando a `gitdir`), `git rev-parse --git-path info/exclude` resuelve el archivo de exclusión real sin asumir que `.git` sea un directorio, previniendo errores `ENOTDIR`.
+   * En repositorios o carpetas sin Git (*folder workspaces*), se omite la interacción con Git y el directorio `.orca/` opera puramente como almacenamiento local.
+2. **Prevención de Bucles de Watcher y Lost Updates:**
+   * Cada escritura de `goals.json` en Main actualiza `lastWrittenContentHash`. El watcher de `fs.watch` descarta eventos si el hash del contenido en disco coincide con la versión emitida por Orca.
+   * La cola de mutaciones serializa escrituras concurrentes desde la UI y peticiones IPC/CLI.
+3. **Consumo Eficiente de Tokens en LLMs:**
+   * Para no inundar la ventana de contexto de los agentes CLI (~12.000 tokens por 50 KB de logs), `CURRENT_GOAL.md` solo expone el estado y un extracto de 5–10 líneas de error (`summaryTail`). El volcado íntegro de la consola se preserva en `.orca/last_validation.log`.
+4. **Integridad de Esquemas (Agente CLI-Only):**
+   * El archivo `CURRENT_GOAL.md` prohíbe explícitamente la edición directa de `goals.json` al agente, canalizando todas las mutaciones a través de `orca goal complete` o `orca goal add-task`, asegurando validación estricta con Zod en cada paso.
+5. **Validaciones en Bucle o Colgadas:**
+   * Timeout preventivo de 5 minutos en el subproceso de shell y rechazo de ejecuciones paralelas concurrentes sobre la misma meta.
 
 ---
 
