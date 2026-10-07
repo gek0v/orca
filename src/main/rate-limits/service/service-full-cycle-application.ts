@@ -223,6 +223,12 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       previousZcodeAccount !== undefined &&
       zcodeAccount !== undefined &&
       previousZcodeAccount === zcodeAccount
+    const previousAntigravityAccount = previousState.antigravity?.usageMetadata?.authProvenance
+    const antigravityAccount = antigravity.usageMetadata?.authProvenance
+    const antigravityAccountChanged =
+      previousAntigravityAccount !== undefined &&
+      antigravityAccount !== undefined &&
+      previousAntigravityAccount !== antigravityAccount
     this.trackActiveFailureStreak('grok', grok)
     this.trackActiveFailureStreak('cursor', cursor)
     if (shouldApplyZcode) {
@@ -235,7 +241,10 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
         void accountService
           .listAccounts()
           .then((accountState) => {
-            if (accountState.activeAccountId) {
+            if (
+              accountState.activeAccountId &&
+              (!antigravityAccount || antigravityAccount === accountState.activeAccountId)
+            ) {
               void accountService.recordUsageSnapshot(accountState.activeAccountId, antigravity)
             }
           })
@@ -255,7 +264,9 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
           : zcode.status === 'error' && !sameZcodeAccount
             ? zcode
             : this.applyStalePolicy(zcode, previousState.zcode),
-      antigravity: this.applyStalePolicy(antigravity, previousState.antigravity)
+      antigravity: antigravityAccountChanged
+        ? antigravity
+        : this.applyStalePolicy(antigravity, previousState.antigravity)
     })
   }
 }

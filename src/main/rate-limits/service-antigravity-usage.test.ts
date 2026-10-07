@@ -224,12 +224,104 @@ describe('Antigravity usage gating', () => {
     const service = new RateLimitService()
     await service.refresh()
 
-    expect(listAccounts).toHaveBeenCalledTimes(1)
+    expect(listAccounts).toHaveBeenCalledTimes(2)
     await vi.waitFor(() => {
       expect(recordUsageSnapshot).toHaveBeenCalledWith(
         'acc-123',
         expect.objectContaining({ status: 'ok' })
       )
     })
+  })
+
+  it('sets authProvenance on usageMetadata to the host active account ID when fetch succeeds', async () => {
+    const listAccounts = vi.fn().mockResolvedValue({
+      activeAccountId: 'acc-456',
+      accounts: []
+    })
+    const recordUsageSnapshot = vi.fn().mockResolvedValue({})
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Synthetic test double for AntigravityAccountService in quota cycle test.
+    vi.mocked(getAntigravityAccountService).mockReturnValue(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+      { listAccounts, recordUsageSnapshot } as unknown as ReturnType<
+        typeof getAntigravityAccountService
+      >
+    )
+
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 40))
+    const service = new RateLimitService()
+
+    await service.refresh()
+
+    const state = service.getState()
+    expect(state.antigravity?.status).toBe('ok')
+    expect(state.antigravity?.usageMetadata?.authProvenance).toBe('acc-456')
+  })
+
+  it('does not fall back to stale usage from previous account when active account changes and fresh read fails', async () => {
+    let currentActiveAccountId = 'acc-1'
+    const listAccounts = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        activeAccountId: currentActiveAccountId,
+        accounts: []
+      })
+    )
+    const recordUsageSnapshot = vi.fn().mockResolvedValue({})
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Synthetic test double for AntigravityAccountService in quota cycle test.
+    vi.mocked(getAntigravityAccountService).mockReturnValue(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+      { listAccounts, recordUsageSnapshot } as unknown as ReturnType<
+        typeof getAntigravityAccountService
+      >
+    )
+
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 30))
+    const service = new RateLimitService()
+    await service.refresh()
+
+    expect(service.getState().antigravity?.session?.usedPercent).toBe(30)
+    expect(service.getState().antigravity?.usageMetadata?.authProvenance).toBe('acc-1')
+
+    // Second cycle: switch to account-2, but fetch fails with error
+    currentActiveAccountId = 'acc-2'
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(
+      errorProvider('antigravity', 'Antigravity API error')
+    )
+    await service.refresh()
+
+    const state = service.getState()
+    expect(state.antigravity?.status).toBe('error')
+    expect(state.antigravity?.error).toBe('Antigravity API error')
+    // Must NOT fall back to acc-1's 30% usage
+    expect(state.antigravity?.session).toBeNull()
+    expect(state.antigravity?.usageMetadata?.authProvenance).toBe('acc-2')
+  })
+
+  it('does not record usage snapshot if active account changed before recording', async () => {
+    let callCount = 0
+    const recordUsageSnapshot = vi.fn().mockResolvedValue({})
+    const listAccounts = vi.fn().mockImplementation(() => {
+      callCount += 1
+      return Promise.resolve({
+        activeAccountId: callCount === 1 ? 'acc-1' : 'acc-2',
+        accounts: []
+      })
+    })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Synthetic test double for AntigravityAccountService in quota cycle test.
+    vi.mocked(getAntigravityAccountService).mockReturnValue(
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+      { listAccounts, recordUsageSnapshot } as unknown as ReturnType<
+        typeof getAntigravityAccountService
+      >
+    )
+
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 25))
+    const service = new RateLimitService()
+    await service.refresh()
+
+    await vi.waitFor(() => {
+      expect(listAccounts).toHaveBeenCalledTimes(2)
+    })
+    // recordUsageSnapshot must NOT be called for acc-2 using acc-1's snapshot
+    expect(recordUsageSnapshot).not.toHaveBeenCalled()
   })
 })

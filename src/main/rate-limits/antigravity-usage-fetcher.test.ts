@@ -421,14 +421,18 @@ describe('quota read safety and diagnostic precedence', () => {
   })
 
   it('isolates USERPROFILE and HOME on win32 to prevent spawning configured MCP servers', async () => {
-    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[]; env?: NodeJS.ProcessEnv }) => {
-      if (spec.args?.[0] === '--version') {
-        return processResult({ stdout: 'agy version 1.2.16\n' })
-      }
-      return processResult({ stdout: USAGE_ENVELOPE })
-    })
+    const runCommand = vi
+      .fn()
+      .mockImplementation(async (spec: { args?: readonly string[]; env?: NodeJS.ProcessEnv }) => {
+        if (spec.args?.[0] === '--version') {
+          return processResult({ stdout: 'agy version 1.2.16\n' })
+        }
+        return processResult({ stdout: USAGE_ENVELOPE })
+      })
 
-    const resolveCommand = vi.fn().mockResolvedValue('C:\\Users\\test\\AppData\\Local\\agy\\bin\\agy.exe')
+    const resolveCommand = vi
+      .fn()
+      .mockResolvedValue('C:\\Users\\test\\AppData\\Local\\agy\\bin\\agy.exe')
     const resolveEnvironment = vi.fn().mockResolvedValue({
       PATH: 'C:\\Windows\\System32;C:\\Users\\test\\AppData\\Local\\agy\\bin',
       USERPROFILE: 'C:\\Users\\test',
