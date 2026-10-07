@@ -20,25 +20,29 @@ export function resolveTargetWorkspacePath(ctx: HandlerContext): string {
 export async function dispatchGoal(commandPath: string[], ctx: HandlerContext): Promise<void> {
   const subcommand = commandPath[1] ?? 'status'
 
-  switch (subcommand) {
-    case 'status':
-      await handleStatus(ctx)
-      break
-    case 'set':
-    case 'create':
-      await handleSet(ctx)
-      break
-    case 'complete':
-      await handleComplete(ctx)
-      break
-    case 'validate':
-      await handleValidate(ctx)
-      break
-    case 'add-task':
-      await handleAddTask(ctx)
-      break
-    default:
-      throw new RuntimeClientError('invalid_argument', `Unknown goal subcommand: ${subcommand}`)
+  try {
+    switch (subcommand) {
+      case 'status':
+        await handleStatus(ctx)
+        break
+      case 'set':
+      case 'create':
+        await handleSet(ctx)
+        break
+      case 'complete':
+        await handleComplete(ctx)
+        break
+      case 'validate':
+        await handleValidate(ctx)
+        break
+      case 'add-task':
+        await handleAddTask(ctx)
+        break
+      default:
+        throw new RuntimeClientError('invalid_argument', `Unknown goal subcommand: ${subcommand}`)
+    }
+  } finally {
+    worktreeGoalsManager.disposeAll()
   }
 }
 

@@ -173,6 +173,9 @@ export class WorktreeGoalsService {
         }
         void this.handleFileWatcherEvent()
       })
+      if (typeof this.watcher.unref === 'function') {
+        this.watcher.unref()
+      }
     } catch {
       // Directory watch failed or not supported in environment
     }
