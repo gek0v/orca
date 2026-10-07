@@ -221,7 +221,6 @@ export function getWindowSections(
 // `text-background` for primary text and `text-background/50` for secondary
 // to stay readable inside the inverted tooltip container.
 
-
 function ProviderRateLimitWindowSection({
   window,
   label,
@@ -265,12 +264,14 @@ function ProviderRateLimitWindowSection({
 
 export function ProviderPanel({
   p,
+  title,
   inverted = false,
   className,
   showResetCredits = true,
   usagePercentageDisplay = 'used'
 }: {
   p: ProviderRateLimits | null
+  title?: string
   inverted?: boolean
   className?: string
   showResetCredits?: boolean
@@ -293,13 +294,14 @@ export function ProviderPanel({
   }
 
   const name = getProviderDisplayName(p.provider)
+  const displayName = title ?? name
 
   if (p.status === 'unavailable') {
     return (
       <div className={`text-xs ${className ?? 'w-full'}`}>
         <div className={`flex items-center gap-1.5 font-medium ${textClass}`}>
           <ProviderIcon provider={p.provider} />
-          {name}
+          {displayName}
         </div>
         <div className={mutedClass}>
           {p.error ?? translate('auto.components.status.bar.tooltip.1292d4f2ee', 'Unavailable')}
@@ -313,7 +315,7 @@ export function ProviderPanel({
       <div className={`text-xs ${className ?? 'w-full'}`}>
         <div className={`flex items-center gap-1.5 font-medium ${textClass}`}>
           <ProviderIcon provider={p.provider} />
-          {name}
+          {displayName}
         </div>
         <div className="mt-2">
           <ErrorMessage
@@ -341,7 +343,7 @@ export function ProviderPanel({
       <div>
         <div className={`flex items-center gap-1.5 text-[13px] font-medium ${textClass}`}>
           <ProviderIcon provider={p.provider} />
-          {name}
+          {displayName}
         </div>
         <div className={faintClass}>{updatedAgo}</div>
         {resetCreditCount !== null && resetCreditCount !== undefined ? (

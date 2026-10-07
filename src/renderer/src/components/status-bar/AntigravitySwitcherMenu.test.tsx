@@ -73,7 +73,12 @@ vi.mock('../../store', () => ({
   useAppStore: (selector: (state: MockAppStoreState) => unknown) => selector(mockStoreState)
 }))
 
-const mockCallAntigravityAccounts = vi.fn()
+const mockCallAntigravityAccounts = vi.fn().mockResolvedValue({
+  accounts: [],
+  activeAccountId: null,
+  selectedAccountId: null,
+  currentAccount: null
+})
 vi.mock('@/runtime/runtime-antigravity-accounts-client', () => ({
   callAntigravityAccounts: (...args: unknown[]) => mockCallAntigravityAccounts(...args)
 }))
@@ -154,6 +159,25 @@ describe('AntigravitySwitcherMenu', () => {
 
     expect(screen.getAllByText('Personal').length).toBeGreaterThan(0)
     expect(screen.getAllByText('🏠').length).toBeGreaterThan(0)
+  })
+
+  it('renders popover header with account alias "Antigravity (Personal)"', () => {
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    expect(screen.getByText('Antigravity (Personal)')).toBeDefined()
+  })
+
+  it('falls back to "Antigravity" header when no account alias or email prefix exists', () => {
+    setCachedAntigravityAccountsState(null)
+
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    expect(screen.getByText('Antigravity')).toBeDefined()
+    expect(screen.queryByText('Antigravity (Personal)')).toBeNull()
   })
 
   it('expands accounts list and displays other accounts with usage or empty fallback', () => {

@@ -129,7 +129,6 @@ export function AntigravitySwitcherMenu({
     activeAccount?.alias ||
     activeAccount?.email ||
     translate('auto.components.status.bar.StatusBar.c676918adc', 'System default')
-
   const projectDefaultAccountId = useMemo(() => {
     const repoId = activeWorktreeId ? getRepoIdFromWorktreeId(activeWorktreeId) : activeRepoId
     const activeRepo = repos?.find((r) => r.id === repoId)
@@ -146,9 +145,13 @@ export function AntigravitySwitcherMenu({
   const projectDefaultLabel =
     projectDefaultAccount?.alias || projectDefaultAccount?.email || projectDefaultAccountId || ''
 
+  const alias = activeAccount?.alias?.trim() || activeAccount?.email?.split('@')[0] || null
+  const title = alias ? `Antigravity (${alias})` : 'Antigravity'
+
   return (
     <ProviderDetailsMenu
       provider={antigravity}
+      title={title}
       compact={compact}
       iconOnly={iconOnly}
       asSubmenu={asSubmenu}

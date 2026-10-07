@@ -29,6 +29,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 }))
 
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import { UsageRosterPanel, UsageRow } from './UsageRosterPanel'
 
 const signedOutCodex: ProviderRateLimits = {
@@ -40,9 +41,112 @@ const signedOutCodex: ProviderRateLimits = {
   status: 'error'
 }
 
+const antigravityLimits: ProviderRateLimits = {
+  provider: 'antigravity',
+  session: null,
+  weekly: {
+    windowMinutes: 10080,
+    usedPercent: 20,
+    resetsAt: null,
+    resetDescription: null
+  },
+  updatedAt: Date.now(),
+  error: null,
+  status: 'ok'
+}
+
 describe('UsageRow', () => {
   beforeEach(() => {
     mocks.useResetCountdownClock.mockClear()
+  })
+
+  afterEach(() => {
+    setCachedAntigravityAccountsState(null)
+  })
+
+  it('displays "Antigravity (Personal)" when the active account alias is "Personal"', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'personal@gmail.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          emoji: '🏠',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: null
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1',
+      currentAccount: null
+    })
+
+    const markup = renderToStaticMarkup(
+      <UsageRow
+        p={antigravityLimits}
+        display="used"
+        state={{ kind: 'usage', statusLabel: null }}
+        showSignInAction={false}
+        now={mocks.now}
+      />
+    )
+
+    expect(markup).toContain('Antigravity (Personal)')
+  })
+
+  it('displays "Antigravity (octocat)" using email prefix when alias is absent', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-2',
+          email: 'octocat@github.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: '',
+          color: '#3b82f6',
+          emoji: '🐙',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: null
+        }
+      ],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: null
+    })
+
+    const markup = renderToStaticMarkup(
+      <UsageRow
+        p={antigravityLimits}
+        display="used"
+        state={{ kind: 'usage', statusLabel: null }}
+        showSignInAction={false}
+        now={mocks.now}
+      />
+    )
+
+    expect(markup).toContain('Antigravity (octocat)')
+  })
+
+  it('falls back to "Antigravity" when no alias or email prefix exists', () => {
+    setCachedAntigravityAccountsState(null)
+
+    const markup = renderToStaticMarkup(
+      <UsageRow
+        p={antigravityLimits}
+        display="used"
+        state={{ kind: 'usage', statusLabel: null }}
+        showSignInAction={false}
+        now={mocks.now}
+      />
+    )
+
+    expect(markup).toContain('Antigravity')
+    expect(markup).not.toContain('Antigravity (')
   })
 
   it('renders sign-in as row copy instead of nesting an interactive button', () => {
