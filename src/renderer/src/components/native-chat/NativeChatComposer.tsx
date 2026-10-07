@@ -171,15 +171,8 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       setDraft,
       setNotice
     })
-    const {
-      imageAttachments,
-      attachResolvedPaths,
-      clearImageAttachments,
-      removeImageAttachment,
-      beginPendingImageAttachment,
-      resolvePendingImageAttachment,
-      dropPendingImageAttachment
-    } = attachments
+    const { imageAttachments, attachResolvedPaths, clearImageAttachments, removeImageAttachment } =
+      attachments
     useNativeChatWorkspaceFileDrop({
       terminalTabId,
       structuredWorktreeId: structuredTransport?.worktreeId,
@@ -196,8 +189,10 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
     const { attachExternalPaths, resolveAttachmentOwner } = useNativeChatExternalAttachments({
       terminalTabId,
       structuredWorktreeId: structuredTransport?.worktreeId,
+      structuredSession: structuredTransport,
       disabled,
       attachResolvedPaths,
+      pendingChips: attachments.pendingChips,
       setNotice
     })
 
@@ -220,9 +215,11 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
       disabled,
       resolveAttachmentOwner,
       attachResolvedPaths,
-      beginPendingImageAttachment,
-      resolvePendingImageAttachment,
-      dropPendingImageAttachment,
+      beginPendingImageAttachment: attachments.beginPendingImageAttachment,
+      // Settles into the scope cache, which outlives a composer a prompt card unmounted.
+      resolvePendingImageAttachment: attachments.pendingChips.resolve,
+      revealPendingImageAttachment: attachments.revealPendingImageAttachment,
+      dropPendingImageAttachment: attachments.dropPendingImageAttachment,
       setNotice
     })
 
@@ -374,6 +371,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         activeSuggestion={activeSuggestion}
         notices={notices}
         imageAttachments={imageAttachments}
+        attachmentEnvironmentId={structuredTransport?.runtimeEnvironmentId ?? undefined}
         sendButtonDisabled={sendButtonDisabled}
         sendBlockedReason={imageBlock.reason}
         isWorking={isWorking}
