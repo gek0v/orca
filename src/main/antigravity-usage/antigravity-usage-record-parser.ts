@@ -42,7 +42,10 @@ export function classifyAntigravityTool(toolName: string): AntigravityToolCatego
 }
 
 export function normalizeTargetFile(rawFile: string, cwd: string | null): string {
-  let clean = rawFile.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/')
+  let clean = rawFile
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/\\/g, '/')
   if (cwd) {
     const cleanCwd = cwd.trim().replace(/\\/g, '/').replace(/\/+$/, '')
     if (clean.toLowerCase().startsWith(`${cleanCwd.toLowerCase()}/`)) {
@@ -153,8 +156,7 @@ export function parseAntigravityTranscriptLine(
   }
 
   const inputTokens = typeof step.input_tokens === 'number' ? step.input_tokens : 0
-  const cachedInputTokens =
-    typeof step.cache_read_tokens === 'number' ? step.cache_read_tokens : 0
+  const cachedInputTokens = typeof step.cache_read_tokens === 'number' ? step.cache_read_tokens : 0
   const outputTokens = typeof step.output_tokens === 'number' ? step.output_tokens : 0
   const totalTokens = inputTokens + outputTokens
 

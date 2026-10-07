@@ -10,13 +10,14 @@ import type { LaunchSource } from '../../../shared/telemetry-events'
 import type { TuiAgent } from '../../../shared/tui-agent'
 import { translate } from '@/i18n/i18n'
 
-type LaunchAgentSessionContinuationArgs = {
+export type LaunchAgentSessionContinuationArgs = {
   agent: TuiAgent
   prompt: string
   worktreeId: string
   groupId?: string | null
   initialCwd?: string | null
   launchSource: LaunchSource
+  launchAccountId?: string | null
 }
 
 export async function detectAgentSessionContinuationAgents(
@@ -73,7 +74,8 @@ export async function launchAgentSessionContinuation({
   worktreeId,
   groupId,
   initialCwd,
-  launchSource
+  launchSource,
+  launchAccountId
 }: LaunchAgentSessionContinuationArgs): Promise<boolean> {
   if (!(await ensureAgentAvailable(agent, worktreeId))) {
     return false
@@ -93,6 +95,7 @@ export async function launchAgentSessionContinuation({
     promptDelivery: agent === 'claude' ? 'draft' : 'submit-after-ready',
     launchSource,
     ...(initialCwd ? { initialCwd } : {}),
+    ...(launchAccountId ? { launchAccountId } : {}),
     onPromptDeliveryUnconfirmed: () => {
       deliveryUnconfirmed = true
     },

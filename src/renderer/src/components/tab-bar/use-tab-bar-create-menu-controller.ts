@@ -32,7 +32,7 @@ export type TabBarCreateMenuController = {
   createMenuOptions: TabCreateMenuOption[]
   windowsShellEntries: WindowsShellMenuEntry[] | undefined
   handleSelectCreateMenuOption: (option: TabCreateMenuOption) => void
-  launchAgentFromNewTabEntry: (agent: TuiAgent) => void
+  launchAgentFromNewTabEntry: (agent: TuiAgent, accountId?: string) => void
   runPendingNewTabMenuFocusAfterClose: () => void
   clearPendingNewTabMenuFocusOnUnmount: (node: HTMLDivElement | null) => void
   queueNewActiveTerminalFocusAfterNewTabMenuClose: () => void
@@ -221,14 +221,17 @@ export function useTabBarCreateMenuController({
         break
     }
   }
-  const launchAgentFromNewTabEntry = (agent: TuiAgent): void => {
-    const option = agentLaunchOptions.find((candidate) => candidate.agent === agent)
+  const launchAgentFromNewTabEntry = (agent: TuiAgent, accountId?: string): void => {
+    const option = agentLaunchOptions.find(
+      (c) => c.agent === agent && (!accountId || c.accountId === accountId)
+    )
     const result = launchAgentInNewTab({
       requestId: newAgentLaunchRequestId(),
       agent,
       worktreeId,
       groupId: resolvedGroupId,
-      launchSource: 'tab_bar_quick_launch'
+      launchSource: 'tab_bar_quick_launch',
+      ...(accountId ? { launchAccountId: accountId } : {})
     })
     if (!result) {
       toast.error(
@@ -260,34 +263,22 @@ export function useTabBarCreateMenuController({
       })
     }
   }
-  const clearPendingNewTabMenuFocusOnUnmountRef = useRef<
-    ((node: HTMLDivElement | null) => void) | null
-  >(null)
-  if (clearPendingNewTabMenuFocusOnUnmountRef.current === null) {
-    clearPendingNewTabMenuFocusOnUnmountRef.current = (node: HTMLDivElement | null): void => {
-      if (node !== null) {
-        return
-      }
+  const clearPendingNewTabMenuFocusOnUnmount = useRef((node: HTMLDivElement | null): void => {
+    if (node === null) {
       // Why: cancel the delayed focus handoff via this root ref cleanup, avoiding an otherwise cleanup-only React Effect.
       clearPendingNewTabMenuFocusAnimation()
       clearPendingNewTabMenuFocusRetry()
     }
-  }
-  const clearPendingNewTabMenuFocusOnUnmount = clearPendingNewTabMenuFocusOnUnmountRef.current
+  }).current
 
   useEffect(() => {
     if (!newTabMenuOpen) {
+      setCreateMenuQuery('')
       return
     }
     const dismiss = (): void => setNewTabMenuOpen(false)
     window.addEventListener('blur', dismiss)
     return () => window.removeEventListener('blur', dismiss)
-  }, [newTabMenuOpen])
-
-  useEffect(() => {
-    if (!newTabMenuOpen) {
-      setCreateMenuQuery('')
-    }
   }, [newTabMenuOpen])
 
   return {

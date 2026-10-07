@@ -57,9 +57,7 @@ export class AntigravityJournalBridge {
         role: 'reasoning',
         blocks: [{ type: 'text', text: step.thinking }]
       }
-      items.push(
-        this.createItem(thinkingBody, step.step_index, subIndex++, timestamp, turnScope)
-      )
+      items.push(this.createItem(thinkingBody, step.step_index, subIndex++, timestamp, turnScope))
     }
 
     // 2. User input or tool results
@@ -70,9 +68,7 @@ export class AntigravityJournalBridge {
         role,
         blocks: [{ type: 'text', text: step.content }]
       }
-      items.push(
-        this.createItem(messageBody, step.step_index, subIndex++, timestamp, turnScope)
-      )
+      items.push(this.createItem(messageBody, step.step_index, subIndex++, timestamp, turnScope))
     }
 
     // 3. Assistant text response
@@ -82,9 +78,7 @@ export class AntigravityJournalBridge {
         role: 'assistant',
         blocks: [{ type: 'text', text: step.content }]
       }
-      items.push(
-        this.createItem(assistantBody, step.step_index, subIndex++, timestamp, turnScope)
-      )
+      items.push(this.createItem(assistantBody, step.step_index, subIndex++, timestamp, turnScope))
     }
 
     // 4. Tool calls
@@ -98,9 +92,7 @@ export class AntigravityJournalBridge {
           state: step.status === 'ERROR' ? 'failed' : 'completed',
           output: boundPayload(JSON.stringify(call.args), this.payloadLimits)
         }
-        items.push(
-          this.createItem(toolCallBody, step.step_index, subIndex++, timestamp, turnScope)
-        )
+        items.push(this.createItem(toolCallBody, step.step_index, subIndex++, timestamp, turnScope))
       }
     }
 

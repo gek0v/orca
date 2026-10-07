@@ -47,19 +47,13 @@ export function AntigravityUsageDailyChart({
           const segments = [
             {
               key: 'input',
-              label: translate(
-                'auto.components.stats.AntigravityUsageDailyChart.input',
-                'Input'
-              ),
+              label: translate('auto.components.stats.AntigravityUsageDailyChart.input', 'Input'),
               value: Math.max(0, entry.inputTokens - entry.cachedInputTokens),
               className: 'bg-chart-1'
             },
             {
               key: 'output',
-              label: translate(
-                'auto.components.stats.AntigravityUsageDailyChart.output',
-                'Output'
-              ),
+              label: translate('auto.components.stats.AntigravityUsageDailyChart.output', 'Output'),
               value: entry.outputTokens,
               className: 'bg-chart-2'
             },

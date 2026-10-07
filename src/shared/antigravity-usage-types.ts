@@ -2,13 +2,7 @@ export type AntigravityUsageScope = 'orca' | 'all'
 export type AntigravityUsageRange = '7d' | '30d' | '90d' | 'all'
 export type AntigravityUsageBreakdownKind = 'model' | 'project'
 
-export type AntigravityToolCategory =
-  | 'terminal'
-  | 'edit'
-  | 'read'
-  | 'search'
-  | 'subagent'
-  | 'other'
+export type AntigravityToolCategory = 'terminal' | 'edit' | 'read' | 'search' | 'subagent' | 'other'
 
 export type AntigravityToolBreakdownRow = {
   category: AntigravityToolCategory

@@ -45,6 +45,12 @@ const mockOpenSettingsPage = vi.fn()
 const mockOpenSettingsTarget = vi.fn()
 const mockRefreshRateLimits = vi.fn()
 const mockSetAntigravityRateLimitsOptimistic = vi.fn()
+const mockCloseTab = vi.fn()
+const mockLaunchAgentInNewTab = vi.fn()
+
+vi.mock('@/lib/launch-agent-in-new-tab', () => ({
+  launchAgentInNewTab: (...args: unknown[]) => mockLaunchAgentInNewTab(...args)
+}))
 
 type MockStoreRepo = {
   id: string
@@ -56,10 +62,15 @@ type MockAppStoreState = {
   openSettingsTarget: (target: unknown) => void
   refreshRateLimits: () => void
   setAntigravityRateLimitsOptimistic: (targetUsage?: ProviderRateLimits | null) => void
+  closeTab: (tabId: string) => void
   usagePercentageDisplay: 'used'
   activeRepoId: string | null
   activeWorktreeId: string | null
+  activeTabIdByWorktree: Record<string, string | null>
+  activeTabId: string | null
   repos: MockStoreRepo[]
+  tabsByWorktree: Record<string, unknown[]>
+  unifiedTabsByWorktree: Record<string, unknown[]>
 }
 
 const mockStoreState: MockAppStoreState = {
@@ -67,15 +78,24 @@ const mockStoreState: MockAppStoreState = {
   openSettingsTarget: mockOpenSettingsTarget,
   refreshRateLimits: mockRefreshRateLimits,
   setAntigravityRateLimitsOptimistic: mockSetAntigravityRateLimitsOptimistic,
+  closeTab: mockCloseTab,
   usagePercentageDisplay: 'used',
   activeRepoId: null,
   activeWorktreeId: null,
-  repos: []
+  activeTabIdByWorktree: {},
+  activeTabId: null,
+  repos: [],
+  tabsByWorktree: {},
+  unifiedTabsByWorktree: {}
 }
 
-vi.mock('../../store', () => ({
-  useAppStore: (selector: (state: MockAppStoreState) => unknown) => selector(mockStoreState)
-}))
+vi.mock('../../store', () => {
+  const storeFn = Object.assign(
+    (selector: (state: MockAppStoreState) => unknown) => selector(mockStoreState),
+    { getState: () => mockStoreState }
+  )
+  return { useAppStore: storeFn }
+})
 
 const mockCallAntigravityAccounts = vi.fn().mockResolvedValue({
   accounts: [],
@@ -122,9 +142,15 @@ describe('AntigravitySwitcherMenu', () => {
       selectedAccountId: null,
       currentAccount: null
     })
+    mockCloseTab.mockReset()
+    mockLaunchAgentInNewTab.mockReset()
     mockStoreState.activeRepoId = null
     mockStoreState.activeWorktreeId = null
     mockStoreState.repos = []
+    mockStoreState.tabsByWorktree = {}
+    mockStoreState.unifiedTabsByWorktree = {}
+    mockStoreState.activeTabIdByWorktree = {}
+    mockStoreState.activeTabId = null
     setCachedAntigravityAccountsState(null)
     setCachedAntigravityAccountsState({
       accounts: [
@@ -225,6 +251,11 @@ describe('AntigravitySwitcherMenu', () => {
     const workRow = screen.getByText('Trabajo')
     fireEvent.click(workRow)
 
+    const confirmBtn = screen.getByRole('button', { name: 'Switch account' })
+    await act(async () => {
+      fireEvent.click(confirmBtn)
+    })
+
     expect(mockCallAntigravityAccounts).toHaveBeenCalledWith(
       { kind: 'local' },
       { runtime: 'host' },
@@ -292,6 +323,11 @@ describe('AntigravitySwitcherMenu', () => {
 
     const switchBtn = screen.getByRole('button', { name: 'Switch' })
     fireEvent.click(switchBtn)
+
+    const confirmBtn = screen.getByRole('button', { name: 'Switch account' })
+    await act(async () => {
+      fireEvent.click(confirmBtn)
+    })
 
     expect(mockCallAntigravityAccounts).toHaveBeenCalledWith(
       { kind: 'local' },
@@ -407,8 +443,10 @@ describe('AntigravitySwitcherMenu', () => {
     expect(screen.getByText('80%')).toBeDefined()
 
     const workRow = screen.getByText('Trabajo')
+    fireEvent.click(workRow)
+    const confirmBtn = screen.getByRole('button', { name: 'Switch account' })
     await act(async () => {
-      fireEvent.click(workRow)
+      fireEvent.click(confirmBtn)
     })
 
     expect(mockCallAntigravityAccounts).toHaveBeenCalledWith(
@@ -489,8 +527,10 @@ describe('AntigravitySwitcherMenu', () => {
     expect(screen.getByText('No usage data yet')).toBeDefined()
 
     const workRow = screen.getByText('Trabajo')
+    fireEvent.click(workRow)
+    const confirmBtn = screen.getByRole('button', { name: 'Switch account' })
     await act(async () => {
-      fireEvent.click(workRow)
+      fireEvent.click(confirmBtn)
     })
 
     expect(screen.getByText('No usage data yet')).toBeDefined()
@@ -521,6 +561,10 @@ describe('AntigravitySwitcherMenu', () => {
     expect(workButton).not.toBeNull()
 
     fireEvent.click(workRow)
+    const confirmBtn = screen.getByRole('button', { name: 'Switch account' })
+    await act(async () => {
+      fireEvent.click(confirmBtn)
+    })
     expect(mockCallAntigravityAccounts).toHaveBeenCalledTimes(1)
 
     expect(workButton).toBeDisabled()
@@ -534,5 +578,94 @@ describe('AntigravitySwitcherMenu', () => {
       selectedAccountId: 'acc-2',
       currentAccount: null
     })
+  })
+
+  it('cancels account switch and does not call callAntigravityAccounts when clicking Cancel', async () => {
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    const workRow = screen.getByText('Trabajo')
+    fireEvent.click(workRow)
+
+    expect(screen.getByText('Switch Antigravity account?')).toBeDefined()
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' })
+    fireEvent.click(cancelBtn)
+
+    expect(mockCallAntigravityAccounts).not.toHaveBeenCalled()
+  })
+
+  it('detects active Antigravity session, displays warning in dialog, and restarts session on switch', async () => {
+    mockCallAntigravityAccounts.mockResolvedValueOnce({
+      accounts: [],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: null
+    })
+    mockStoreState.activeWorktreeId = 'wt-1'
+    mockStoreState.tabsByWorktree = {
+      'wt-1': [
+        {
+          id: 'tab-agy-1',
+          worktreeId: 'wt-1',
+          launchAgent: 'antigravity',
+          launchAccountId: 'acc-1',
+          title: 'Antigravity',
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          createdAt: Date.now(),
+          ptyId: 'pty-1',
+          startupCwd: '/repo'
+        }
+      ]
+    }
+    mockStoreState.unifiedTabsByWorktree = {
+      'wt-1': [
+        {
+          id: 'u-1',
+          entityId: 'tab-agy-1',
+          contentType: 'terminal',
+          worktreeId: 'wt-1',
+          groupId: 'grp-1'
+        }
+      ]
+    }
+
+    render(
+      <AntigravitySwitcherMenu antigravity={createRateLimits()} compact={false} iconOnly={false} />
+    )
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    const workRow = screen.getByText('Trabajo')
+    fireEvent.click(workRow)
+
+    expect(screen.getByText(/close your active Antigravity session/)).toBeDefined()
+    const restartBtn = screen.getByRole('button', { name: 'Switch & restart session' })
+    await act(async () => {
+      fireEvent.click(restartBtn)
+    })
+
+    expect(mockCallAntigravityAccounts).toHaveBeenCalledWith(
+      { kind: 'local' },
+      { runtime: 'host' },
+      'Select',
+      'acc-2'
+    )
+    expect(mockCloseTab).toHaveBeenCalledWith('tab-agy-1')
+    expect(mockLaunchAgentInNewTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'antigravity',
+        worktreeId: 'wt-1',
+        launchAccountId: 'acc-2',
+        groupId: 'grp-1',
+        initialCwd: '/repo'
+      })
+    )
   })
 })

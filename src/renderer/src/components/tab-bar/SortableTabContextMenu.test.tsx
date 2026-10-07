@@ -8,13 +8,40 @@ import { REQUEST_ACTIVE_TERMINAL_PANE_SPLIT_EVENT } from '@/constants/terminal'
 import { requestActiveTerminalPaneSplit } from './request-active-terminal-pane-split'
 import { SortableTabContextMenu } from './SortableTabContextMenu'
 
-const storeMock = vi.hoisted(() => ({
+type MockTabRecord = {
+  id: string
+  ptyId?: string | null
+  worktreeId?: string
+  title?: string
+  launchAgent?: string
+  launchAccountId?: string
+  customTitle?: string | null
+  color?: string | null
+  sortOrder?: number
+  createdAt?: number
+  [key: string]: unknown
+}
+
+type MockStoreState = {
+  keybindings: Record<string, unknown>
+  unifiedTabsByWorktree: Record<string, MockTabRecord[]>
+  groupsByWorktree: Record<string, unknown>
+  tabsByWorktree?: Record<string, MockTabRecord[]>
+  [key: string]: unknown
+}
+
+type MockStore = {
+  dropUnifiedTab: ReturnType<typeof vi.fn>
+  state: MockStoreState
+}
+
+const storeMock: MockStore = vi.hoisted(() => ({
   dropUnifiedTab: vi.fn(),
   state: {
     keybindings: {},
     unifiedTabsByWorktree: {},
     groupsByWorktree: {}
-  } as Record<string, unknown>
+  }
 }))
 
 vi.mock('@/hooks/useShortcutLabel', () => ({
@@ -65,7 +92,38 @@ vi.mock('lucide-react', () => ({
   Pin: () => null,
   PinOff: () => null,
   SquareTerminal: () => null,
+  Check: () => null,
+  User: () => null,
   X: () => null
+}))
+
+type MockAccount = {
+  id: string
+  alias?: string | null
+  email?: string | null
+  subject?: string | null
+  color?: string | null
+  emoji?: string | null
+}
+
+type AccountsMock = {
+  accounts: MockAccount[]
+  activeAccount: MockAccount | null
+}
+
+const accountsMock: AccountsMock = vi.hoisted(() => ({
+  accounts: [],
+  activeAccount: null
+}))
+
+vi.mock('@/hooks/useAntigravityAccounts', () => ({
+  useAntigravityAccounts: () => ({
+    state: null,
+    accounts: accountsMock.accounts,
+    activeAccount: accountsMock.activeAccount,
+    getAccountById: (id: string) => accountsMock.accounts.find((a) => a.id === id) ?? null
+  }),
+  setCachedAntigravityAccountsState: vi.fn()
 }))
 
 vi.mock('@/i18n/i18n', () => ({
@@ -76,9 +134,21 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('../../store', () => ({
   useAppStore: Object.assign(
-    (selector: (state: Record<string, unknown>) => unknown) => selector(storeMock.state),
+    (selector: (state: MockStoreState) => unknown) => selector(storeMock.state),
     {
-      getState: () => storeMock.state
+      getState: () => storeMock.state,
+      setState: (
+        updater:
+          | Partial<MockStoreState>
+          | ((prev: MockStoreState) => Partial<MockStoreState> | MockStoreState)
+      ) => {
+        if (typeof updater === 'function') {
+          const next = updater(storeMock.state)
+          storeMock.state = { ...storeMock.state, ...next }
+        } else if (updater && typeof updater === 'object') {
+          storeMock.state = { ...storeMock.state, ...updater }
+        }
+      }
     }
   )
 }))
@@ -152,6 +222,26 @@ function getLastSplitEvent(spy: ReturnType<typeof vi.spyOn>): CustomEvent {
 }
 
 beforeEach(() => {
+  accountsMock.accounts = [
+    {
+      id: 'acc-1',
+      alias: 'Work',
+      email: 'work@example.com',
+      subject: null,
+      color: '#3b82f6',
+      emoji: null
+    },
+    {
+      id: 'acc-2',
+      alias: 'Personal',
+      email: 'personal@example.com',
+      subject: null,
+      color: '#10b981',
+      emoji: null
+    }
+  ]
+  accountsMock.activeAccount = accountsMock.accounts[0]
+
   storeMock.dropUnifiedTab.mockReset()
   storeMock.state = {
     keybindings: {},
@@ -163,6 +253,20 @@ beforeEach(() => {
           worktreeId: 'wt-1',
           activeTabId: 'tab-1',
           tabOrder: ['tab-1', 'tab-2']
+        }
+      ]
+    },
+    tabsByWorktree: {
+      'wt-1': [
+        {
+          id: 'term-1',
+          ptyId: null,
+          worktreeId: 'wt-1',
+          title: 'bash',
+          customTitle: null,
+          color: null,
+          sortOrder: 0,
+          createdAt: 0
         }
       ]
     },
@@ -298,5 +402,91 @@ describe('SortableTabContextMenu', () => {
 
     expect(container.textContent).not.toContain('Move Tab to Split')
     expect(container.textContent).toContain('Split terminal right')
+  })
+
+  it('does not render an Account submenu when the tab is not an Antigravity agent', () => {
+    const { container } = renderMenu({
+      tab: {
+        id: 'term-1',
+        ptyId: null,
+        worktreeId: 'wt-1',
+        title: 'bash',
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        createdAt: 0
+      }
+    })
+
+    expect(container.textContent).not.toContain('Account')
+  })
+
+  it('renders an Account submenu when tab.launchAgent is antigravity', () => {
+    const { container } = renderMenu({
+      tab: {
+        id: 'term-1',
+        ptyId: null,
+        worktreeId: 'wt-1',
+        title: 'Antigravity',
+        launchAgent: 'antigravity',
+        launchAccountId: 'acc-1',
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        createdAt: 0
+      }
+    })
+
+    expect(container.textContent).toContain('Account')
+    expect(container.textContent).toContain('Work (work@example.com)')
+    expect(container.textContent).toContain('Personal (personal@example.com)')
+  })
+
+  it('updates tab.launchAccountId in store when selecting another account', () => {
+    const { container } = renderMenu({
+      tab: {
+        id: 'term-1',
+        ptyId: null,
+        worktreeId: 'wt-1',
+        title: 'Antigravity',
+        launchAgent: 'antigravity',
+        launchAccountId: 'acc-1',
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        createdAt: 0
+      }
+    })
+
+    act(() => getButton(container, 'Personal (personal@example.com)').click())
+
+    const tabs = storeMock.state.tabsByWorktree?.['wt-1']
+    expect(tabs?.[0]?.launchAccountId).toBe('acc-2')
+
+    const unifiedTabs = storeMock.state.unifiedTabsByWorktree['wt-1']
+    expect(unifiedTabs?.[0]?.launchAccountId).toBe('acc-2')
+  })
+
+  it('renders disabled "No saved accounts" when Antigravity has no accounts', () => {
+    accountsMock.accounts = []
+    accountsMock.activeAccount = null
+
+    const { container } = renderMenu({
+      tab: {
+        id: 'term-1',
+        ptyId: null,
+        worktreeId: 'wt-1',
+        title: 'Antigravity',
+        launchAgent: 'antigravity',
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        createdAt: 0
+      }
+    })
+
+    expect(container.textContent).toContain('Account')
+    expect(container.textContent).toContain('No saved accounts')
+    expect(getButton(container, 'No saved accounts').disabled).toBe(true)
   })
 })

@@ -7,6 +7,7 @@ export type FullSubmitOrchestrationInput = Pick<
   | 'fallbackDefaultAgent'
   | 'isProjectGroupTarget'
   | 'isSubmissionCancelled'
+  | 'launchAccountId'
   | 'repoId'
   | 'requiresExplicitSetupChoice'
   | 'resolvePendingSmartGitHubSubmit'
@@ -43,6 +44,7 @@ export function useFullSubmitOrchestration(input: FullSubmitOrchestrationInput) 
     fallbackDefaultAgent,
     isProjectGroupTarget,
     isSubmissionCancelled,
+    launchAccountId,
     repoId,
     requiresExplicitSetupChoice,
     resolvePendingSmartGitHubSubmit,
@@ -107,7 +109,7 @@ export function useFullSubmitOrchestration(input: FullSubmitOrchestrationInput) 
       if (smartGitHubSettlement.status === 'cancelled') {
         return
       }
-      await executeFullCreation(smartGitHubSettlement.value, repoId)
+      await executeFullCreation(smartGitHubSettlement.value, repoId, launchAccountId)
     } catch (error) {
       if (isSubmissionCancelled()) {
         return
@@ -124,6 +126,7 @@ export function useFullSubmitOrchestration(input: FullSubmitOrchestrationInput) 
     fallbackDefaultAgent,
     isProjectGroupTarget,
     isSubmissionCancelled,
+    launchAccountId,
     repoId,
     requiresExplicitSetupChoice,
     resolvePendingSmartGitHubSubmit,

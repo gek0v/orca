@@ -7,6 +7,7 @@ export type FullCreationExecutionInput = Pick<
   | 'createWorktree'
   | 'effectivePresetId'
   | 'isSubmissionCancelled'
+  | 'launchAccountId'
   | 'linkedGitLabIssue'
   | 'linkedGitLabMR'
   | 'normalizedSparseDirectories'
@@ -51,6 +52,7 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
     createWorktree,
     effectivePresetId,
     isSubmissionCancelled,
+    launchAccountId,
     linkedGitLabIssue,
     linkedGitLabMR,
     normalizedSparseDirectories,
@@ -73,8 +75,11 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
   const executeFullCreation = useCallback(
     async (
       smartGitHubResolution: PendingSmartGitHubSubmitResolution,
-      repoId: string
+      repoId: string,
+      overrideLaunchAccountId?: string | null
     ): Promise<void> => {
+      const effectiveLaunchAccountId =
+        overrideLaunchAccountId !== undefined ? overrideLaunchAccountId : launchAccountId
       const prepared = await prepareFullSubmit(smartGitHubResolution)
 
       if (!prepared) {
@@ -211,7 +216,8 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
         agent: tuiAgent,
         shouldSeedInitialAgentStatus,
         prompt: submitStartupPrompt,
-        telemetry: composerTelemetry
+        telemetry: composerTelemetry,
+        launchAccountId: effectiveLaunchAccountId
       })
 
       const activationHolder: { value: ReturnType<typeof activateAndRevealWorktree> } = {
@@ -226,7 +232,8 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
           issueCommand,
           ...(backendSpawnedStartup ? { backendStartupTerminalSpawned: true } : {}),
           ...(!structuredLaunch && startup ? { startup } : {}),
-          ...(structuredLaunch ? { providesInitialSurface: true } : {})
+          ...(structuredLaunch ? { providesInitialSurface: true } : {}),
+          ...(effectiveLaunchAccountId ? { launchAccountId: effectiveLaunchAccountId } : {})
         })
         return activationHolder.value !== false
       }
@@ -285,6 +292,7 @@ export function useFullCreationExecution(input: FullCreationExecutionInput) {
       createWorktree,
       effectivePresetId,
       isSubmissionCancelled,
+      launchAccountId,
       linkedGitLabIssue,
       linkedGitLabMR,
       normalizedSparseDirectories,

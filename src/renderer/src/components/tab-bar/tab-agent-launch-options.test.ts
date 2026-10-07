@@ -111,4 +111,63 @@ describe('tab agent launch options', () => {
       expect.arrayContaining(['codex', 'copilot'])
     )
   })
+
+  it('builds launch options for each Antigravity account when accounts are provided', () => {
+    const accounts = [
+      { id: 'acc-work', alias: 'Work', email: 'work@example.com' },
+      { id: 'acc-personal', alias: 'Personal', email: 'personal@example.com' }
+    ]
+    const options = buildTabAgentLaunchOptions(['claude', 'antigravity'], {}, accounts)
+
+    const antigravityOptions = options.filter((o) => o.agent === 'antigravity')
+    expect(antigravityOptions).toHaveLength(2)
+    expect(antigravityOptions[0]?.accountId).toBe('acc-work')
+    expect(antigravityOptions[0]?.label).toBe('Antigravity (Work)')
+    expect(antigravityOptions[1]?.accountId).toBe('acc-personal')
+    expect(antigravityOptions[1]?.label).toBe('Antigravity (Personal)')
+  })
+
+  it('matches Antigravity account options by account alias, email, and agent name', () => {
+    const accounts = [
+      { id: 'acc-work', alias: 'Work', email: 'work@example.com' },
+      { id: 'acc-personal', alias: 'Personal', email: 'personal@example.com' }
+    ]
+    const options = buildTabAgentLaunchOptions(['antigravity', 'claude'], {}, accounts)
+
+    expect(findMatchingTabAgentLaunchOptions('work', options).map((o) => o.accountId)).toEqual([
+      'acc-work'
+    ])
+    expect(findMatchingTabAgentLaunchOptions('personal', options).map((o) => o.accountId)).toEqual([
+      'acc-personal'
+    ])
+    expect(findMatchingTabAgentLaunchOptions('agy', options).map((o) => o.accountId)).toEqual([
+      'acc-work',
+      'acc-personal'
+    ])
+    expect(
+      findMatchingTabAgentLaunchOptions('antigravity', options).map((o) => o.accountId)
+    ).toEqual(['acc-work', 'acc-personal'])
+  })
+
+  it('falls back to single default Antigravity option when accounts list is empty or omitted', () => {
+    const optionsEmpty = buildTabAgentLaunchOptions(['antigravity'], {}, [])
+    expect(optionsEmpty).toHaveLength(1)
+    expect(optionsEmpty[0]?.agent).toBe('antigravity')
+    expect(optionsEmpty[0]?.accountId).toBeUndefined()
+    expect(optionsEmpty[0]?.label).toBe('Antigravity')
+
+    const optionsOmitted = buildTabAgentLaunchOptions(['antigravity'])
+    expect(optionsOmitted).toHaveLength(1)
+    expect(optionsOmitted[0]?.accountId).toBeUndefined()
+  })
+
+  it('labels Antigravity account option with email when alias is not set', () => {
+    const accounts = [{ id: 'acc-anon', email: 'developer@company.org' }]
+    const options = buildTabAgentLaunchOptions(['antigravity'], {}, accounts)
+
+    expect(options[0]?.label).toBe('Antigravity (developer@company.org)')
+    expect(findMatchingTabAgentLaunchOptions('developer', options).map((o) => o.accountId)).toEqual(
+      ['acc-anon']
+    )
+  })
 })

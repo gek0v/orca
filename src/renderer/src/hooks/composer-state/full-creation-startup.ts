@@ -9,6 +9,7 @@ export function buildFullCreationStartup(args: {
   shouldSeedInitialAgentStatus: boolean
   prompt: string
   telemetry: WorktreeStartupPayload['telemetry']
+  launchAccountId?: string | null
 }): WorktreeStartupPayload | undefined {
   if (!args.startupPlan || args.backendSpawnedStartup) {
     return undefined
@@ -19,6 +20,7 @@ export function buildFullCreationStartup(args: {
     launchConfig: args.startupPlan.launchConfig,
     ...(args.startupPlan.launchToken ? { launchToken: args.startupPlan.launchToken } : {}),
     launchAgent: args.agent,
+    ...(args.launchAccountId ? { launchAccountId: args.launchAccountId } : {}),
     ...(args.startupPlan.draftPrompt ? { draftPrompt: args.startupPlan.draftPrompt } : {}),
     ...(args.startupPlan.startupCommandDelivery
       ? { startupCommandDelivery: args.startupPlan.startupCommandDelivery }

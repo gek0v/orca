@@ -19226,6 +19226,13 @@
       "save": "Save current account",
       "refresh": "Refresh accounts",
       "usage": "Refresh usage",
+      "usageAll": "Refresh all accounts usage",
+      "usageTitle": "Usage",
+      "noUsageData": "No usage data yet",
+      "session": "Session",
+      "weekly": "Weekly",
+      "refreshingUsage": "Updating usage…",
+      "lastUpdated": "Updated {{time}}",
       "working": "Updating account",
       "usageReading": "Session: {{session}} · Weekly: {{weekly}}",
       "saved": "Saved Google account",
@@ -19253,7 +19260,13 @@
       "edit": "Edit",
       "switchFailed": "Could not switch Antigravity account",
       "manageAccounts": "Manage accounts…",
-      "switchedAndRestarted": "Switched Antigravity account and restarted session"
+      "switchedAndRestarted": "Switched Antigravity account and restarted session",
+      "switched": "Switched to Antigravity account {{account}}",
+      "switchConfirmTitle": "Switch Antigravity account?",
+      "switchConfirmActiveSession": "Switching to {{account}} will close your active Antigravity session and open a new conversation with the selected account. Are you sure you want to continue?",
+      "switchConfirmNoSession": "Are you sure you want to switch the active Antigravity account to {{account}}?",
+      "switchConfirmAction": "Switch account",
+      "switchConfirmActionRestart": "Switch & restart session"
     },
     "managedData": {
       "description": "Add accounts by running this command in a terminal on the Orca host. Selection applies to new explicit agent launches on that host; direct SSH relay and Windows-hosted WSL launches use their own credentials.",

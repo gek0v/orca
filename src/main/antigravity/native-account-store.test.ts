@@ -150,8 +150,18 @@ describe('protected Antigravity account snapshots', () => {
     const usage = {
       provider: 'antigravity' as const,
       status: 'ok' as const,
-      session: { windowMinutes: 300, usedPercent: 20, resetsAt: Date.now() + 10000, resetDescription: null },
-      weekly: { windowMinutes: 10080, usedPercent: 45, resetsAt: Date.now() + 50000, resetDescription: null },
+      session: {
+        windowMinutes: 300,
+        usedPercent: 20,
+        resetsAt: Date.now() + 10000,
+        resetDescription: null
+      },
+      weekly: {
+        windowMinutes: 10080,
+        usedPercent: 45,
+        resetsAt: Date.now() + 50000,
+        resetDescription: null
+      },
       updatedAt: 123456,
       error: null
     }
@@ -198,5 +208,3 @@ describe('protected Antigravity account snapshots', () => {
     expect(readback.accounts[0].id).toBe(vault.accounts[0].id)
   })
 })
-
-

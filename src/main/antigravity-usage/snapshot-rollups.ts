@@ -119,8 +119,7 @@ export function buildAntigravityUsageSummary(
     sessions: filteredSessions.length,
     turns,
     ...totals,
-    estimatedCostUsd:
-      estimatedCostUsd !== null ? Math.round(estimatedCostUsd * 100) / 100 : null,
+    estimatedCostUsd: estimatedCostUsd !== null ? Math.round(estimatedCostUsd * 100) / 100 : null,
     topModel: highestUsageKey(byModel),
     topProject: highestUsageKey(byProject),
     hasAnyAntigravityData: filteredSessions.length > 0 || filteredDaily.length > 0,
@@ -150,10 +149,7 @@ export function buildAntigravityUsageBreakdownRows(
   filteredDaily: AntigravityUsageDailyAggregate[],
   filteredSessions: AntigravityUsageSession[]
 ): AntigravityUsageBreakdownRow[] {
-  const rows = new Map<
-    string,
-    AntigravityUsageBreakdownRow & { rawCost: number | null }
-  >()
+  const rows = new Map<string, AntigravityUsageBreakdownRow & { rawCost: number | null }>()
 
   for (const daily of filteredDaily) {
     const key = kind === 'model' ? (daily.model ?? 'unknown') : daily.projectKey
@@ -310,4 +306,3 @@ export function buildAntigravityUsageRecentSessions(
     toolCalls: session.totalToolCalls ?? 0
   }))
 }
-

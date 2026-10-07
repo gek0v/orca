@@ -93,6 +93,7 @@ export function useComposerSubmitOrchestration(
     createWorktree: target.composerTargetStore.createWorktree,
     effectivePresetId: target.derivedComposerState.effectivePresetId,
     isSubmissionCancelled: target.composerTargetStore.isSubmissionCancelled,
+    launchAccountId: target.workspaceIdentityState.launchAccountId,
     linkedGitLabIssue: target.workspaceIdentityState.linkedGitLabIssue,
     linkedGitLabMR: target.workspaceIdentityState.linkedGitLabMR,
     normalizedSparseDirectories: target.derivedComposerState.normalizedSparseDirectories,
@@ -117,6 +118,7 @@ export function useComposerSubmitOrchestration(
     fallbackDefaultAgent: target.workspaceIdentityState.fallbackDefaultAgent,
     isProjectGroupTarget: target.runtimeTargetSelection.isProjectGroupTarget,
     isSubmissionCancelled: target.composerTargetStore.isSubmissionCancelled,
+    launchAccountId: target.workspaceIdentityState.launchAccountId,
     repoId: target.initialTargetState.repoId,
     requiresExplicitSetupChoice: target.derivedComposerState.requiresExplicitSetupChoice,
     resolvePendingSmartGitHubSubmit:

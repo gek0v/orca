@@ -227,7 +227,11 @@ function TabBarCreateEntrySession({
       return
     }
     if (selectedOption.kind === 'agent') {
-      onLaunchAgent?.(selectedOption.option.agent)
+      if (selectedOption.option.accountId) {
+        onLaunchAgent?.(selectedOption.option.agent, selectedOption.option.accountId)
+      } else {
+        onLaunchAgent?.(selectedOption.option.agent)
+      }
       onDidOpenEntry?.()
       return
     }

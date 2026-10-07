@@ -326,11 +326,7 @@ export function UsageOverviewPane({
               key={provider.id}
               provider={provider}
               totalTokens={overview.totalTokens}
-              onSelect={
-                onSelectProvider
-                  ? () => onSelectProvider(provider.id)
-                  : undefined
-              }
+              onSelect={onSelectProvider ? () => onSelectProvider(provider.id) : undefined}
               onEnable={() => {
                 recordFeatureInteraction('usage-tracking')
                 if (provider.id === 'claude') {

@@ -1,19 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ArrowRight, Check, ChevronsUpDown, Star, Terminal } from 'lucide-react'
+import { ArrowRight, ChevronsUpDown, Terminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from '@/components/ui/command'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger
-} from '@/components/ui/context-menu'
+import { Command, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AgentIcon, type AgentCatalogEntry } from '@/lib/agent-catalog'
 import {
@@ -28,11 +16,17 @@ import {
   resolveAgentComboboxCommandState,
   updateAgentComboboxCommandValue
 } from './agent-combobox-command-state'
+import {
+  AgentDefaultContextMenu,
+  AgentIconLabel,
+  renderAgentComboboxItem
+} from './agent-combobox-item'
+import { AntigravityAccountSelector } from './AntigravityAccountSelector'
 import { translate } from '@/i18n/i18n'
 
 type DefaultAgentPreference = TuiAgent | 'blank' | null
 
-type AgentComboboxProps = {
+export type AgentComboboxProps = {
   agents: AgentCatalogEntry[]
   value: TuiAgent | null
   onValueChange: (agent: TuiAgent | null) => void
@@ -53,99 +47,13 @@ type AgentComboboxProps = {
   allowNarrowTrigger?: boolean
   allowBlankTerminal?: boolean
   emptyLabel?: string
+  disabled?: boolean
+  launchAccountId?: string | null
+  onLaunchAccountIdChange?: (accountId: string | null) => void
 }
 
 const BLANK_VALUE = '__none__'
 const TRIGGER_MIN_WIDTH_CLASS = '!min-w-[260px]'
-
-type ItemRenderArgs = {
-  key: string
-  itemValue: string
-  isChecked: boolean
-  isDefault: boolean
-  onSelect: () => void
-  onSetDefault?: () => void
-  icon: React.ReactNode
-  label: string
-}
-
-type AgentDefaultContextMenuProps = {
-  children: React.ReactNode
-  isDefault: boolean
-  onSetDefault?: () => void
-}
-
-function AgentIconLabel({
-  icon,
-  label
-}: {
-  icon: React.ReactNode
-  label: string
-}): React.JSX.Element {
-  return (
-    <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
-      <span className="inline-flex size-3.5 shrink-0 items-center justify-center [&_img]:size-3.5 [&_svg]:size-3.5!">
-        {icon}
-      </span>
-      <span className="truncate leading-none">{label}</span>
-    </span>
-  )
-}
-
-function AgentDefaultContextMenu({
-  children,
-  isDefault,
-  onSetDefault
-}: AgentDefaultContextMenuProps): React.ReactNode {
-  if (!onSetDefault) {
-    return children
-  }
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="z-[70]">
-        <ContextMenuItem onSelect={onSetDefault} disabled={isDefault}>
-          <Star className="size-3.5" />
-          {isDefault
-            ? translate('auto.components.agent.AgentCombobox.1b0d6965fa', 'Current default')
-            : translate('auto.components.agent.AgentCombobox.9c6b59fe58', 'Set as default')}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
-  )
-}
-
-function renderItem({
-  key,
-  itemValue,
-  isChecked,
-  isDefault,
-  onSelect,
-  onSetDefault,
-  icon,
-  label
-}: ItemRenderArgs): React.ReactNode {
-  const row = (
-    <CommandItem
-      key={key}
-      value={itemValue}
-      onSelect={onSelect}
-      className="items-center gap-2 px-3 py-1.5"
-    >
-      <Check
-        className={cn('size-4 shrink-0 text-foreground', isChecked ? 'opacity-100' : 'opacity-0')}
-      />
-      <AgentIconLabel icon={icon} label={label} />
-    </CommandItem>
-  )
-  return (
-    // Why: z-[70] sits above PopoverContent's z-[60] so the right-click menu
-    // renders in front of the still-open combobox popover instead of behind it.
-    <AgentDefaultContextMenu key={key} isDefault={isDefault} onSetDefault={onSetDefault}>
-      {row}
-    </AgentDefaultContextMenu>
-  )
-}
 
 export default function AgentCombobox({
   agents,
@@ -159,7 +67,10 @@ export default function AgentCombobox({
   onTriggerEnter,
   allowNarrowTrigger = false,
   allowBlankTerminal = true,
-  emptyLabel
+  emptyLabel,
+  disabled,
+  launchAccountId,
+  onLaunchAccountIdChange
 }: AgentComboboxProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -254,11 +165,14 @@ export default function AgentCombobox({
   const handleSelect = useCallback(
     (nextValue: TuiAgent | null) => {
       onValueChange(nextValue)
+      if (nextValue !== 'antigravity' && onLaunchAccountIdChange) {
+        onLaunchAccountIdChange(null)
+      }
       setOpen(false)
       setQuery('')
       onValueSelected?.(nextValue)
     },
-    [onValueChange, onValueSelected]
+    [onLaunchAccountIdChange, onValueChange, onValueSelected]
   )
 
   // Why: mirror RepoCombobox's trigger-keydown handling — the button-style
@@ -302,7 +216,7 @@ export default function AgentCombobox({
     [open, onTriggerEnter, value]
   )
 
-  return (
+  const comboboxNode = (
     // Why: min-w-0 lets full-width form rows shrink; plain flex+items-center left the
     // trigger free to overflow its dialog column and look misaligned with Project/Name.
     <div className="min-w-0 w-full">
@@ -324,6 +238,7 @@ export default function AgentCombobox({
               variant="outline"
               role="combobox"
               aria-expanded={open}
+              disabled={disabled}
               onKeyDown={handleTriggerKeyDown}
               className={cn(
                 // Why: callers sometimes pass `min-w-0` for grid layouts, but
@@ -383,7 +298,7 @@ export default function AgentCombobox({
                 )}
               </CommandEmpty>
               {blankMatchesQuery
-                ? renderItem({
+                ? renderAgentComboboxItem({
                     key: BLANK_VALUE,
                     itemValue: BLANK_VALUE,
                     isChecked: value === null,
@@ -398,7 +313,7 @@ export default function AgentCombobox({
                   })
                 : null}
               {filteredAgents.map((agent) =>
-                renderItem({
+                renderAgentComboboxItem({
                   key: agent.id,
                   itemValue: agent.id,
                   isChecked: value === agent.id,
@@ -430,4 +345,32 @@ export default function AgentCombobox({
       </Popover>
     </div>
   )
+
+  if (value === 'antigravity' && onLaunchAccountIdChange) {
+    return (
+      <div className="flex flex-col gap-2 min-w-0 w-full" data-testid="agent-combobox-with-account">
+        {comboboxNode}
+        <AntigravityAccountSelector
+          value={launchAccountId}
+          onValueChange={onLaunchAccountIdChange}
+          disabled={disabled}
+        />
+      </div>
+    )
+  }
+
+  return comboboxNode
 }
+
+export type PairedAgentAccountSelectorProps = AgentComboboxProps & {
+  launchAccountId?: string | null
+  onLaunchAccountIdChange?: (accountId: string | null) => void
+}
+
+export function PairedAgentAccountSelector(
+  props: PairedAgentAccountSelectorProps
+): React.JSX.Element {
+  return <AgentCombobox {...props} />
+}
+
+export { AntigravityAccountSelector }

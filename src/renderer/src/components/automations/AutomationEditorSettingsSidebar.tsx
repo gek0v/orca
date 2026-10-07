@@ -116,10 +116,7 @@ export function AutomationEditorSettingsSidebar({
                 />
               </Field>
               {draft.agentId === 'antigravity' ? (
-                <AutomationAntigravityAccountField
-                  draft={draft}
-                  onDraftChange={onDraftChange}
-                />
+                <AutomationAntigravityAccountField draft={draft} onDraftChange={onDraftChange} />
               ) : null}
             </div>
           </div>

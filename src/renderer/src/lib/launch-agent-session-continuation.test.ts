@@ -80,6 +80,28 @@ describe('launchAgentSessionContinuation', () => {
     )
   })
 
+  it('forwards launchAccountId to launchAgentInNewTab when provided', async () => {
+    const { launchAgentSessionContinuation } = await import('./launch-agent-session-continuation')
+
+    await expect(
+      launchAgentSessionContinuation({
+        agent: 'claude',
+        prompt: 'continue the unfinished task',
+        worktreeId: 'wt-1',
+        launchSource: 'terminal_context_menu',
+        launchAccountId: 'acc-123'
+      })
+    ).resolves.toBe(true)
+
+    expect(launchAgentInNewTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'claude',
+        worktreeId: 'wt-1',
+        launchAccountId: 'acc-123'
+      })
+    )
+  })
+
   it('detects the target Agent on the SSH host that owns the workspace', async () => {
     connectionId.value = 'ssh-1'
     const { detectAgentSessionContinuationAgents } =

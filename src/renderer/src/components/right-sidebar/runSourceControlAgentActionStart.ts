@@ -32,6 +32,7 @@ type RunSourceControlAgentActionStartArgs = {
   promptDelivery: 'auto-submit' | 'draft' | 'submit-after-ready'
   launchPlatform?: NodeJS.Platform
   launchSource: LaunchSource
+  launchAccountId?: string | null
   onStart?: (args: {
     agent: TuiAgent
     commandInput: string
@@ -72,6 +73,7 @@ export async function runSourceControlAgentActionStart({
   promptDelivery,
   launchPlatform,
   launchSource,
+  launchAccountId,
   onStart,
   onSaveAgentDefault,
   onLaunchAccepted,
@@ -111,7 +113,8 @@ export async function runSourceControlAgentActionStart({
       agentArgs: launchAgentArgs,
       promptDelivery,
       launchPlatform,
-      launchSource
+      launchSource,
+      ...(launchAccountId ? { launchAccountId } : {})
     })
     launched = Boolean(result)
     if (result?.surface.kind === 'local-terminal') {

@@ -116,6 +116,22 @@ export function useSourceControlActionRecipeDraftState({
     }))
   }
 
+  const onActionLaunchAccountIdChange = (
+    actionId: SourceControlActionId,
+    value: string | null
+  ): void => {
+    setActionRecipeDraftState((current) => ({
+      ...current,
+      values: {
+        ...current.values,
+        [actionId]: {
+          ...current.values[actionId],
+          launchAccountId: value
+        }
+      }
+    }))
+  }
+
   const saveActionTemplateDraft = async (actionId: SourceControlActionId): Promise<void> => {
     const nextValue = actionRecipeDraftState.values[actionId]
     if (
@@ -130,7 +146,8 @@ export function useSourceControlActionRecipeDraftState({
         return {
           actions: setSourceControlActionDefault(current.actions, actionId, {
             commandInputTemplate: nextValue.commandInputTemplate,
-            agentArgs: nextValue.agentArgs
+            agentArgs: nextValue.agentArgs,
+            launchAccountId: nextValue.launchAccountId
           })
         }
       })
@@ -178,6 +195,7 @@ export function useSourceControlActionRecipeDraftState({
     savingActionTemplateIds,
     onActionTemplateChange,
     onActionAgentArgsChange,
+    onActionLaunchAccountIdChange,
     saveActionTemplateDraft,
     discardActionTemplateDraft,
     appendVariable

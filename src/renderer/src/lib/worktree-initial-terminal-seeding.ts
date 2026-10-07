@@ -226,12 +226,13 @@ export function ensureWorktreeHasInitialTerminal(
   if (templatedTabId) {
     return templatedTabId
   }
+  const resolvedLaunchAccountId = opts?.launchAccountId ?? sequencedStartup?.launchAccountId
   if (
     opts?.seedUserDefaultSurface === true &&
     !hasExplicitLaunchWork &&
     opts.activateCreatedTabs !== false
   ) {
-    const defaultChat = openDefaultAgentChatInEmptyWorkspace(worktreeId)
+    const defaultChat = openDefaultAgentChatInEmptyWorkspace(worktreeId, resolvedLaunchAccountId)
     if (defaultChat) {
       return defaultChat.primaryTabId
     }
@@ -246,6 +247,7 @@ export function ensureWorktreeHasInitialTerminal(
       : undefined)
   const terminalTab = store.createTab(worktreeId, undefined, undefined, {
     pendingActivationSpawn: true,
+    ...(resolvedLaunchAccountId ? { launchAccountId: resolvedLaunchAccountId } : {}),
     ...(launchAgent
       ? {
           launchAgent,

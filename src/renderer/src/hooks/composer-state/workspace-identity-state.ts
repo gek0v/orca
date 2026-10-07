@@ -175,6 +175,8 @@ export function useWorkspaceIdentityState(input: WorkspaceIdentityStateInput) {
     persistDraft ? (newWorkspaceDraft?.agent ?? fallbackDefaultAgent) : fallbackDefaultAgent
   )
 
+  const [launchAccountId, setLaunchAccountId] = useState<string | null>(null)
+
   // Why: for a repo on an SSH host or runtime env, read the per-host agent list so the dialog shows the host's installed agents, not local.
   const connectionId = selectedRepoConnectionId
 
@@ -243,6 +245,8 @@ export function useWorkspaceIdentityState(input: WorkspaceIdentityStateInput) {
     fallbackDefaultAgent,
     tuiAgent,
     setTuiAgent,
+    launchAccountId,
+    setLaunchAccountId,
     connectionId,
     isRemote,
     runtimeEnvironmentId,

@@ -49,7 +49,8 @@ describe('useFullSubmitOrchestration cancellation', () => {
       sparseError: null,
       submitFolderTarget: vi.fn<FullSubmitOrchestrationInput['submitFolderTarget']>(),
       tuiAgent: 'claude',
-      workspaceSeedName: 'workspace'
+      workspaceSeedName: 'workspace',
+      launchAccountId: null
     } satisfies FullSubmitOrchestrationInput
     const hook = renderHook(() => useFullSubmitOrchestration(state))
 

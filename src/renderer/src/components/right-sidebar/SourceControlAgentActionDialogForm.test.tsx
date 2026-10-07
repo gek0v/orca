@@ -6,8 +6,17 @@ import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { Repo } from '../../../../shared/repo-types'
 
 vi.mock('@/components/agent/AgentCombobox', () => ({
-  default: ({ value }: { value: string | null }) =>
-    React.createElement('div', { 'data-agent-value': value ?? '' })
+  default: ({
+    value,
+    launchAccountId
+  }: {
+    value: string | null
+    launchAccountId?: string | null
+  }) =>
+    React.createElement('div', {
+      'data-agent-value': value ?? '',
+      'data-launch-account-id': launchAccountId ?? ''
+    })
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
@@ -159,6 +168,12 @@ describe('SourceControlAgentActionDialogForm', () => {
     })
 
     expect(markup).not.toContain('overrides your global default')
+  })
+
+  it('forwards launchAccountId to AgentCombobox', () => {
+    const markup = renderForm({ launchAccountId: 'acc-test-xyz' })
+
+    expect(markup).toContain('data-launch-account-id="acc-test-xyz"')
   })
 })
 

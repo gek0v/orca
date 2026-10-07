@@ -34,6 +34,7 @@ export type WorktreeActivationOptions = WorktreeActivationSurfaceSelection & {
   createNewTerminalForStartup?: boolean
   /** Keep sidebar filters intact when navigating to a hidden target. */
   clearSidebarFilters?: boolean
+  launchAccountId?: string
 }
 
 /** Create-time only: an agent selection suppresses the shell its own surface will replace. */

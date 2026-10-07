@@ -32,7 +32,10 @@ function AntigravityToolCategoryBreakdown({
     <section className="rounded-lg border border-border/60 bg-card/40 p-4">
       <div className="mb-3">
         <h4 className="text-sm font-semibold text-foreground">
-          {translate('auto.components.stats.AntigravityUsagePane.byToolCategory', 'By tool category')}
+          {translate(
+            'auto.components.stats.AntigravityUsagePane.byToolCategory',
+            'By tool category'
+          )}
         </h4>
         <p className="text-xs text-muted-foreground">
           {translate('auto.components.stats.AntigravityUsagePane.totalActions', 'Total actions:')}{' '}
@@ -42,7 +45,10 @@ function AntigravityToolCategoryBreakdown({
       <div className="space-y-2.5">
         {breakdown.length === 0 ? (
           <p className="text-xs text-muted-foreground py-2">
-            {translate('auto.components.stats.AntigravityUsagePane.noActions', 'No tool activity recorded.')}
+            {translate(
+              'auto.components.stats.AntigravityUsagePane.noActions',
+              'No tool activity recorded.'
+            )}
           </p>
         ) : (
           breakdown.map((row) => (
@@ -82,7 +88,10 @@ function AntigravityActiveFilesList({
     <section className="rounded-lg border border-border/60 bg-card/40 p-4 flex flex-col">
       <div className="mb-3">
         <h4 className="text-sm font-semibold text-foreground">
-          {translate('auto.components.stats.AntigravityUsagePane.mostActiveFiles', 'Most active files')}
+          {translate(
+            'auto.components.stats.AntigravityUsagePane.mostActiveFiles',
+            'Most active files'
+          )}
         </h4>
         <p className="text-xs text-muted-foreground">
           {translate('auto.components.stats.AntigravityUsagePane.filesTouched', 'Files touched:')}{' '}
@@ -112,12 +121,14 @@ function AntigravityActiveFilesList({
               <div className="flex items-center gap-1.5 shrink-0 text-[10px] tabular-nums text-muted-foreground">
                 {file.reads > 0 ? (
                   <span className="rounded bg-muted/60 px-1 py-0.5">
-                    {file.reads} {translate('auto.components.stats.AntigravityUsagePane.reads', 'reads')}
+                    {file.reads}{' '}
+                    {translate('auto.components.stats.AntigravityUsagePane.reads', 'reads')}
                   </span>
                 ) : null}
                 {file.edits > 0 ? (
                   <span className="rounded bg-muted/60 px-1 py-0.5 text-foreground font-medium">
-                    {file.edits} {translate('auto.components.stats.AntigravityUsagePane.edits', 'edits')}
+                    {file.edits}{' '}
+                    {translate('auto.components.stats.AntigravityUsagePane.edits', 'edits')}
                   </span>
                 ) : null}
               </div>

@@ -23,7 +23,10 @@ export function AntigravityAccountTabBadge({
       <TooltipTrigger asChild>
         <span className="flex items-center gap-1 shrink-0 select-none mr-1">
           {account.emoji ? (
-            <span className="text-[11px] leading-none select-none" data-account-emoji={account.emoji}>
+            <span
+              className="text-[11px] leading-none select-none"
+              data-account-emoji={account.emoji}
+            >
               {account.emoji}
             </span>
           ) : (

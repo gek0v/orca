@@ -234,7 +234,11 @@ describe('applyAgentWorkspaceTrust on this machine', () => {
     it('writes antigravity preset under known WSL guest home', async () => {
       rememberWslHome('Ubuntu', '\\\\wsl.localhost\\Ubuntu\\home\\u')
       const wslContext = { ...local, wslDistro: 'Ubuntu' }
-      await applyAgentWorkspaceTrust('antigravity', '\\\\wsl.localhost\\Ubuntu\\home\\u\\wt', wslContext)
+      await applyAgentWorkspaceTrust(
+        'antigravity',
+        '\\\\wsl.localhost\\Ubuntu\\home\\u\\wt',
+        wslContext
+      )
       expect(mocks.antigravity).toHaveBeenCalledWith(
         '/home/u/wt',
         '\\\\wsl.localhost\\Ubuntu\\home\\u'

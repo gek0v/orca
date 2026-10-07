@@ -21,6 +21,7 @@ export type WorktreeActivationStore = Partial<WorktreeRuntimeOwnerState> & {
     options?: {
       pendingActivationSpawn?: boolean
       launchAgent?: TuiAgent
+      launchAccountId?: string
       recordInteraction?: boolean
       viewMode?: Tab['viewMode']
       activate?: boolean
@@ -65,6 +66,7 @@ export type WorktreeActivationStore = Partial<WorktreeRuntimeOwnerState> & {
 export type InitialTerminalOptions = {
   activateCreatedTabs?: boolean
   backendStartupTerminalSpawned?: boolean
+  launchAccountId?: string
   /** Create a preserved fallback startup beside setup/default terminals. */
   createNewTerminalForStartup?: boolean
   /** Why: an explicit empty terminal row is a "user closed the last tab" tombstone. Startup

@@ -67,10 +67,7 @@ describe('AutomationAntigravityAccountField', () => {
 
     await act(async () => {
       root.render(
-        <AutomationAntigravityAccountField
-          draft={BASE_DRAFT}
-          onDraftChange={onDraftChange}
-        />
+        <AutomationAntigravityAccountField draft={BASE_DRAFT} onDraftChange={onDraftChange} />
       )
     })
 
@@ -109,5 +106,40 @@ describe('AutomationAntigravityAccountField', () => {
     })
 
     expect(container.textContent).toContain('Work Account (work@example.com)')
+  })
+
+  it('renders account with emoji when draft has launchAccountId pointing to account with emoji', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@example.com',
+          subject: '456',
+          authMethod: 'oauth',
+          alias: 'Work Account',
+          emoji: '💼',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    const onDraftChange = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <AutomationAntigravityAccountField
+          draft={{ ...BASE_DRAFT, launchAccountId: 'acc-work' }}
+          onDraftChange={onDraftChange}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Work Account (work@example.com)')
+    const emojiElement = container.querySelector('[data-account-emoji="💼"]')
+    expect(emojiElement).not.toBeNull()
   })
 })

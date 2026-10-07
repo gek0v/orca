@@ -19,6 +19,10 @@ export type AntigravityTranscriptStep = {
   cache_read_tokens?: number
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 const CHUNK_SIZE = 64 * 1024
 
 export class AntigravityTranscriptTailer {
@@ -101,7 +105,11 @@ export class AntigravityTranscriptTailer {
           try {
             // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Parsed JSON is checked before being cast to AntigravityTranscriptStep
             const parsed = JSON.parse(trimmed) as Record<string, unknown>
-            if (typeof parsed === 'object' && parsed !== null && ('type' in parsed || 'step_index' in parsed)) {
+            if (
+              typeof parsed === 'object' &&
+              parsed !== null &&
+              ('type' in parsed || 'step_index' in parsed)
+            ) {
               steps.push(this.normalizeStep(parsed))
             }
           } catch {
@@ -135,9 +143,13 @@ export class AntigravityTranscriptTailer {
     if (Array.isArray(raw.tool_calls)) {
       toolCalls = []
       for (const call of raw.tool_calls) {
-        if (typeof call === 'object' && call !== null && 'name' in call && typeof call.name === 'string') {
-          // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: tool arguments validated as dictionary object
-          const args = typeof call.args === 'object' && call.args !== null ? (call.args as Record<string, unknown>) : {}
+        if (
+          typeof call === 'object' &&
+          call !== null &&
+          'name' in call &&
+          typeof call.name === 'string'
+        ) {
+          const args = isRecord(call.args) ? call.args : {}
           toolCalls.push({ name: call.name, args })
         }
       }
@@ -145,7 +157,8 @@ export class AntigravityTranscriptTailer {
 
     const inputTokens = typeof raw.input_tokens === 'number' ? raw.input_tokens : undefined
     const outputTokens = typeof raw.output_tokens === 'number' ? raw.output_tokens : undefined
-    const cacheReadTokens = typeof raw.cache_read_tokens === 'number' ? raw.cache_read_tokens : undefined
+    const cacheReadTokens =
+      typeof raw.cache_read_tokens === 'number' ? raw.cache_read_tokens : undefined
 
     return {
       step_index: stepIndex,

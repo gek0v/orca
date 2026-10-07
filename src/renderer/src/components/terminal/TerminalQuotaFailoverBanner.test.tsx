@@ -3,12 +3,10 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  TerminalQuotaFailoverBanner,
-  isQuotaExhaustionError
-} from './TerminalQuotaFailoverBanner'
+import { TerminalQuotaFailoverBanner, isQuotaExhaustionError } from './TerminalQuotaFailoverBanner'
 
 vi.mock('@/i18n/i18n', () => ({
+  i18n: { language: 'en' },
   translate: (_key: string, fallback: string, values?: Record<string, string>) =>
     Object.entries(values ?? {}).reduce(
       (text, [key, value]) => text.replace(`{{${key}}}`, value),
@@ -83,7 +81,9 @@ describe('TerminalQuotaFailoverBanner', () => {
 
   it('recognizes various quota error patterns correctly', () => {
     expect(isQuotaExhaustionError('Error: 429 Too Many Requests')).toBe(true)
-    expect(isQuotaExhaustionError('rpc error: code = ResourceExhausted desc = Quota exceeded')).toBe(true)
+    expect(
+      isQuotaExhaustionError('rpc error: code = ResourceExhausted desc = Quota exceeded')
+    ).toBe(true)
     expect(isQuotaExhaustionError('Rate limit reached for models/gemini-pro')).toBe(true)
     expect(isQuotaExhaustionError('RESOURCE_EXHAUSTED: daily limit')).toBe(true)
     expect(isQuotaExhaustionError('Normal terminal output running tests')).toBe(false)

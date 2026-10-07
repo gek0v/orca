@@ -155,7 +155,7 @@ export async function saveOrcaAutomation(
   }
 
   const resolvedLaunchAccountId =
-    draft.agentId === 'antigravity' ? (draft.launchAccountId || null) : null
+    draft.agentId === 'antigravity' ? draft.launchAccountId || null : null
 
   const updates: AutomationUpdateInput = {
     name: draft.name,

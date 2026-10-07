@@ -340,6 +340,8 @@ export type GlobalSettings = NativeChatGlobalSettings & {
    *  - 'blank': blank terminal (no agent launched)
    *  - TuiAgent: a specific agent id */
   defaultTuiAgent: TuiAgent | 'blank' | null
+  /** Default Antigravity account used when launching Antigravity (null follows active/current account). */
+  defaultAntigravityAccountId?: string | null
   /** Agents hidden from picker/auto-launch; detection stays a raw PATH snapshot. */
   disabledTuiAgents: TuiAgent[]
   /** Master switch for the experimental plugin system. Off by default: no

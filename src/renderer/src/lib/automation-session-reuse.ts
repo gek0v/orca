@@ -12,7 +12,10 @@ export type ReusableAutomationSession = {
 export type AutomationSessionReuseState = {
   agentStatusByPaneKey: Record<string, AgentStatusEntry | undefined>
   ptyIdsByTabId: Record<string, string[] | undefined>
-  terminalLayoutsByTabId: Record<string, { ptyIdsByLeafId?: Record<string, string> } | null | undefined>
+  terminalLayoutsByTabId: Record<
+    string,
+    { ptyIdsByLeafId?: Record<string, string> } | null | undefined
+  >
   unifiedTabsByWorktree: Record<string, { contentType: string; entityId: string }[] | undefined>
   tabsByWorktree?: Record<string, { id: string; launchAccountId?: string | null }[] | undefined>
 }

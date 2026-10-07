@@ -13,11 +13,7 @@ import {
   extractActiveProjectName
 } from './token-usage-data-aggregation'
 
-export function TokenUsageStatusSegment({
-  iconOnly
-}: {
-  iconOnly: boolean
-}): React.JSX.Element {
+export function TokenUsageStatusSegment({ iconOnly }: { iconOnly: boolean }): React.JSX.Element {
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
   const claudeBreakdown = useAppStore((s) => s.claudeUsageProjectBreakdown)
@@ -148,7 +144,10 @@ export function TokenUsageStatusSegment({
                 <span className="tabular-nums font-medium text-muted-foreground">
                   {hasData
                     ? formatTokens(projectMetrics.totalTokens)
-                    : translate('auto.components.status.bar.TokenUsageStatusSegment.label', 'Tokens')}
+                    : translate(
+                        'auto.components.status.bar.TokenUsageStatusSegment.label',
+                        'Tokens'
+                      )}
                 </span>
               ) : null}
             </button>
@@ -196,7 +195,10 @@ export function TokenUsageStatusSegment({
                   type="button"
                   onClick={handleRefresh}
                   disabled={isScanning}
-                  aria-label={translate('auto.components.status.bar.TokenUsageStatusSegment.refresh', 'Refresh')}
+                  aria-label={translate(
+                    'auto.components.status.bar.TokenUsageStatusSegment.refresh',
+                    'Refresh'
+                  )}
                   className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 cursor-pointer"
                 >
                   <RotateCw className={cn('size-3', isScanning && 'animate-spin')} />
@@ -212,14 +214,20 @@ export function TokenUsageStatusSegment({
                 <button
                   type="button"
                   onClick={() => handleOpenStats()}
-                  aria-label={translate('auto.components.status.bar.TokenUsageStatusSegment.details', 'View full stats')}
+                  aria-label={translate(
+                    'auto.components.status.bar.TokenUsageStatusSegment.details',
+                    'View full stats'
+                  )}
                   className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
                 >
                   <ExternalLink className="size-3" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6}>
-                {translate('auto.components.status.bar.TokenUsageStatusSegment.details', 'View full stats')}
+                {translate(
+                  'auto.components.status.bar.TokenUsageStatusSegment.details',
+                  'View full stats'
+                )}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -230,7 +238,10 @@ export function TokenUsageStatusSegment({
           <div className="flex items-baseline justify-between gap-2">
             <div className="flex items-baseline gap-1.5">
               <span className="text-[11px] font-medium text-muted-foreground">
-                {translate('auto.components.status.bar.TokenUsageStatusSegment.projectTokens', 'Project Tokens')}
+                {translate(
+                  'auto.components.status.bar.TokenUsageStatusSegment.projectTokens',
+                  'Project Tokens'
+                )}
               </span>
               <span className="text-sm font-semibold tabular-nums text-foreground">
                 {formatTokens(projectMetrics.totalTokens)}
@@ -238,8 +249,13 @@ export function TokenUsageStatusSegment({
             </div>
             {projectMetrics.cost !== null ? (
               <span className="text-[11px] tabular-nums text-muted-foreground">
-                {translate('auto.components.status.bar.TokenUsageStatusSegment.estimatedCost', 'Est.')}{' '}
-                <span className="font-medium text-foreground">{formatCost(projectMetrics.cost)}</span>
+                {translate(
+                  'auto.components.status.bar.TokenUsageStatusSegment.estimatedCost',
+                  'Est.'
+                )}{' '}
+                <span className="font-medium text-foreground">
+                  {formatCost(projectMetrics.cost)}
+                </span>
               </span>
             ) : null}
           </div>
@@ -285,7 +301,9 @@ export function TokenUsageStatusSegment({
                 {translate('auto.components.status.bar.TokenUsageStatusSegment.actions', 'actions')}
               </span>
               <span className="tabular-nums flex items-center gap-1">
-                {projectMetrics.toolCategoryCounts.read ?? 0} reads · {projectMetrics.toolCategoryCounts.edit ?? 0} edits · {projectMetrics.toolCategoryCounts.terminal ?? 0} cmds
+                {projectMetrics.toolCategoryCounts.read ?? 0} reads ·{' '}
+                {projectMetrics.toolCategoryCounts.edit ?? 0} edits ·{' '}
+                {projectMetrics.toolCategoryCounts.terminal ?? 0} cmds
                 <ChevronRight className="size-3 text-muted-foreground" />
               </span>
             </button>
@@ -295,12 +313,14 @@ export function TokenUsageStatusSegment({
         {/* Recent Sessions */}
         <div className="px-3 pt-2.5 pb-1 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           <span>
-            {translate('auto.components.status.bar.TokenUsageStatusSegment.recentSessions', 'Recent Sessions')}
+            {translate(
+              'auto.components.status.bar.TokenUsageStatusSegment.recentSessions',
+              'Recent Sessions'
+            )}
           </span>
           {recentSessions.length > 0 ? (
             <span className="normal-case font-normal text-muted-foreground/70">
-              {recentSessions.length}{' '}
-              {recentSessions.length === 1 ? 'session' : 'sessions'}
+              {recentSessions.length} {recentSessions.length === 1 ? 'session' : 'sessions'}
             </span>
           ) : null}
         </div>
@@ -308,7 +328,10 @@ export function TokenUsageStatusSegment({
         <div className="max-h-48 overflow-y-auto divide-y divide-border/30 scrollbar-sleek">
           {recentSessions.length === 0 ? (
             <div className="px-3 py-6 text-center text-[11px] text-muted-foreground">
-              {translate('auto.components.status.bar.TokenUsageStatusSegment.noSessions', 'No sessions recorded yet.')}
+              {translate(
+                'auto.components.status.bar.TokenUsageStatusSegment.noSessions',
+                'No sessions recorded yet.'
+              )}
             </div>
           ) : (
             recentSessions.map((session) => (
@@ -316,9 +339,7 @@ export function TokenUsageStatusSegment({
                 key={`${session.provider}-${session.sessionId}`}
                 onClick={() =>
                   handleOpenStats(
-                    session.provider.toLowerCase() === 'antigravity'
-                      ? 'antigravity'
-                      : undefined
+                    session.provider.toLowerCase() === 'antigravity' ? 'antigravity' : undefined
                   )
                 }
                 className="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-accent/40 transition-colors cursor-pointer"
@@ -342,7 +363,10 @@ export function TokenUsageStatusSegment({
                       <>
                         <span className="mx-1">·</span>
                         {session.toolCalls}{' '}
-                        {translate('auto.components.status.bar.TokenUsageStatusSegment.actions', 'actions')}
+                        {translate(
+                          'auto.components.status.bar.TokenUsageStatusSegment.actions',
+                          'actions'
+                        )}
                       </>
                     ) : null}
                   </div>
@@ -366,7 +390,10 @@ export function TokenUsageStatusSegment({
           className="flex w-full cursor-pointer items-center justify-between px-3 py-2 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <span>
-            {translate('auto.components.status.bar.TokenUsageStatusSegment.viewAnalytics', 'Usage details & history')}
+            {translate(
+              'auto.components.status.bar.TokenUsageStatusSegment.viewAnalytics',
+              'Usage details & history'
+            )}
           </span>
           <ChevronRight className="size-3.5 text-muted-foreground" />
         </button>

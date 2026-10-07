@@ -116,6 +116,7 @@ export function SourceControlAiActionRecipeDefaults({
     savingActionTemplateIds,
     onActionTemplateChange,
     onActionAgentArgsChange,
+    onActionLaunchAccountIdChange,
     saveActionTemplateDraft,
     discardActionTemplateDraft,
     appendVariable
@@ -216,6 +217,7 @@ export function SourceControlAiActionRecipeDefaults({
               onAgentChange={(id, value) => void onActionAgentChange(id, value)}
               onTemplateChange={onActionTemplateChange}
               onAgentArgsChange={onActionAgentArgsChange}
+              onLaunchAccountIdChange={onActionLaunchAccountIdChange}
               onAppendVariable={appendVariable}
               onDiscard={discardActionTemplateDraft}
               onSave={(id) => void saveActionTemplateDraft(id)}

@@ -21,6 +21,7 @@ export type SourceControlActionRecipe = {
   agentId?: TuiAgent | CustomAgentId | null
   commandInputTemplate?: string
   agentArgs?: string
+  launchAccountId?: string | null
 }
 
 export type SourceControlAiActionDefaults = Partial<
@@ -115,6 +116,9 @@ export function normalizeSourceControlActionRecipe(
   if (typeof value.agentArgs === 'string') {
     normalized.agentArgs = value.agentArgs
   }
+  if (typeof value.launchAccountId === 'string' || value.launchAccountId === null) {
+    normalized.launchAccountId = value.launchAccountId
+  }
   return Object.keys(normalized).length > 0 ? normalized : undefined
 }
 
@@ -148,7 +152,8 @@ export function readSourceControlActionDefault(
     ...(typeof value?.commandInputTemplate === 'string'
       ? { commandInputTemplate: value.commandInputTemplate.trim() }
       : {}),
-    ...(typeof value?.agentArgs === 'string' ? { agentArgs: value.agentArgs.trim() } : {})
+    ...(typeof value?.agentArgs === 'string' ? { agentArgs: value.agentArgs.trim() } : {}),
+    ...(value?.launchAccountId !== undefined ? { launchAccountId: value.launchAccountId } : {})
   }
 }
 

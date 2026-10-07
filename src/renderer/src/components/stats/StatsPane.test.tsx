@@ -40,7 +40,9 @@ vi.mock('./CodexUsagePane', () => ({ CodexUsagePane: () => <div>Codex Content</d
 vi.mock('./GrokUsagePane', () => ({ GrokUsagePane: () => <div>Grok Content</div> }))
 vi.mock('./OpenCodeUsagePane', () => ({ OpenCodeUsagePane: () => <div>OpenCode Content</div> }))
 vi.mock('./MuseUsagePane', () => ({ MuseUsagePane: () => <div>Muse Content</div> }))
-vi.mock('./AntigravityUsagePane', () => ({ AntigravityUsagePane: () => <div>Antigravity Details Content</div> }))
+vi.mock('./AntigravityUsagePane', () => ({
+  AntigravityUsagePane: () => <div>Antigravity Details Content</div>
+}))
 
 vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback,

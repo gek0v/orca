@@ -44,7 +44,6 @@ export async function countAntigravitySubagents(transcriptFilePath: string): Pro
   }
 }
 
-
 function resolveWorkspacePath(uris: string[] | undefined): string | null {
   if (!uris || uris.length === 0) {
     return null

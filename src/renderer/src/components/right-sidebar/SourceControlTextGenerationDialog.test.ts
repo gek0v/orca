@@ -38,6 +38,19 @@ vi.mock('@/components/ui/select', () => ({
   SelectValue: () => React.createElement('span')
 }))
 
+vi.mock('@/components/agent/AntigravityAccountSelector', () => ({
+  AntigravityAccountSelector: ({
+    value
+  }: {
+    value?: string | null
+    onValueChange?: (id: string | null) => void
+  }) =>
+    React.createElement('div', {
+      'data-testid': 'antigravity-account-selector',
+      'data-account-value': value ?? ''
+    })
+}))
+
 /** The mocked chips serialize their previews into an attribute, so quotes arrive escaped. */
 function escapeHtml(value: string): string {
   return value.replace(/"/g, '&quot;')
@@ -379,5 +392,56 @@ describe('buildCommitMessageGenerationParams', () => {
       commandInputTemplate: '{basePrompt}\n\nKeep it short.',
       agentArgs: '--model gpt-5.5'
     })
+  })
+
+  it('renders AntigravityAccountSelector and forwards launchAccountId when agent is antigravity', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SourceControlTextGenerationDialogForm, {
+        actionId: 'commitMessage',
+        generateLabel: 'Generate',
+        settings: null,
+        repo: null,
+        baseParams: {
+          agentId: 'antigravity',
+          model: 'gemini-2.5',
+          commandInputTemplate: '{basePrompt}'
+        },
+        launchAccountId: 'account-123',
+        saveTargets: [
+          { target: { type: 'global' }, label: 'Save as global default', successMessage: '' }
+        ],
+        onGenerate: () => {},
+        onOpenChange: () => {},
+        onSaveDefaults: () => {}
+      })
+    )
+
+    expect(markup).toContain('data-testid="antigravity-account-selector"')
+    expect(markup).toContain('data-account-value="account-123"')
+  })
+
+  it('does not render AntigravityAccountSelector when agent is not antigravity', () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(SourceControlTextGenerationDialogForm, {
+        actionId: 'commitMessage',
+        generateLabel: 'Generate',
+        settings: null,
+        repo: null,
+        baseParams: {
+          agentId: 'codex',
+          model: 'gpt-5.4-mini',
+          commandInputTemplate: '{basePrompt}'
+        },
+        launchAccountId: 'account-123',
+        saveTargets: [
+          { target: { type: 'global' }, label: 'Save as global default', successMessage: '' }
+        ],
+        onGenerate: () => {},
+        onOpenChange: () => {},
+        onSaveDefaults: () => {}
+      })
+    )
+
+    expect(markup).not.toContain('data-testid="antigravity-account-selector"')
   })
 })

@@ -108,7 +108,10 @@ describe('AntigravityJournalBridge', () => {
     expect(items[0].body.kind).toBe('message')
     if (items[0].body.kind === 'message') {
       expect(items[0].body.role).toBe('tool')
-      expect(items[0].body.blocks[0]).toEqual({ type: 'text', text: 'File content read successfully.' })
+      expect(items[0].body.blocks[0]).toEqual({
+        type: 'text',
+        text: 'File content read successfully.'
+      })
     }
   })
 

@@ -21,9 +21,7 @@ describe('token-usage-data-aggregation', () => {
 
   it('aggregateProjectMetrics separates and filters tool calls per project', () => {
     const breakdowns = {
-      claude: [
-        { key: 'proj-alpha', label: 'Project Alpha', inputTokens: 1000, outputTokens: 500 }
-      ],
+      claude: [{ key: 'proj-alpha', label: 'Project Alpha', inputTokens: 1000, outputTokens: 500 }],
       codex: [],
       opencode: [],
       muse: [],

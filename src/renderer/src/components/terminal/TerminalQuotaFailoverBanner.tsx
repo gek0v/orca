@@ -6,7 +6,7 @@ import { translate } from '@/i18n/i18n'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
-import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
+import { switchAntigravityAccountAndRestartSession } from '@/lib/antigravity-session-restart'
 import { subscribeToPtyData } from '@/components/terminal-pane/pty-data-sidecar-subscriptions'
 
 export const QUOTA_ERROR_PATTERNS = [
@@ -177,24 +177,10 @@ export function AntigravityTerminalQuotaPortal({
 
   const handleSwitchAndRestart = async (targetAccountId: string) => {
     try {
-      await callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'Select', targetAccountId)
-      useAppStore.setState((s) => {
-        let changed = false
-        const nextUnified = { ...s.unifiedTabsByWorktree }
-        for (const [wId, tabs] of Object.entries(nextUnified)) {
-          const idx = tabs.findIndex((t) => t.contentType === 'terminal' && t.entityId === tabId)
-          if (idx !== -1) {
-            const nextTabs = [...tabs]
-            nextTabs[idx] = { ...nextTabs[idx], launchAccountId: targetAccountId }
-            nextUnified[wId] = nextTabs
-            changed = true
-            break
-          }
-        }
-        return changed ? { unifiedTabsByWorktree: nextUnified } : s
+      await switchAntigravityAccountAndRestartSession({
+        targetAccountId,
+        tabId
       })
-      // Interrupt current failed command and restart agy
-      window.api.pty.write(ptyId, '\x03\x03agy\r', 'driving')
       toast.success(
         translate(
           'accounts.antigravity.switchedAndRestarted',
@@ -203,9 +189,7 @@ export function AntigravityTerminalQuotaPortal({
       )
       setHasQuotaError(false)
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : 'Could not switch Antigravity account'
-      )
+      toast.error(err instanceof Error ? err.message : 'Could not switch Antigravity account')
     }
   }
 

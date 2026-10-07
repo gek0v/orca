@@ -77,7 +77,8 @@ export async function loadEmptyWorkspaceDefaultChatDetection(worktreeId: string)
  * chat instead of a bare shell. Null means nothing opened and the caller seeds the shell.
  */
 export function openDefaultAgentChatInEmptyWorkspace(
-  worktreeId: string
+  worktreeId: string,
+  launchAccountId?: string | null
 ): { primaryTabId: string | null } | null {
   const state = useAppStore.getState()
   const target = defaultChatDetectionTarget(state, worktreeId)
@@ -107,7 +108,8 @@ export function openDefaultAgentChatInEmptyWorkspace(
     worktreeId,
     launchSource: 'unknown',
     agentSessionLaunchPlan,
-    pendingActivationSpawn: true
+    pendingActivationSpawn: true,
+    ...(launchAccountId ? { launchAccountId } : {})
   })
   if (!result) {
     return null

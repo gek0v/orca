@@ -80,7 +80,8 @@ export type PreparedQuickSubmit = QuickSubmitSource & {
 export type ComposerSubmitModel = {
   executeFullCreation: (
     resolution: PendingSmartGitHubSubmitResolution,
-    repoId: string
+    repoId: string,
+    overrideLaunchAccountId?: string | null
   ) => Promise<void>
   executeQuickCreation: (
     resolution: PendingSmartGitHubSubmitResolution,

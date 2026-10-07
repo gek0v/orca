@@ -175,7 +175,9 @@ export function AntigravityAccountEditDialog({
                     className="size-7 rounded-full transition-transform focus:outline-none"
                     style={{
                       backgroundColor: preset.value,
-                      boxShadow: isSelected ? `0 0 0 2px var(--background), 0 0 0 4px ${preset.value}` : undefined,
+                      boxShadow: isSelected
+                        ? `0 0 0 2px var(--background), 0 0 0 4px ${preset.value}`
+                        : undefined,
                       transform: isSelected ? 'scale(1.15)' : 'scale(1)'
                     }}
                   />

@@ -12,6 +12,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { getAgentCatalog, AgentIcon } from '@/lib/agent-catalog'
+import { AntigravityAccountSelector } from '@/components/agent/AntigravityAccountSelector'
 import { planSourceControlTextGeneration } from '@/lib/source-control-generation-plan'
 import {
   CUSTOM_AGENT_ID,
@@ -24,6 +25,7 @@ import type { SourceControlTextActionId } from '../../../../../../shared/source-
 import type { SourceControlAiWriteTarget } from '../../../../../../shared/source-control-ai-recipe-save'
 import type { GlobalSettings } from '../../../../../../shared/global-settings-types'
 import type { Repo } from '../../../../../../shared/repo-types'
+import { isTuiAgent } from '../../../../../../shared/tui-agent-config'
 import type { TuiAgent } from '../../../../../../shared/tui-agent'
 import { toast } from 'sonner'
 import { SourceControlActionVariableChips } from '../../../source-control/SourceControlActionVariableChips'
@@ -52,6 +54,8 @@ type SourceControlTextGenerationDialogFormProps = {
   /** Omitted by workspace-less callers (Settings dry-run); `null` means "linked to nothing". */
   linkedIssue?: number | null
   saveTargets: SourceControlTextGenerationSaveTarget[]
+  launchAccountId?: string | null
+  onLaunchAccountIdChange?: (accountId: string | null) => void
   onGenerate: (params: ResolvedSourceControlAiGenerationParams) => void
   onOpenChange: (open: boolean) => void
   onSaveDefaults: (
@@ -87,6 +91,8 @@ export function SourceControlTextGenerationDialogForm({
   basePromptPreview,
   linkedIssue,
   saveTargets,
+  launchAccountId: externalLaunchAccountId,
+  onLaunchAccountIdChange: externalOnLaunchAccountIdChange,
   onGenerate,
   onOpenChange,
   onSaveDefaults
@@ -97,6 +103,19 @@ export function SourceControlTextGenerationDialogForm({
   )
   const [agentId, setAgentId] = useState<CommitMessageGenerationAgentChoice>(
     baseParams?.agentId ?? ''
+  )
+  const [internalLaunchAccountId, setInternalLaunchAccountId] = useState<string | null>(
+    externalLaunchAccountId ?? null
+  )
+  const launchAccountId =
+    externalLaunchAccountId !== undefined ? externalLaunchAccountId : internalLaunchAccountId
+
+  const handleLaunchAccountIdChange = useCallback(
+    (nextAccountId: string | null) => {
+      setInternalLaunchAccountId(nextAccountId)
+      externalOnLaunchAccountIdChange?.(nextAccountId)
+    },
+    [externalOnLaunchAccountIdChange]
   )
   const [commandTemplate, setCommandTemplate] = useState(
     baseParams?.commandInputTemplate ?? '{basePrompt}'
@@ -226,7 +245,12 @@ export function SourceControlTextGenerationDialogForm({
               if (value === UNCONFIGURED_AGENT_SELECT_VALUE) {
                 return
               }
-              setAgentId(value === CUSTOM_AGENT_ID ? CUSTOM_AGENT_ID : (value as TuiAgent))
+              const nextAgentId =
+                value === CUSTOM_AGENT_ID ? CUSTOM_AGENT_ID : isTuiAgent(value) ? value : ''
+              setAgentId(nextAgentId)
+              if (nextAgentId !== 'antigravity') {
+                handleLaunchAccountIdChange(null)
+              }
               setGenerationError(null)
             }}
           >
@@ -260,6 +284,12 @@ export function SourceControlTextGenerationDialogForm({
               ) : null}
             </SelectContent>
           </Select>
+          {agentId === 'antigravity' ? (
+            <AntigravityAccountSelector
+              value={launchAccountId}
+              onValueChange={handleLaunchAccountIdChange}
+            />
+          ) : null}
         </div>
 
         <div className="space-y-2">

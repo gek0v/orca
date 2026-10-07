@@ -3,6 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import type { TerminalQuickCommand } from '../../../../shared/terminal-quick-command-types'
 import { TerminalQuickCommandDialog } from './TerminalQuickCommandDialog'
 
@@ -10,7 +11,10 @@ const mountedRoots: Root[] = []
 
 async function renderDialog(
   command: TerminalQuickCommand,
-  props: { defaultAdvancedOpen?: boolean } = {}
+  props: {
+    defaultAdvancedOpen?: boolean
+    onSave?: (command: TerminalQuickCommand) => void
+  } = {}
 ): Promise<void> {
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -26,7 +30,7 @@ async function renderDialog(
         repos={[]}
         defaultAdvancedOpen={props.defaultAdvancedOpen}
         onOpenChange={vi.fn()}
-        onSave={vi.fn()}
+        onSave={props.onSave ?? vi.fn()}
       />
     )
   })
@@ -168,5 +172,115 @@ describe('TerminalQuickCommandDialog animation structure', () => {
     const advancedToggle = document.body.querySelector('[aria-expanded="true"]')
     expect(advancedToggle?.textContent).toContain('Advanced')
     expect(document.body.textContent).not.toMatch(/Advanced\s*·\s*Global/)
+  })
+
+  it('renders AntigravityAccountSelector when agent is antigravity', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user1@example.com',
+          subject: '123',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    await renderDialog({
+      id: 'qc-anti',
+      label: 'Ask Antigravity',
+      action: 'agent-prompt',
+      agent: 'antigravity',
+      prompt: 'Fix tests',
+      scope: { type: 'global' }
+    })
+
+    const selector = document.body.querySelector(
+      '[data-testid="antigravity-account-selector-trigger"]'
+    )
+    expect(selector).not.toBeNull()
+  })
+
+  it('does not render AntigravityAccountSelector when agent is not antigravity', async () => {
+    await renderDialog({
+      id: 'qc-claude',
+      label: 'Ask Claude',
+      action: 'agent-prompt',
+      agent: 'claude',
+      prompt: 'Fix tests',
+      scope: { type: 'global' }
+    })
+
+    const selector = document.body.querySelector(
+      '[data-testid="antigravity-account-selector-trigger"]'
+    )
+    expect(selector).toBeNull()
+  })
+
+  it('saves launchAccountId when antigravity command is saved', async () => {
+    const onSave = vi.fn()
+    await renderDialog(
+      {
+        id: 'qc-anti-saved',
+        label: 'Ask Antigravity',
+        action: 'agent-prompt',
+        agent: 'antigravity',
+        prompt: 'Fix tests',
+        launchAccountId: 'acc-1',
+        scope: { type: 'global' }
+      },
+      { onSave }
+    )
+
+    const buttons = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
+    const saveButton = buttons.find((btn) => btn.textContent?.includes('Save'))
+    expect(saveButton).toBeDefined()
+    await act(async () => {
+      saveButton?.click()
+    })
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'qc-anti-saved',
+        action: 'agent-prompt',
+        agent: 'antigravity',
+        launchAccountId: 'acc-1'
+      })
+    )
+  })
+
+  it('does not include launchAccountId when saved with a non-antigravity agent', async () => {
+    const onSave = vi.fn()
+    await renderDialog(
+      {
+        id: 'qc-claude-saved',
+        label: 'Ask Claude',
+        action: 'agent-prompt',
+        agent: 'claude',
+        prompt: 'Fix tests',
+        scope: { type: 'global' }
+      },
+      { onSave }
+    )
+
+    const buttons = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button'))
+    const saveButton = buttons.find((btn) => btn.textContent?.includes('Save'))
+    expect(saveButton).toBeDefined()
+    await act(async () => {
+      saveButton?.click()
+    })
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        launchAccountId: expect.anything()
+      })
+    )
   })
 })

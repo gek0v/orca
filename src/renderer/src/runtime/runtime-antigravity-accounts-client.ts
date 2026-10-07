@@ -32,10 +32,5 @@ export async function callAntigravityAccounts(
       : typeof payload === 'string'
         ? { target, accountId: payload }
         : { target, ...payload }
-  return callRuntimeRpc(
-    owner,
-    `accounts.antigravity${action}`,
-    params,
-    { timeoutMs: 20_000 }
-  )
+  return callRuntimeRpc(owner, `accounts.antigravity${action}`, params, { timeoutMs: 20_000 })
 }

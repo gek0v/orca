@@ -245,7 +245,12 @@ describe('snapshot-rollups', () => {
     expect(byModel[0]?.totalTokens).toBe(3000)
     expect(byModel[0]?.sessions).toBe(1)
 
-    const byProject = buildAntigravityUsageBreakdownRows('project', 'all', sampleDaily, sampleSessions)
+    const byProject = buildAntigravityUsageBreakdownRows(
+      'project',
+      'all',
+      sampleDaily,
+      sampleSessions
+    )
     expect(byProject).toHaveLength(2)
     expect(byProject[0]?.key).toBe('proj-2')
     expect(byProject[0]?.sessions).toBe(1)

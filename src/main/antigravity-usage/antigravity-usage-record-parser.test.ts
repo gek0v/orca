@@ -20,15 +20,9 @@ describe('antigravity-usage-record-parser', () => {
   })
 
   it('normalizes target files relative to cwd', () => {
-    expect(
-      normalizeTargetFile('C:/project/src/index.ts', 'C:/project')
-    ).toBe('src/index.ts')
-    expect(
-      normalizeTargetFile('"C:\\project\\src\\App.tsx"', 'C:/project')
-    ).toBe('src/App.tsx')
-    expect(
-      normalizeTargetFile('relative/path.ts', null)
-    ).toBe('relative/path.ts')
+    expect(normalizeTargetFile('C:/project/src/index.ts', 'C:/project')).toBe('src/index.ts')
+    expect(normalizeTargetFile('"C:\\project\\src\\App.tsx"', 'C:/project')).toBe('src/App.tsx')
+    expect(normalizeTargetFile('relative/path.ts', null)).toBe('relative/path.ts')
   })
 
   it('parses a model planner response step with tokens and tool calls', () => {

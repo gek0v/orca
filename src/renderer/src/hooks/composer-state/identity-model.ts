@@ -54,4 +54,6 @@ export type ComposerIdentityModel = {
   ) => Promise<TuiAgent[]>
   ensureRuntimeDetectedAgents: (environmentId: string) => Promise<TuiAgent[]>
   detectedAgentIds: Set<TuiAgent> | null
+  launchAccountId: string | null
+  setLaunchAccountId: React.Dispatch<React.SetStateAction<string | null>>
 }

@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { AGENT_CATALOG, AgentIcon } from '@/lib/agent-catalog'
 import { AGENT_FAVICON_ASSETS } from '@/lib/agent-favicon-assets'
-import AgentCombobox from './AgentCombobox'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
+import AgentCombobox, { PairedAgentAccountSelector } from './AgentCombobox'
 
 afterEach(cleanup)
 
@@ -206,5 +207,108 @@ describe('AgentCombobox', () => {
       expect(markup).toContain(`/shared/agent-icons/${iconName}.png`)
       expect(markup).not.toContain('https://www.google.com/s2/favicons')
     }
+  })
+
+  it('renders paired AntigravityAccountSelector when agent is antigravity and onLaunchAccountIdChange is provided', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user@example.com',
+          subject: '123',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    const onLaunchAccountIdChange = vi.fn()
+    render(
+      <AgentCombobox
+        agents={AGENT_CATALOG}
+        value="antigravity"
+        onValueChange={vi.fn()}
+        launchAccountId={null}
+        onLaunchAccountIdChange={onLaunchAccountIdChange}
+      />
+    )
+
+    expect(screen.getByTestId('agent-combobox-with-account')).toBeDefined()
+    expect(screen.getByTestId('antigravity-account-selector-trigger')).toBeDefined()
+    expect(screen.getByText('Current active account (Personal · user@example.com)')).toBeDefined()
+  })
+
+  it('does not render AntigravityAccountSelector when agent is not antigravity', () => {
+    render(
+      <AgentCombobox
+        agents={AGENT_CATALOG}
+        value="codex"
+        onValueChange={vi.fn()}
+        launchAccountId="acc-1"
+        onLaunchAccountIdChange={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('agent-combobox-with-account')).toBeNull()
+    expect(screen.queryByTestId('antigravity-account-selector-trigger')).toBeNull()
+  })
+
+  it('resets launchAccountId to null when switching agent away from antigravity', () => {
+    const onValueChange = vi.fn()
+    const onLaunchAccountIdChange = vi.fn()
+    render(
+      <AgentCombobox
+        agents={AGENT_CATALOG}
+        value="antigravity"
+        onValueChange={onValueChange}
+        launchAccountId="acc-1"
+        onLaunchAccountIdChange={onLaunchAccountIdChange}
+      />
+    )
+
+    const triggers = screen.getAllByRole('combobox')
+    fireEvent.click(triggers[0])
+    fireEvent.click(screen.getByRole('option', { name: 'Claude' }))
+
+    expect(onValueChange).toHaveBeenCalledWith('claude')
+    expect(onLaunchAccountIdChange).toHaveBeenCalledWith(null)
+  })
+
+  it('renders correctly using PairedAgentAccountSelector alias', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user@example.com',
+          subject: '123',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    render(
+      <PairedAgentAccountSelector
+        agents={AGENT_CATALOG}
+        value="antigravity"
+        onValueChange={vi.fn()}
+        launchAccountId="acc-1"
+        onLaunchAccountIdChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('agent-combobox-with-account')).toBeDefined()
   })
 })

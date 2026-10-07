@@ -48,7 +48,8 @@ function ensureFolderWorkspaceInitialTerminal(
   folderWorkspace: FolderWorkspace,
   startup?: WorktreeStartupPayload,
   providesInitialSurface?: boolean,
-  seedUserDefaultSurface?: boolean
+  seedUserDefaultSurface?: boolean,
+  launchAccountId?: string
 ): string | null {
   if (providesInitialSurface === true && startup === undefined) {
     return null
@@ -64,7 +65,8 @@ function ensureFolderWorkspaceInitialTerminal(
     undefined,
     {
       reseedEmptiedWorkspace: providesInitialSurface !== true,
-      ...(seedUserDefaultSurface ? { seedUserDefaultSurface: true } : {})
+      ...(seedUserDefaultSurface ? { seedUserDefaultSurface: true } : {}),
+      ...(launchAccountId ? { launchAccountId } : {})
     }
   )
   return primaryTabId
@@ -87,6 +89,7 @@ export function activateAndRevealFolderWorkspace(
     startup?: WorktreeStartupPayload
     runtimeEnvironmentId?: string | null
     executionHostId?: ExecutionHostId
+    launchAccountId?: string
   }
 ): ActivateAndRevealResult | false {
   const state = useAppStore.getState()
@@ -162,7 +165,8 @@ export function activateAndRevealFolderWorkspace(
         folderWorkspace,
         opts?.startup,
         providesInitialSurface,
-        seedUserDefaultSurface
+        seedUserDefaultSurface,
+        opts?.launchAccountId
       )
 
   if (opts?.showWorkspaceList) {
@@ -280,6 +284,7 @@ export function activateAndRevealWorktree(
           {
             ...(opts?.backendStartupTerminalSpawned ? { backendStartupTerminalSpawned: true } : {}),
             ...(opts?.createNewTerminalForStartup ? { createNewTerminalForStartup: true } : {}),
+            ...(opts?.launchAccountId ? { launchAccountId: opts.launchAccountId } : {}),
             ...(providesInitialSurface ? { callerProvidesSurface: true } : {}),
             ...(seedUserDefaultSurface ? { seedUserDefaultSurface: true } : {}),
             reseedEmptiedWorkspace: !providesInitialSurface

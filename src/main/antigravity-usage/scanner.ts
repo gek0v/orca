@@ -17,10 +17,7 @@ import {
   parseAntigravityTranscriptLine,
   type AntigravityTranscriptContext
 } from './antigravity-usage-record-parser'
-import {
-  ANTIGRAVITY_TOOL_CATEGORIES,
-  emptyAntigravityToolCategoryCounts
-} from './snapshot-rollups'
+import { ANTIGRAVITY_TOOL_CATEGORIES, emptyAntigravityToolCategoryCounts } from './snapshot-rollups'
 import type {
   AntigravityUsageAttributedEvent,
   AntigravityUsageDailyAggregate,
@@ -183,9 +180,7 @@ export async function scanAntigravityUsageFiles(
       const fileStat = await stat(session.transcriptPath)
       const previous = previousByPath.get(session.transcriptPath)
       fileInfo =
-        previous &&
-        previous.mtimeMs === fileStat.mtimeMs &&
-        previous.size === fileStat.size
+        previous && previous.mtimeMs === fileStat.mtimeMs && previous.size === fileStat.size
           ? previous
           : await parseAntigravityUsageFile(session, resolveWorktree)
     } catch {

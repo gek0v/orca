@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   CheckCircle2,
   Info,
@@ -22,13 +22,13 @@ import {
 import type { AgentCatalogEntry } from '@/lib/agent-catalog'
 import { cn } from '@/lib/utils'
 import type { SourceControlLaunchActionId } from '../../../../shared/source-control-ai-actions'
-import type { SourceControlAiWriteTarget } from '../../../../shared/source-control-ai-recipe-save'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { Repo } from '../../../../shared/repo-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { SourceControlAgentCliArgsField } from './SourceControlAgentCliArgsField'
 import { SourceControlActionVariableChips } from '../source-control/SourceControlActionVariableChips'
 import { sourceControlActionRecipeMatchesTarget } from './source-control-action-recipe-match'
+import { resolveSourceControlAgentSaveTarget } from './source-control-agent-action-dialog-support'
 import type { SourceControlAgentScopeNote } from './source-control-agent-action-dialog-result'
 import { translate } from '@/i18n/i18n'
 
@@ -61,6 +61,8 @@ type SourceControlAgentActionDialogFormProps = {
   canStart: boolean
   isStarting: boolean
   startLabel: string
+  launchAccountId?: string | null
+  onLaunchAccountIdChange?: (accountId: string | null) => void
   onSelectedAgentChange: (agent: TuiAgent | null) => void
   onAgentArgsChange: (value: string) => void
   onCommandTemplateChange: (value: string) => void
@@ -69,19 +71,6 @@ type SourceControlAgentActionDialogFormProps = {
   onOpenSettings?: () => void
   onCancel: () => void
   onStart: () => void
-}
-
-function sourceControlLaunchSaveTargetFromValue(
-  value: string,
-  repo: Pick<Repo, 'id'> | null
-): SourceControlAiWriteTarget | null {
-  if (value === 'repo' && repo?.id) {
-    return { type: 'repo', repoId: repo.id }
-  }
-  if (value === 'global') {
-    return { type: 'global' }
-  }
-  return null
 }
 
 export function SourceControlAgentActionDialogForm({
@@ -107,6 +96,8 @@ export function SourceControlAgentActionDialogForm({
   canStart,
   isStarting,
   startLabel,
+  launchAccountId: externalLaunchAccountId,
+  onLaunchAccountIdChange: externalOnLaunchAccountIdChange,
   onSelectedAgentChange,
   onAgentArgsChange,
   onCommandTemplateChange,
@@ -116,6 +107,20 @@ export function SourceControlAgentActionDialogForm({
   onCancel,
   onStart
 }: SourceControlAgentActionDialogFormProps): React.JSX.Element {
+  const [internalLaunchAccountId, setInternalLaunchAccountId] = useState<string | null>(
+    externalLaunchAccountId ?? null
+  )
+  const launchAccountId =
+    externalLaunchAccountId !== undefined ? externalLaunchAccountId : internalLaunchAccountId
+
+  const handleLaunchAccountIdChange = useCallback(
+    (nextAccountId: string | null) => {
+      setInternalLaunchAccountId(nextAccountId)
+      externalOnLaunchAccountIdChange?.(nextAccountId)
+    },
+    [externalOnLaunchAccountIdChange]
+  )
+
   const defaultCommandTemplate = savedCommandInputTemplate ?? '{basePrompt}'
   const commandTemplateIncludesBasePrompt = commandTemplate.includes('{basePrompt}')
   const selectedRecipe = selectedAgent
@@ -125,7 +130,7 @@ export function SourceControlAgentActionDialogForm({
         agentArgs
       }
     : null
-  const selectedSaveTarget = sourceControlLaunchSaveTargetFromValue(saveTargetValue, repo)
+  const selectedSaveTarget = resolveSourceControlAgentSaveTarget(saveTargetValue, repo?.id)
   // Why: start/save only writes the selected target, so the dialog copy must not
   // depend on whether other available targets also match.
   const selectedLaunchRecipeAlreadySaved = Boolean(
@@ -166,6 +171,8 @@ export function SourceControlAgentActionDialogForm({
               onValueChange={onSelectedAgentChange}
               allowNarrowTrigger
               triggerClassName="w-full"
+              launchAccountId={launchAccountId}
+              onLaunchAccountIdChange={handleLaunchAccountIdChange}
             />
           ) : (
             <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

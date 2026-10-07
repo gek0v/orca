@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { AntigravityAccountSelector } from '@/components/agent/AntigravityAccountSelector'
 import { AgentIcon } from '@/lib/agent-catalog'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
@@ -81,13 +82,22 @@ export function TerminalQuickCommandContentSection({
               value={selectedAgent}
               disabled={!isAgentAction}
               onValueChange={(agent) => {
-                const nextAgent = agent as TuiAgent
+                if (!supportsTerminalAgentQuickCommand(agent)) {
+                  return
+                }
+                const nextAgent = agent
                 draftMemoryRef.current = {
                   ...draftMemoryRef.current,
                   agent: nextAgent
                 }
                 setDraft((current) =>
-                  isTerminalAgentQuickCommand(current) ? { ...current, agent: nextAgent } : current
+                  isTerminalAgentQuickCommand(current)
+                    ? {
+                        ...current,
+                        agent: nextAgent,
+                        ...(nextAgent !== 'antigravity' ? { launchAccountId: null } : {})
+                      }
+                    : current
                 )
               }}
             >
@@ -129,6 +139,17 @@ export function TerminalQuickCommandContentSection({
                 })}
               </SelectContent>
             </Select>
+            {isAgentAction && selectedAgent === 'antigravity' ? (
+              <AntigravityAccountSelector
+                value={isTerminalAgentQuickCommand(draft) ? draft.launchAccountId : undefined}
+                disabled={!isAgentAction}
+                onValueChange={(launchAccountId) => {
+                  setDraft((current) =>
+                    isTerminalAgentQuickCommand(current) ? { ...current, launchAccountId } : current
+                  )
+                }}
+              />
+            ) : null}
           </div>
         </div>
       </div>

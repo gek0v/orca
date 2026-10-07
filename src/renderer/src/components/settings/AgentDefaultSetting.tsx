@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Check, Terminal } from 'lucide-react'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { AgentCatalogEntry } from '@/lib/agent-catalog'
 import { AgentIcon } from '@/lib/agent-catalog'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
+import { AntigravityAccountSelector } from '@/components/agent/AntigravityAccountSelector'
 import { SettingsSubsectionHeader } from './SettingsFormControls'
 
 function DefaultAgentPill({
@@ -41,7 +43,11 @@ export function AgentDefaultSetting({
   enabledDetectedAgents,
   catalog,
   description,
-  onSetDefault
+  onSetDefault,
+  defaultAntigravityAccountId,
+  onSetDefaultAntigravityAccountId,
+  antigravityAccountId,
+  onAntigravityAccountIdChange
 }: {
   defaultAgent: TuiAgent | 'blank' | null
   detectedIds: Set<string> | null
@@ -49,7 +55,23 @@ export function AgentDefaultSetting({
   catalog: AgentCatalogEntry[]
   description: string
   onSetDefault: (agent: TuiAgent | 'blank' | null) => void
+  defaultAntigravityAccountId?: string | null
+  onSetDefaultAntigravityAccountId?: (accountId: string | null) => void
+  antigravityAccountId?: string | null
+  onAntigravityAccountIdChange?: (accountId: string | null) => void
 }): React.JSX.Element {
+  const [internalAccountId, setInternalAccountId] = useState<string | null>(null)
+  const controlledAccountId =
+    defaultAntigravityAccountId !== undefined ? defaultAntigravityAccountId : antigravityAccountId
+  const effectiveAccountId =
+    controlledAccountId !== undefined ? controlledAccountId : internalAccountId
+
+  const handleAccountChange = (accountId: string | null): void => {
+    setInternalAccountId(accountId)
+    onSetDefaultAntigravityAccountId?.(accountId)
+    onAntigravityAccountIdChange?.(accountId)
+  }
+
   const storedDefaultAgent =
     defaultAgent !== null && defaultAgent !== 'blank'
       ? catalog.find((agent) => agent.id === defaultAgent)
@@ -99,6 +121,14 @@ export function AgentDefaultSetting({
           )
         })}
       </div>
+      {defaultAgent === 'antigravity' ? (
+        <div className="w-full max-w-xs">
+          <AntigravityAccountSelector
+            value={effectiveAccountId}
+            onValueChange={handleAccountChange}
+          />
+        </div>
+      ) : null}
     </section>
   )
 }

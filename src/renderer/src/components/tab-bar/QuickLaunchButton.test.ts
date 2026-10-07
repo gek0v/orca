@@ -96,7 +96,12 @@ vi.mock('@/runtime/runtime-antigravity-accounts-client', () => ({
           updatedAt: 0
         }
       ],
-      currentAccount: { email: 'test@gmail.com', subject: 'sub-1', authMethod: 'oauth', identityKnown: true },
+      currentAccount: {
+        email: 'test@gmail.com',
+        subject: 'sub-1',
+        authMethod: 'oauth',
+        identityKnown: true
+      },
       activeAccountId: 'acc-1',
       selectedAccountId: 'acc-1'
     })

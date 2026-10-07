@@ -136,18 +136,12 @@ export function AntigravityUsagePane(): React.JSX.Element {
         'auto.components.stats.AntigravityUsagePane.optionsLabel',
         'Antigravity usage options'
       )}
-      filtersLabel={translate(
-        'auto.components.stats.AntigravityUsagePane.filtersLabel',
-        'Filters'
-      )}
+      filtersLabel={translate('auto.components.stats.AntigravityUsagePane.filtersLabel', 'Filters')}
       refreshAriaLabel={translate(
         'auto.components.stats.AntigravityUsagePane.refreshAria',
         'Refresh Antigravity usage'
       )}
-      refreshLabel={translate(
-        'auto.components.stats.AntigravityUsagePane.refreshLabel',
-        'Refresh'
-      )}
+      refreshLabel={translate('auto.components.stats.AntigravityUsagePane.refreshLabel', 'Refresh')}
       filterSections={[
         <UsageFilterRadioGroup
           key="scope"
@@ -179,17 +173,26 @@ export function AntigravityUsagePane(): React.JSX.Element {
       <>
         <div className="grid gap-3 md:grid-cols-3">
           <StatCard
-            label={translate('auto.components.stats.AntigravityUsagePane.inputTokens', 'Input tokens')}
+            label={translate(
+              'auto.components.stats.AntigravityUsagePane.inputTokens',
+              'Input tokens'
+            )}
             value={formatTokens(summary?.inputTokens ?? 0)}
             icon={<Sparkles className="size-4" />}
           />
           <StatCard
-            label={translate('auto.components.stats.AntigravityUsagePane.outputTokens', 'Output tokens')}
+            label={translate(
+              'auto.components.stats.AntigravityUsagePane.outputTokens',
+              'Output tokens'
+            )}
             value={formatTokens(summary?.outputTokens ?? 0)}
             icon={<Activity className="size-4" />}
           />
           <StatCard
-            label={translate('auto.components.stats.AntigravityUsagePane.cachedInput', 'Cached input')}
+            label={translate(
+              'auto.components.stats.AntigravityUsagePane.cachedInput',
+              'Cached input'
+            )}
             value={formatTokens(summary?.cachedInputTokens ?? 0)}
             icon={<DatabaseZap className="size-4" />}
           />

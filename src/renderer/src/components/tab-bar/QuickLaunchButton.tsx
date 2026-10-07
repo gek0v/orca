@@ -249,7 +249,10 @@ function QuickLaunchAgentMenuItemsInner({
           toast.error(
             cause instanceof Error
               ? cause.message
-              : translate('accounts.antigravity.switchFailed', 'Could not switch Antigravity account')
+              : translate(
+                  'accounts.antigravity.switchFailed',
+                  'Could not switch Antigravity account'
+                )
           )
           return
         }
@@ -321,7 +324,10 @@ function QuickLaunchAgentMenuItemsInner({
                       >
                         <span className="flex items-center gap-2 truncate">
                           {acc.emoji ? (
-                            <span className="text-[12px] leading-none select-none" data-account-emoji={acc.emoji}>
+                            <span
+                              className="text-[12px] leading-none select-none"
+                              data-account-emoji={acc.emoji}
+                            >
                               {acc.emoji}
                             </span>
                           ) : (
@@ -346,7 +352,10 @@ function QuickLaunchAgentMenuItemsInner({
                   >
                     <span className="flex items-center gap-2 truncate">
                       {activeSummary?.emoji ? (
-                        <span className="text-[12px] leading-none select-none" data-account-emoji={activeSummary.emoji}>
+                        <span
+                          className="text-[12px] leading-none select-none"
+                          data-account-emoji={activeSummary.emoji}
+                        >
                           {activeSummary.emoji}
                         </span>
                       ) : (
