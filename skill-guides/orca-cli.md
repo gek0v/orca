@@ -170,15 +170,17 @@ ORCA goal set "<title>" [--description "<desc>"] [--validation "<cmd>"] [--workt
 ORCA goal create "<title>" [--description "<desc>"] [--validation "<cmd>"] [--worktree <path>] [--json]
 ORCA goal add-task "<title>" [--worktree <path>] [--json]
 ORCA goal complete <id-or-index> [--worktree <path>] [--json]
+ORCA goal assign-worker <id-or-index> --agent <agent> [--status <idle|starting|running|completed|failed>] [--dispatch-id <id>] [--worktree <path>] [--json]
 ORCA goal validate [--worktree <path>] [--json]
 ```
 
 Goal rules:
 
-- `ORCA goal status` prints the active goal, its status (`pending`, `in_progress`, `in_verification`, `completed`, `failed`), all subtasks with 1-based indexes, and validation status.
-- `ORCA goal set <title>` (or `ORCA goal create <title>`) creates and immediately activates a new goal. Optional `--description` explains the intent; optional `--validation` sets a shell command (e.g. test or typecheck) to verify completion.
+- `ORCA goal status` prints the active goal, its status (`pending`, `in_progress`, `in_verification`, `completed`, `failed`), all subtasks with 1-based indexes, assigned workers, and validation status.
+- `ORCA goal set <title>` (or `ORCA goal create <title>`) creates and immediately activates a new goal. Optional `--description` explains the intent; optional `--validation` sets a shell command (e.g. test or typecheck) to verify completion. Goals can also be generated with AI assistance from Orca UI's `CreateGoalDialog` and `DockedGoalBar`.
 - `ORCA goal add-task <title>` appends a new pending subtask to the active goal and refreshes `.orca/CURRENT_GOAL.md`.
 - `ORCA goal complete <id-or-index>` marks a subtask as completed. It accepts either the 1-based index (e.g. `ORCA goal complete 1`) or the unique task ID (e.g. `ORCA goal complete task-123`).
+- `ORCA goal assign-worker <id-or-index> --agent <agent>` binds an autonomous worker/agent (e.g. `codex`, `claude`, `antigravity`) to a subtask with its execution status (`idle`, `starting`, `running`, `completed`, `failed`). Setting `--status completed` automatically resolves and completes the subtask.
 - `ORCA goal validate` runs the goal's configured validation command in the worktree directory, captures stdout/stderr, updates validation status (`success` or `failed`), and logs output to `.orca/last_validation.log`.
 - All `ORCA goal` commands support `--worktree <path>` to target another worktree, and `--json` for structured machine output.
 

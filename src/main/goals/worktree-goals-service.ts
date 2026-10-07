@@ -232,7 +232,10 @@ export class WorktreeGoalsService {
     } else {
       activeGoal.subtasks.forEach((task, index) => {
         const marker = task.completed ? '- [x]' : '- [ ]'
-        sections.push(`${marker} ${index + 1}. ${task.title}`)
+        const workerSuffix = task.worker
+          ? ` *(Worker: ${task.worker.agent} [${task.worker.status}])*`
+          : ''
+        sections.push(`${marker} ${index + 1}. ${task.title}${workerSuffix}`)
       })
     }
 

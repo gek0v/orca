@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { GoalSubtaskWorkerBadge } from './GoalSubtaskWorkerBadge'
 
 export const GOAL_STATUS_ENTRIES = [
   { status: 'pending', label: 'Pendiente' },
@@ -45,6 +46,7 @@ export type GoalCardProps = {
   onAddSubtask: (goal: Goal, title: string) => void
   onRemoveSubtask: (goal: Goal, subtaskId: string) => void
   onRunValidation: (goalId: string) => void
+  onAssignWorker?: (goalId: string, subtaskId: string, agent: string) => void
 }
 
 export function GoalCard({
@@ -57,7 +59,8 @@ export function GoalCard({
   onToggleSubtask,
   onAddSubtask,
   onRemoveSubtask,
-  onRunValidation
+  onRunValidation,
+  onAssignWorker
 }: GoalCardProps): React.JSX.Element {
   const [inlineTitle, setInlineTitle] = useState('')
   const [isOutputOpen, setIsOutputOpen] = useState(false)
@@ -161,7 +164,7 @@ export function GoalCard({
               {goal.subtasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex items-center justify-between group rounded-md px-2 py-1 hover:bg-muted/40 transition-colors"
+                  className="flex items-center justify-between group rounded-md px-2 py-1 hover:bg-muted/40 transition-colors gap-2"
                 >
                   <label className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
                     <Checkbox
@@ -179,14 +182,24 @@ export function GoalCard({
                       {task.title}
                     </span>
                   </label>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => onRemoveSubtask(goal, task.id)}
-                    title="Eliminar tarea"
-                  >
-                    <X className="size-3" />
-                  </Button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <GoalSubtaskWorkerBadge
+                      worker={task.worker}
+                      onAssignWorker={
+                        onAssignWorker
+                          ? (agent) => onAssignWorker(goal.id, task.id, agent)
+                          : undefined
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => onRemoveSubtask(goal, task.id)}
+                      title="Eliminar tarea"
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

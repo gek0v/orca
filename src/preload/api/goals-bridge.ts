@@ -8,7 +8,9 @@ import {
   type GoalsRunValidationRequest,
   type GoalsSetActiveRequest,
   type GoalsToggleSubtaskRequest,
-  type GoalsUpdateGoalRequest
+  type GoalsUpdateGoalRequest,
+  type GoalsGenerateAiRequest,
+  type GoalsAssignWorkerRequest
 } from '../../shared/goals/goals-ipc'
 import type { GoalsApi } from './goals-api'
 
@@ -26,6 +28,10 @@ export const goalsApi = {
     ipcRenderer.invoke(GOALS_IPC_CHANNELS.DELETE_GOAL, args),
   runValidation: (args: GoalsRunValidationRequest) =>
     ipcRenderer.invoke(GOALS_IPC_CHANNELS.RUN_VALIDATION, args),
+  generateWithAi: (args: GoalsGenerateAiRequest) =>
+    ipcRenderer.invoke(GOALS_IPC_CHANNELS.GENERATE_AI, args),
+  assignWorker: (args: GoalsAssignWorkerRequest) =>
+    ipcRenderer.invoke(GOALS_IPC_CHANNELS.ASSIGN_WORKER, args),
   onChanged: (callback: (event: GoalsChangedEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, data: GoalsChangedEvent) => callback(data)
     ipcRenderer.on(GOALS_IPC_CHANNELS.CHANGED, listener)

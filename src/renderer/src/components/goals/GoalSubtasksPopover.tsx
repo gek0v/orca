@@ -6,17 +6,20 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { GoalSubtaskWorkerBadge } from './GoalSubtaskWorkerBadge'
 
 export type GoalSubtasksPopoverProps = {
   subtasks: GoalSubtask[]
   onToggleSubtask: (subtaskId: string, completed: boolean) => void
   onAddSubtask?: (title: string) => void
+  onAssignWorker?: (subtaskId: string, agent: string) => void
 }
 
 export function GoalSubtasksPopover({
   subtasks,
   onToggleSubtask,
-  onAddSubtask
+  onAddSubtask,
+  onAssignWorker
 }: GoalSubtasksPopoverProps): React.JSX.Element {
   const [newTitle, setNewTitle] = useState('')
   const completedCount = subtasks.filter((s) => s.completed).length
@@ -40,7 +43,7 @@ export function GoalSubtasksPopover({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72" align="start">
+      <PopoverContent className="w-80" align="start">
         <div className="p-3 text-xs">
           <div className="mb-2 flex items-center justify-between font-medium">
             <span>Subtareas</span>
@@ -49,29 +52,37 @@ export function GoalSubtasksPopover({
             </span>
           </div>
 
-          <div className="max-h-48 space-y-1.5 overflow-y-auto scrollbar-sleek pr-1">
+          <div className="max-h-52 space-y-1.5 overflow-y-auto scrollbar-sleek pr-1">
             {subtasks.length === 0 ? (
               <p className="py-2 text-center text-muted-foreground">No hay subtareas definidas.</p>
             ) : (
               subtasks.map((subtask) => (
-                <label
+                <div
                   key={subtask.id}
-                  className="flex cursor-pointer items-start gap-2 rounded p-1 hover:bg-muted/50"
+                  className="flex items-center justify-between gap-1.5 rounded p-1 hover:bg-muted/50"
                 >
-                  <Checkbox
-                    checked={subtask.completed}
-                    onCheckedChange={(checked) => onToggleSubtask(subtask.id, Boolean(checked))}
-                    className="mt-0.5"
+                  <label className="flex cursor-pointer items-start gap-2 flex-1 min-w-0">
+                    <Checkbox
+                      checked={subtask.completed}
+                      onCheckedChange={(checked) => onToggleSubtask(subtask.id, Boolean(checked))}
+                      className="mt-0.5"
+                    />
+                    <span
+                      className={cn(
+                        'select-none text-xs leading-tight',
+                        subtask.completed && 'line-through text-muted-foreground'
+                      )}
+                    >
+                      {subtask.title}
+                    </span>
+                  </label>
+                  <GoalSubtaskWorkerBadge
+                    worker={subtask.worker}
+                    onAssignWorker={
+                      onAssignWorker ? (agent) => onAssignWorker(subtask.id, agent) : undefined
+                    }
                   />
-                  <span
-                    className={cn(
-                      'select-none text-xs leading-tight',
-                      subtask.completed && 'line-through text-muted-foreground'
-                    )}
-                  >
-                    {subtask.title}
-                  </span>
-                </label>
+                </div>
               ))
             )}
           </div>

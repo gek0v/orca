@@ -10,6 +10,7 @@ import {
   GOAL_COMPLETE_COMMAND_SPEC,
   GOAL_VALIDATE_COMMAND_SPEC,
   GOAL_ADD_TASK_COMMAND_SPEC,
+  GOAL_ASSIGN_WORKER_COMMAND_SPEC,
   GOALS_COMMAND_SPECS
 } from './goals'
 import { COMMAND_SPECS } from './index'
@@ -41,6 +42,10 @@ describe('GOALS_COMMAND_SPEC and specs', () => {
     expect(GOAL_ADD_TASK_COMMAND_SPEC.positionalArgs).toEqual(['title'])
     expect(GOAL_ADD_TASK_COMMAND_SPEC.allowedFlags).toContain('title')
 
+    expect(GOAL_ASSIGN_WORKER_COMMAND_SPEC.path).toEqual(['goal', 'assign-worker'])
+    expect(GOAL_ASSIGN_WORKER_COMMAND_SPEC.positionalArgs).toEqual(['id-or-index'])
+    expect(GOAL_ASSIGN_WORKER_COMMAND_SPEC.allowedFlags).toContain('agent')
+
     expect(GOALS_COMMAND_SPECS).toContain(GOALS_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_STATUS_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_SET_COMMAND_SPEC)
@@ -48,6 +53,7 @@ describe('GOALS_COMMAND_SPEC and specs', () => {
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_COMPLETE_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_VALIDATE_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_ADD_TASK_COMMAND_SPEC)
+    expect(GOALS_COMMAND_SPECS).toContain(GOAL_ASSIGN_WORKER_COMMAND_SPEC)
   })
 
   it('is included in COMMAND_SPECS and resolvable', () => {
@@ -328,5 +334,46 @@ describe('goals CLI dispatch', () => {
     const activeGoal = data.goals.find((g) => g.id === 'g-1')
     expect(activeGoal?.validation?.status).toBe('success')
     expect(activeGoal?.validation?.exitCode).toBe(0)
+  })
+
+  it('handles goal assign-worker and completes task when status is completed', async () => {
+    await seedGoals({
+      activeGoalId: 'g-1',
+      goals: [
+        {
+          id: 'g-1',
+          title: 'Worker Goal',
+          status: 'in_progress',
+          subtasks: [{ id: 't-1', title: 'Task to be assigned', completed: false }],
+          createdAt: 1000,
+          updatedAt: 1000
+        }
+      ]
+    })
+
+    const ctx = createHandlerContext()
+    ctx.flags.set('id-or-index', '1')
+    ctx.flags.set('agent', 'codex')
+    ctx.flags.set('status', 'running')
+    await dispatch(['goal', 'assign-worker'], ctx)
+
+    const service = worktreeGoalsManager.getService(tempDir)
+    let data = await service.loadGoals()
+    let task = data.goals[0].subtasks[0]
+    expect(task.worker?.agent).toBe('codex')
+    expect(task.worker?.status).toBe('running')
+    expect(task.completed).toBe(false)
+
+    // Now update with completed status
+    const completeCtx = createHandlerContext()
+    completeCtx.flags.set('id-or-index', '1')
+    completeCtx.flags.set('agent', 'codex')
+    completeCtx.flags.set('status', 'completed')
+    await dispatch(['goal', 'assign-worker'], completeCtx)
+
+    data = await service.loadGoals()
+    task = data.goals[0].subtasks[0]
+    expect(task.worker?.status).toBe('completed')
+    expect(task.completed).toBe(true)
   })
 })

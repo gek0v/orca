@@ -1,4 +1,5 @@
 import type { Goal, GoalValidation, WorkspaceGoalsData } from './goals-schema'
+import type { GoalAiGenerated } from './goals-ai'
 
 export const GOALS_IPC_CHANNELS = {
   GET: 'goals:get',
@@ -8,6 +9,8 @@ export const GOALS_IPC_CHANNELS = {
   UPDATE_GOAL: 'goals:update-goal',
   DELETE_GOAL: 'goals:delete-goal',
   RUN_VALIDATION: 'goals:run-validation',
+  GENERATE_AI: 'goals:generate-ai',
+  ASSIGN_WORKER: 'goals:assign-worker',
   CHANGED: 'goals:changed'
 } as const
 
@@ -60,6 +63,21 @@ export type GoalsRunValidationRequest = {
 }
 export type GoalsRunValidationResponse = GoalValidation
 
+export type GoalsGenerateAiRequest = {
+  workspacePath: string
+  prompt: string
+}
+export type GoalsGenerateAiResponse = GoalAiGenerated
+
+export type GoalsAssignWorkerRequest = {
+  workspacePath: string
+  goalId: string
+  subtaskId: string
+  agent: string
+  workerId?: string
+}
+export type GoalsAssignWorkerResponse = void
+
 export type GoalsChangedEvent = {
   workspacePath: string
   data: WorkspaceGoalsData
@@ -93,5 +111,13 @@ export type GoalsIpcInvokeMap = {
   [GOALS_IPC_CHANNELS.RUN_VALIDATION]: {
     request: GoalsRunValidationRequest
     response: GoalsRunValidationResponse
+  }
+  [GOALS_IPC_CHANNELS.GENERATE_AI]: {
+    request: GoalsGenerateAiRequest
+    response: GoalsGenerateAiResponse
+  }
+  [GOALS_IPC_CHANNELS.ASSIGN_WORKER]: {
+    request: GoalsAssignWorkerRequest
+    response: GoalsAssignWorkerResponse
   }
 }

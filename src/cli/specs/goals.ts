@@ -75,6 +75,28 @@ export const GOAL_CREATE_COMMAND_SPEC: CommandSpec = {
   examples: ['orca goal create "Implement AI goal generator"']
 }
 
+export const GOAL_ASSIGN_WORKER_COMMAND_SPEC: CommandSpec = {
+  path: ['goal', 'assign-worker'],
+  summary: 'Assign or update a worker agent on a subtask in the active goal',
+  usage:
+    'orca goal assign-worker <id-or-index> --agent <agent> [--status <idle|starting|running|completed|failed>] [--dispatch-id <id>] [--worktree <path>] [--json]',
+  allowedFlags: [
+    ...GLOBAL_FLAGS,
+    'worktree',
+    'json',
+    'id-or-index',
+    'agent',
+    'status',
+    'dispatch-id'
+  ],
+  positionalArgs: ['id-or-index'],
+  examples: [
+    'orca goal assign-worker 1 --agent codex',
+    'orca goal assign-worker 1 --agent codex --status completed',
+    'orca goal assign-worker task-1 --agent claude --dispatch-id disp-123'
+  ]
+}
+
 export const GOALS_COMMAND_SPECS: CommandSpec[] = [
   GOALS_COMMAND_SPEC,
   GOAL_STATUS_COMMAND_SPEC,
@@ -82,5 +104,6 @@ export const GOALS_COMMAND_SPECS: CommandSpec[] = [
   GOAL_CREATE_COMMAND_SPEC,
   GOAL_COMPLETE_COMMAND_SPEC,
   GOAL_VALIDATE_COMMAND_SPEC,
-  GOAL_ADD_TASK_COMMAND_SPEC
+  GOAL_ADD_TASK_COMMAND_SPEC,
+  GOAL_ASSIGN_WORKER_COMMAND_SPEC
 ]

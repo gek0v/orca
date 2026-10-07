@@ -9,10 +9,29 @@ export const GoalStatusSchema = z.enum([
 ])
 export type GoalStatus = z.infer<typeof GoalStatusSchema>
 
+export const GoalSubtaskWorkerStatusSchema = z.enum([
+  'idle',
+  'starting',
+  'running',
+  'completed',
+  'failed'
+])
+export type GoalSubtaskWorkerStatus = z.infer<typeof GoalSubtaskWorkerStatusSchema>
+
+export const GoalSubtaskWorkerSchema = z.object({
+  workerId: z.string(),
+  agent: z.string(),
+  dispatchId: z.string().optional(),
+  status: GoalSubtaskWorkerStatusSchema,
+  assignedAt: z.number().optional()
+})
+export type GoalSubtaskWorker = z.infer<typeof GoalSubtaskWorkerSchema>
+
 export const GoalSubtaskSchema = z.object({
   id: z.string(),
   title: z.string().min(1),
-  completed: z.boolean()
+  completed: z.boolean(),
+  worker: GoalSubtaskWorkerSchema.optional()
 })
 export type GoalSubtask = z.infer<typeof GoalSubtaskSchema>
 

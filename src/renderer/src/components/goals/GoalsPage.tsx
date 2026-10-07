@@ -43,7 +43,9 @@ export default function GoalsPage(): React.JSX.Element {
     toggleSubtask,
     updateGoal,
     deleteGoal,
-    runValidation
+    runValidation,
+    generateWithAi,
+    assignWorker
   } = useWorkspaceGoals(currentWorktreePath)
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -338,6 +340,7 @@ export default function GoalsPage(): React.JSX.Element {
                     onAddSubtask={(g, text) => void handleAddSubtask(g, text)}
                     onRemoveSubtask={(g, subId) => void handleRemoveSubtask(g, subId)}
                     onRunValidation={(id) => void handleRunValidation(id)}
+                    onAssignWorker={(id, subId, agent) => void assignWorker(id, subId, agent)}
                   />
                 ))}
               </div>
@@ -350,6 +353,7 @@ export default function GoalsPage(): React.JSX.Element {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onSubmit={handleCreateSubmit}
+        onGenerateWithAi={generateWithAi}
       />
     </main>
   )

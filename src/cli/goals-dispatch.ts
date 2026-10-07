@@ -5,6 +5,7 @@ import { worktreeGoalsManager } from '../main/goals/worktree-goals-manager'
 import { GoalsValidationRunner } from '../main/goals/goals-validation-runner'
 import { applyCreateGoal } from '../main/goals/goals-state-transitions'
 import type { Goal, GoalSubtask } from '../shared/goals/goals-schema'
+import { handleAssignWorker } from './goals-worker-dispatch'
 
 export function resolveTargetWorkspacePath(ctx: HandlerContext): string {
   const worktreeFlag = ctx.flags.get('worktree')
@@ -31,6 +32,9 @@ export async function dispatchGoal(commandPath: string[], ctx: HandlerContext): 
         break
       case 'complete':
         await handleComplete(ctx)
+        break
+      case 'assign-worker':
+        await handleAssignWorker(ctx)
         break
       case 'validate':
         await handleValidate(ctx)
@@ -84,7 +88,8 @@ async function handleStatus(ctx: HandlerContext): Promise<void> {
   } else {
     activeGoal.subtasks.forEach((task, idx) => {
       const mark = task.completed ? '[x]' : '[ ]'
-      lines.push(`  ${mark} ${idx + 1}. ${task.title} (id: ${task.id})`)
+      const w = task.worker ? ` (Worker: ${task.worker.agent} [${task.worker.status}])` : ''
+      lines.push(`  ${mark} ${idx + 1}. ${task.title} (id: ${task.id})${w}`)
     })
   }
   if (activeGoal.validation) {
@@ -107,17 +112,11 @@ async function handleSet(ctx: HandlerContext): Promise<void> {
     throw new RuntimeClientError('invalid_argument', 'Goal title cannot be empty.')
   }
 
-  const descriptionFlag = ctx.flags.get('description')
-  const description =
-    typeof descriptionFlag === 'string' && descriptionFlag.trim().length > 0
-      ? descriptionFlag.trim()
-      : undefined
-
-  const validationFlag = ctx.flags.get('validation')
+  const desc = ctx.flags.get('description')
+  const description = typeof desc === 'string' && desc.trim().length > 0 ? desc.trim() : undefined
+  const val = ctx.flags.get('validation')
   const validationCommand =
-    typeof validationFlag === 'string' && validationFlag.trim().length > 0
-      ? validationFlag.trim()
-      : undefined
+    typeof val === 'string' && val.trim().length > 0 ? val.trim() : undefined
 
   const workspacePath = resolveTargetWorkspacePath(ctx)
   const service = worktreeGoalsManager.getService(workspacePath)
