@@ -12,7 +12,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#8052ff',
       accent: '#ffb829'
     },
-    matchingTerminalTheme: 'Dracula'
+    matchingTerminalTheme: 'Dala Dark'
   },
   {
     id: 'dala-light',
@@ -25,7 +25,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#7042e8',
       accent: '#ffb829'
     },
-    matchingTerminalTheme: 'Builtin Tango Light'
+    matchingTerminalTheme: 'Dala Light'
   },
   {
     id: 'discord-dark',
@@ -38,7 +38,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#5865f2',
       accent: '#57f287'
     },
-    matchingTerminalTheme: 'Tokyo Night'
+    matchingTerminalTheme: 'Discord Dark'
   },
   {
     id: 'discord-light',
@@ -51,7 +51,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#5865f2',
       accent: '#3442d9'
     },
-    matchingTerminalTheme: 'Builtin Tango Light'
+    matchingTerminalTheme: 'Discord Light'
   },
   {
     id: 'dope-security-dark',
@@ -64,7 +64,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#af50ff',
       accent: '#e1bdff'
     },
-    matchingTerminalTheme: 'Dracula'
+    matchingTerminalTheme: 'Dope Security Dark'
   },
   {
     id: 'dope-security-light',
@@ -77,7 +77,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#9632eb',
       accent: '#af50ff'
     },
-    matchingTerminalTheme: 'Builtin Tango Light'
+    matchingTerminalTheme: 'Dope Security Light'
   },
   {
     id: 'raycast-dark',
@@ -90,7 +90,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#ff6363',
       accent: '#63a1ff'
     },
-    matchingTerminalTheme: 'Nord'
+    matchingTerminalTheme: 'Raycast Dark'
   },
   {
     id: 'raycast-light',
@@ -103,7 +103,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#e64545',
       accent: '#ff6363'
     },
-    matchingTerminalTheme: 'Builtin Solarized Light'
+    matchingTerminalTheme: 'Raycast Light'
   },
   {
     id: 'zkpass-dark',
@@ -116,7 +116,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#c5ff4a',
       accent: '#3d3d3d'
     },
-    matchingTerminalTheme: 'Builtin Dark'
+    matchingTerminalTheme: 'zkPass Dark'
   },
   {
     id: 'zkpass-light',
@@ -129,7 +129,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#6e9900',
       accent: '#c5ff4a'
     },
-    matchingTerminalTheme: 'Builtin Solarized Light'
+    matchingTerminalTheme: 'zkPass Light'
   },
   {
     id: 'miranda-light',
@@ -142,7 +142,7 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#1d1d1b',
       accent: '#96b59f'
     },
-    matchingTerminalTheme: 'Builtin Solarized Light'
+    matchingTerminalTheme: 'Miranda Paper'
   },
   {
     id: 'miranda-dark',
@@ -155,6 +155,6 @@ export const BRAND_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#96b59f',
       accent: '#cf8e50'
     },
-    matchingTerminalTheme: 'Solarized Dark'
+    matchingTerminalTheme: 'Miranda Ink'
   }
 ]

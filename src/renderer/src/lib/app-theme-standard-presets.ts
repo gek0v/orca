@@ -1,8 +1,5 @@
 import type { AppThemePreset } from '../../../shared/app-theme-types'
-import {
-  DEFAULT_TERMINAL_THEME_DARK,
-  DEFAULT_TERMINAL_THEME_LIGHT
-} from '../../../shared/terminal-theme-selection'
+import { DEFAULT_TERMINAL_THEME_DARK } from '../../../shared/terminal-theme-selection'
 
 export const STANDARD_THEME_PRESETS: readonly AppThemePreset[] = [
   {
@@ -146,7 +143,7 @@ export const STANDARD_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#00f0ff',
       accent: '#1c2b42'
     },
-    matchingTerminalTheme: DEFAULT_TERMINAL_THEME_DARK
+    matchingTerminalTheme: 'iOS 27 Liquid Glass Dark'
   },
   {
     id: 'liquid-glass-light',
@@ -159,7 +156,7 @@ export const STANDARD_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#007aff',
       accent: '#cbdbee'
     },
-    matchingTerminalTheme: DEFAULT_TERMINAL_THEME_LIGHT
+    matchingTerminalTheme: 'iOS 27 Liquid Glass Light'
   },
   {
     id: 'material-dark',
@@ -172,7 +169,7 @@ export const STANDARD_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#d0bcff',
       accent: '#4f378b'
     },
-    matchingTerminalTheme: 'Material Dark'
+    matchingTerminalTheme: 'Material 3 Dark'
   },
   {
     id: 'material-light',
@@ -185,6 +182,6 @@ export const STANDARD_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#6750a4',
       accent: '#eaddff'
     },
-    matchingTerminalTheme: 'Builtin Tango Light'
+    matchingTerminalTheme: 'Material 3 Light'
   }
 ]
