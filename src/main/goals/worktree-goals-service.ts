@@ -173,6 +173,9 @@ export class WorktreeGoalsService {
         }
         void this.handleFileWatcherEvent()
       })
+      if (typeof this.watcher.unref === 'function') {
+        this.watcher.unref()
+      }
     } catch {
       // Directory watch failed or not supported in environment
     }
@@ -229,7 +232,10 @@ export class WorktreeGoalsService {
     } else {
       activeGoal.subtasks.forEach((task, index) => {
         const marker = task.completed ? '- [x]' : '- [ ]'
-        sections.push(`${marker} ${index + 1}. ${task.title}`)
+        const workerSuffix = task.worker
+          ? ` *(Worker: ${task.worker.agent} [${task.worker.status}])*`
+          : ''
+        sections.push(`${marker} ${index + 1}. ${task.title}${workerSuffix}`)
       })
     }
 
