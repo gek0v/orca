@@ -82,4 +82,18 @@ describe('ThemePresetSelector', () => {
     const nordBtn = Array.from(buttons ?? []).find((b) => b.textContent?.includes('Nord'))
     expect(nordBtn?.getAttribute('aria-checked')).toBe('true')
   })
+
+  it('shows effective counterpart preset as checked when value belongs to opposite mode', () => {
+    act(() => {
+      root?.render(
+        <ThemePresetSelector value="catppuccin-mocha" onChange={vi.fn()} effectiveMode="light" />
+      )
+    })
+
+    const buttons = container?.querySelectorAll('button[role="radio"]')
+    const latteBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Catppuccin Latte')
+    )
+    expect(latteBtn?.getAttribute('aria-checked')).toBe('true')
+  })
 })

@@ -50,8 +50,9 @@ describe('app-theme-presets', () => {
     expect(resolveEffectiveThemePreset('light', 'nord', false)).toBe('default')
     expect(resolveEffectiveThemePreset('light', 'tokyo-night', false)).toBe('default')
   })
-
   it('finds matching terminal theme for preset', () => {
+    expect(getMatchingTerminalTheme('default', 'light')).toBe('Builtin Tango Light')
+    expect(getMatchingTerminalTheme('default', 'dark')).toBe('Ghostty Default Style Dark')
     expect(getMatchingTerminalTheme('dracula')).toBe('Dracula')
     expect(getMatchingTerminalTheme('nord')).toBe('Nord')
     expect(getMatchingTerminalTheme('tokyo-night')).toBe('Tokyo Night')

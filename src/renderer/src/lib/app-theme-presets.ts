@@ -1,4 +1,8 @@
 import type { AppThemePresetId } from '../../../shared/global-settings-types'
+import {
+  DEFAULT_TERMINAL_THEME_DARK,
+  DEFAULT_TERMINAL_THEME_LIGHT
+} from '../../../shared/terminal-theme-selection'
 
 export type AppThemePreset = {
   id: AppThemePresetId
@@ -26,7 +30,7 @@ export const APP_THEME_PRESETS: readonly AppThemePreset[] = [
       primary: '#e5e5e5',
       accent: '#404040'
     },
-    matchingTerminalTheme: 'Orca Dark'
+    matchingTerminalTheme: DEFAULT_TERMINAL_THEME_DARK
   },
   {
     id: 'dracula',
@@ -160,6 +164,9 @@ const COMPLEMENTARY_THEME_PAIRS: Readonly<Record<AppThemePresetId, AppThemePrese
   'github-light': 'github-dark'
 }
 
+/**
+ * Resolves the effective UI theme preset based on system preferences and light/dark mode.
+ */
 export function resolveEffectiveThemePreset(
   baseTheme: 'system' | 'dark' | 'light',
   presetId: AppThemePresetId | undefined,
@@ -187,7 +194,16 @@ export function resolveEffectiveThemePreset(
   return counterpart ?? 'default'
 }
 
-export function getMatchingTerminalTheme(presetId: AppThemePresetId): string | undefined {
+/**
+ * Returns the matching terminal color scheme name for an interface theme preset and mode.
+ */
+export function getMatchingTerminalTheme(
+  presetId: AppThemePresetId,
+  mode: 'dark' | 'light' = 'dark'
+): string | undefined {
+  if (presetId === 'default') {
+    return mode === 'light' ? DEFAULT_TERMINAL_THEME_LIGHT : DEFAULT_TERMINAL_THEME_DARK
+  }
   const preset = APP_THEME_PRESETS.find((p) => p.id === presetId)
   return preset?.matchingTerminalTheme
 }

@@ -15,7 +15,7 @@ import {
   SettingsSwitchRow
 } from './SettingsFormControls'
 import { ThemePresetSelector } from './ThemePresetSelector'
-import { getMatchingTerminalTheme } from '@/lib/app-theme-presets'
+import { getMatchingTerminalTheme, resolveEffectiveThemePreset } from '@/lib/app-theme-presets'
 import { DEFAULT_APP_FONT_FAMILY } from '../../../../shared/constants'
 import {
   getLanguageEntries,
@@ -110,7 +110,30 @@ export function AppearanceInterfaceSection({
                 ariaLabel={themeLabel}
                 value={settings.theme}
                 onChange={(option) => {
-                  updateSettings({ theme: option })
+                  const updates: Partial<GlobalSettings> = { theme: option }
+                  const newEffectiveMode =
+                    option === 'system' ? (systemPrefersDark ? 'dark' : 'light') : option
+
+                  if (settings.syncTerminalThemeWithInterface ?? true) {
+                    const effectivePreset = resolveEffectiveThemePreset(
+                      option,
+                      settings.themePreset,
+                      systemPrefersDark ?? false
+                    )
+                    const matchingTerminalTheme = getMatchingTerminalTheme(
+                      effectivePreset,
+                      newEffectiveMode
+                    )
+                    if (matchingTerminalTheme) {
+                      if (newEffectiveMode === 'dark') {
+                        updates.terminalThemeDark = matchingTerminalTheme
+                      } else {
+                        updates.terminalThemeLight = matchingTerminalTheme
+                      }
+                    }
+                  }
+
+                  updateSettings(updates)
                   applyTheme(option, settings.themePreset)
                 }}
                 options={[
@@ -141,7 +164,10 @@ export function AppearanceInterfaceSection({
               onChange={(presetId) => {
                 const updates: Partial<GlobalSettings> = { themePreset: presetId }
                 if (settings.syncTerminalThemeWithInterface ?? true) {
-                  const matchingTerminalTheme = getMatchingTerminalTheme(presetId)
+                  const matchingTerminalTheme = getMatchingTerminalTheme(
+                    presetId,
+                    effectiveThemeMode
+                  )
                   if (matchingTerminalTheme) {
                     if (effectiveThemeMode === 'dark') {
                       updates.terminalThemeDark = matchingTerminalTheme
