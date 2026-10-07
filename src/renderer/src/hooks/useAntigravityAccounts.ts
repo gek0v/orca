@@ -12,8 +12,10 @@ const listeners = new Set<(state: AntigravityAccountState | null) => void>()
 
 export function setCachedAntigravityAccountsState(nextState: AntigravityAccountState | null): void {
   if (cachedState && nextState) {
-    const cachedAccountsById = new Map(cachedState.accounts.map((acc) => [acc.id, acc]))
-    const mergedAccounts = nextState.accounts.map((nextAcc) => {
+    const cachedAccounts = Array.isArray(cachedState.accounts) ? cachedState.accounts : []
+    const nextAccounts = Array.isArray(nextState.accounts) ? nextState.accounts : []
+    const cachedAccountsById = new Map(cachedAccounts.map((acc) => [acc.id, acc]))
+    const mergedAccounts = nextAccounts.map((nextAcc) => {
       const cachedAcc = cachedAccountsById.get(nextAcc.id)
       if (
         cachedAcc?.lastUsage &&

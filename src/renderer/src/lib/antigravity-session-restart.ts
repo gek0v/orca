@@ -27,41 +27,57 @@ export type AntigravityTabLookupState = Partial<
 export function findActiveAntigravityTab(
   state: AntigravityTabLookupState
 ): LocatedAntigravityTab | null {
-  const tabsByWorktree = state.tabsByWorktree ?? {}
-  const unifiedTabsByWorktree = state.unifiedTabsByWorktree ?? {}
-  const activeTabIdByWorktree = state.activeTabIdByWorktree ?? {}
-  const currentWorktreeId = state.activeWorktreeId
+  const tabsByWorktree = state?.tabsByWorktree ?? {}
+  const unifiedTabsByWorktree = state?.unifiedTabsByWorktree ?? {}
+  const activeTabIdByWorktree = state?.activeTabIdByWorktree ?? {}
+  const currentWorktreeId = state?.activeWorktreeId
   const activeTabId = currentWorktreeId
-    ? (activeTabIdByWorktree[currentWorktreeId] ?? state.activeTabId)
-    : state.activeTabId
+    ? (activeTabIdByWorktree[currentWorktreeId] ?? state?.activeTabId)
+    : state?.activeTabId
 
   if (currentWorktreeId && activeTabId) {
-    const tabs = tabsByWorktree[currentWorktreeId] ?? []
-    const tab = tabs.find((t) => t.id === activeTabId)
+    const tabs = Array.isArray(tabsByWorktree[currentWorktreeId])
+      ? tabsByWorktree[currentWorktreeId]
+      : []
+    const tab = tabs.find((t) => t?.id === activeTabId)
     if (tab?.launchAgent === 'antigravity') {
-      const unified = (unifiedTabsByWorktree[currentWorktreeId] ?? []).find(
-        (u) => u.contentType === 'terminal' && u.entityId === tab.id
+      const unifiedList = Array.isArray(unifiedTabsByWorktree[currentWorktreeId])
+        ? unifiedTabsByWorktree[currentWorktreeId]
+        : []
+      const unified = unifiedList.find(
+        (u) => u?.contentType === 'terminal' && u?.entityId === tab.id
       )
       return { tab, worktreeId: currentWorktreeId, groupId: unified?.groupId }
     }
   }
 
   if (currentWorktreeId) {
-    const tabs = tabsByWorktree[currentWorktreeId] ?? []
-    const tab = tabs.find((t) => t.launchAgent === 'antigravity')
+    const tabs = Array.isArray(tabsByWorktree[currentWorktreeId])
+      ? tabsByWorktree[currentWorktreeId]
+      : []
+    const tab = tabs.find((t) => t?.launchAgent === 'antigravity')
     if (tab) {
-      const unified = (unifiedTabsByWorktree[currentWorktreeId] ?? []).find(
-        (u) => u.contentType === 'terminal' && u.entityId === tab.id
+      const unifiedList = Array.isArray(unifiedTabsByWorktree[currentWorktreeId])
+        ? unifiedTabsByWorktree[currentWorktreeId]
+        : []
+      const unified = unifiedList.find(
+        (u) => u?.contentType === 'terminal' && u?.entityId === tab.id
       )
       return { tab, worktreeId: currentWorktreeId, groupId: unified?.groupId }
     }
   }
 
   for (const [wId, tabs] of Object.entries(tabsByWorktree)) {
-    const tab = tabs.find((t) => t.launchAgent === 'antigravity')
+    if (!Array.isArray(tabs)) {
+      continue
+    }
+    const tab = tabs.find((t) => t?.launchAgent === 'antigravity')
     if (tab) {
-      const unified = (unifiedTabsByWorktree[wId] ?? []).find(
-        (u) => u.contentType === 'terminal' && u.entityId === tab.id
+      const unifiedList = Array.isArray(unifiedTabsByWorktree[wId])
+        ? unifiedTabsByWorktree[wId]
+        : []
+      const unified = unifiedList.find(
+        (u) => u?.contentType === 'terminal' && u?.entityId === tab.id
       )
       return { tab, worktreeId: wId, groupId: unified?.groupId }
     }
@@ -70,24 +86,37 @@ export function findActiveAntigravityTab(
   return null
 }
 
+export function hasActiveAntigravitySession(state: AntigravityTabLookupState): boolean {
+  return findActiveAntigravityTab(state) !== null
+}
+
 export function findAntigravityTabById(
   state: AntigravityTabLookupState,
   tabId: string
 ): LocatedAntigravityTab | null {
-  const tabsByWorktree = state.tabsByWorktree ?? {}
-  const unifiedTabsByWorktree = state.unifiedTabsByWorktree ?? {}
+  const tabsByWorktree = state?.tabsByWorktree ?? {}
+  const unifiedTabsByWorktree = state?.unifiedTabsByWorktree ?? {}
 
   for (const [wId, tabs] of Object.entries(tabsByWorktree)) {
-    const tab = tabs.find((t) => t.id === tabId)
+    if (!Array.isArray(tabs)) {
+      continue
+    }
+    const tab = tabs.find((t) => t?.id === tabId)
     if (tab) {
-      const unified = (unifiedTabsByWorktree[wId] ?? []).find(
-        (u) => u.contentType === 'terminal' && u.entityId === tab.id
+      const unifiedList = Array.isArray(unifiedTabsByWorktree[wId])
+        ? unifiedTabsByWorktree[wId]
+        : []
+      const unified = unifiedList.find(
+        (u) => u?.contentType === 'terminal' && u?.entityId === tab.id
       )
       return { tab, worktreeId: wId, groupId: unified?.groupId }
     }
   }
   for (const [wId, tabs] of Object.entries(unifiedTabsByWorktree)) {
-    const unified = tabs.find((t) => t.contentType === 'terminal' && t.entityId === tabId)
+    if (!Array.isArray(tabs)) {
+      continue
+    }
+    const unified = tabs.find((t) => t?.contentType === 'terminal' && t?.entityId === tabId)
     if (unified) {
       const fallbackTab: TerminalTab = {
         id: tabId,

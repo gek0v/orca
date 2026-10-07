@@ -7,11 +7,12 @@ import {
 
 export function buildAntigravitySwitchGroups(
   settings: GlobalSettings | null | undefined,
-  wslDistros: string[],
+  wslDistros: string[] = [],
   isWindows: boolean
 ): CodexStatusSwitchGroup[] {
   const hostLabel = isWindows ? 'Windows' : 'This device'
-  const fallbackWslDistro = getStatusBarPreferredWslDistro(settings, wslDistros)
+  const distros = Array.isArray(wslDistros) ? wslDistros : []
+  const fallbackWslDistro = getStatusBarPreferredWslDistro(settings, distros)
   const groups: CodexStatusSwitchGroup[] = [
     {
       key: 'host',
@@ -20,8 +21,8 @@ export function buildAntigravitySwitchGroups(
       targets: []
     }
   ]
-  if (wslDistros.length > 0) {
-    for (const distro of wslDistros) {
+  if (distros.length > 0) {
+    for (const distro of distros) {
       groups.push({
         key: `wsl:${distro}`,
         label: `WSL ${distro}`,
