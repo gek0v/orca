@@ -34,6 +34,8 @@ export const CLI_MAIN_ENTRY_NAMES = [
   ].map((module) => `persistence/profile-state/profile-state-${module}`),
   'persistence/profile-state/legacy-json/profile-state-export-path',
   'persistence/profile-state/legacy-json/profile-state-recovery',
+  'goals/worktree-goals-manager',
+  'goals/goals-validation-runner',
   'startup/http1-compatibility-marker'
 ] as const
 
