@@ -36,6 +36,7 @@ export const CLI_MAIN_ENTRY_NAMES = [
   'persistence/profile-state/legacy-json/profile-state-recovery',
   'goals/worktree-goals-manager',
   'goals/goals-validation-runner',
+  'goals/goals-state-transitions',
   'startup/http1-compatibility-marker'
 ] as const
 
