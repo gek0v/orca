@@ -232,5 +232,35 @@ describe('document theme', () => {
     })
     expect(root.dataset.theme).toBe('liquid-glass-light')
     expect(root.classList.contains('light')).toBe(true)
+
+    // Discord dark / light swap
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'discord-dark',
+      matchMedia: () => ({ matches: false }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('discord-light')
+    expect(root.classList.contains('light')).toBe(true)
+
+    // Raycast dark / light swap
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'raycast-dark',
+      matchMedia: () => ({ matches: false }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('raycast-light')
+    expect(root.classList.contains('light')).toBe(true)
+
+    // Miranda paper / ink swap
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'miranda-light',
+      matchMedia: () => ({ matches: true }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('miranda-dark')
+    expect(root.classList.contains('dark')).toBe(true)
   })
 })
