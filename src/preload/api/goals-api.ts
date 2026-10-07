@@ -13,7 +13,11 @@ import type {
   GoalsUpdateGoalRequest,
   GoalsUpdateGoalResponse,
   GoalsDeleteGoalRequest,
-  GoalsDeleteGoalResponse
+  GoalsDeleteGoalResponse,
+  GoalsGenerateAiRequest,
+  GoalsGenerateAiResponse,
+  GoalsAssignWorkerRequest,
+  GoalsAssignWorkerResponse
 } from '../../shared/goals/goals-ipc'
 
 export type GoalsApi = {
@@ -24,5 +28,7 @@ export type GoalsApi = {
   updateGoal: (args: GoalsUpdateGoalRequest) => Promise<GoalsUpdateGoalResponse>
   deleteGoal: (args: GoalsDeleteGoalRequest) => Promise<GoalsDeleteGoalResponse>
   runValidation: (args: GoalsRunValidationRequest) => Promise<GoalsRunValidationResponse>
+  generateWithAi: (args: GoalsGenerateAiRequest) => Promise<GoalsGenerateAiResponse>
+  assignWorker: (args: GoalsAssignWorkerRequest) => Promise<GoalsAssignWorkerResponse>
   onChanged: (callback: (event: GoalsChangedEvent) => void) => () => void
 }

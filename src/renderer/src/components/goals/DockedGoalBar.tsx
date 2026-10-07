@@ -57,6 +57,7 @@ export function DockedGoalBar({
 
   const [isCreatingGoal, setIsCreatingGoal] = useState(false)
   const [newGoalTitle, setNewGoalTitle] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
 
   if (!effectiveWorktreeId && !activeGoalProp) {
     return null
@@ -70,6 +71,31 @@ export function DockedGoalBar({
     await goalsHook.createGoal(trimmed)
     setNewGoalTitle('')
     setIsCreatingGoal(false)
+  }
+
+  const handleGenerateWithAi = async () => {
+    const trimmed = newGoalTitle.trim()
+    if (!trimmed) {
+      return
+    }
+    try {
+      setIsGenerating(true)
+      const generated = await goalsHook.generateWithAi(trimmed)
+      if (generated) {
+        await goalsHook.createGoal(generated.title, {
+          description: generated.description,
+          subtasks: generated.subtasks,
+          validationCommand: generated.validationCommand
+        })
+        setNewGoalTitle('')
+        setIsCreatingGoal(false)
+        toast.success(`Objetivo "${generated.title}" generado con IA`)
+      }
+    } catch {
+      toast.error('Error generando objetivo con IA')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const handleToggleSubtask = async (subtaskId: string, completed: boolean) => {
@@ -88,6 +114,14 @@ export function DockedGoalBar({
       { id: `task-${Date.now()}`, title, completed: false }
     ]
     await goalsHook.updateGoal(currentGoal.id, { subtasks: updatedSubtasks })
+  }
+
+  const handleAssignWorker = async (subtaskId: string, agent: string) => {
+    if (!currentGoal) {
+      return
+    }
+    await goalsHook.assignWorker(currentGoal.id, subtaskId, agent)
+    toast.success(`Worker "${agent}" asignado`)
   }
 
   const handleQuickAssist = async () => {
@@ -146,10 +180,20 @@ export function DockedGoalBar({
                     Cancelar
                   </Button>
                   <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleGenerateWithAi}
+                    disabled={!newGoalTitle.trim() || isGenerating}
+                    title="Generar objetivo y subtareas con IA"
+                  >
+                    <Sparkles className="size-3 text-primary" />
+                    <span>{isGenerating ? 'Generando...' : 'Con IA'}</span>
+                  </Button>
+                  <Button
                     variant="default"
                     size="xs"
                     onClick={handleCreateGoal}
-                    disabled={!newGoalTitle.trim()}
+                    disabled={!newGoalTitle.trim() || isGenerating}
                   >
                     Crear
                   </Button>
@@ -209,6 +253,7 @@ export function DockedGoalBar({
           subtasks={currentGoal.subtasks}
           onToggleSubtask={handleToggleSubtask}
           onAddSubtask={handleAddSubtask}
+          onAssignWorker={handleAssignWorker}
         />
       </div>
 
@@ -253,10 +298,20 @@ export function DockedGoalBar({
                   Cancelar
                 </Button>
                 <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleGenerateWithAi}
+                  disabled={!newGoalTitle.trim() || isGenerating}
+                  title="Generar objetivo y subtareas con IA"
+                >
+                  <Sparkles className="size-3 text-primary" />
+                  <span>{isGenerating ? 'Generando...' : 'Con IA'}</span>
+                </Button>
+                <Button
                   variant="default"
                   size="xs"
                   onClick={handleCreateGoal}
-                  disabled={!newGoalTitle.trim()}
+                  disabled={!newGoalTitle.trim() || isGenerating}
                 >
                   Crear
                 </Button>

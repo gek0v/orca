@@ -4,6 +4,7 @@ import type {
   GoalValidation,
   WorkspaceGoalsData
 } from '../../../../shared/goals/goals-schema'
+import type { GoalAiGenerated } from '../../../../shared/goals/goals-ai'
 
 export function useWorkspaceGoals(workspacePath: string | null | undefined) {
   const [data, setData] = useState<WorkspaceGoalsData | null>(null)
@@ -121,6 +122,27 @@ export function useWorkspaceGoals(workspacePath: string | null | undefined) {
     [workspacePath, refresh]
   )
 
+  const generateWithAi = useCallback(
+    async (prompt: string): Promise<GoalAiGenerated | undefined> => {
+      if (!workspacePath || !window.api?.goals?.generateWithAi) {
+        return undefined
+      }
+      return await window.api.goals.generateWithAi({ workspacePath, prompt })
+    },
+    [workspacePath]
+  )
+
+  const assignWorker = useCallback(
+    async (goalId: string, subtaskId: string, agent: string, workerId?: string): Promise<void> => {
+      if (!workspacePath || !window.api?.goals?.assignWorker) {
+        return
+      }
+      await window.api.goals.assignWorker({ workspacePath, goalId, subtaskId, agent, workerId })
+      await refresh()
+    },
+    [workspacePath, refresh]
+  )
+
   const activeGoal = data?.goals.find((goal) => goal.id === data.activeGoalId) ?? null
 
   return {
@@ -134,6 +156,8 @@ export function useWorkspaceGoals(workspacePath: string | null | undefined) {
     toggleSubtask,
     updateGoal,
     deleteGoal,
-    runValidation
+    runValidation,
+    generateWithAi,
+    assignWorker
   }
 }

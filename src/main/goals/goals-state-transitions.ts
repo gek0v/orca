@@ -1,4 +1,4 @@
-import type { Goal, WorkspaceGoalsData } from '../../shared/goals/goals-schema'
+import type { Goal, GoalSubtaskWorker, WorkspaceGoalsData } from '../../shared/goals/goals-schema'
 import type { GoalsCreateGoalRequest, GoalsUpdateGoalRequest } from '../../shared/goals/goals-ipc'
 import type { GoalValidationResult } from './goals-validation-runner'
 
@@ -159,4 +159,82 @@ export function applyValidationResult(
     ...current,
     goals: current.goals.map((g, i) => (i === idx ? updatedGoal : g))
   }
+}
+
+export function applyAssignWorker(
+  current: WorkspaceGoalsData,
+  goalId: string,
+  subtaskId: string,
+  worker: GoalSubtaskWorker | undefined,
+  now = Date.now()
+): WorkspaceGoalsData {
+  const goalIndex = current.goals.findIndex((g) => g.id === goalId)
+  if (goalIndex === -1) {
+    throw new Error(`Goal with id "${goalId}" not found`)
+  }
+
+  const goal = current.goals[goalIndex]
+  const subtaskIndex = goal.subtasks.findIndex((st) => st.id === subtaskId)
+  if (subtaskIndex === -1) {
+    throw new Error(`Subtask with id "${subtaskId}" not found in goal "${goalId}"`)
+  }
+
+  const updatedSubtasks = goal.subtasks.map((st, idx) =>
+    idx === subtaskIndex ? { ...st, worker } : st
+  )
+
+  const updatedGoal: Goal = {
+    ...goal,
+    subtasks: updatedSubtasks,
+    updatedAt: now
+  }
+
+  return {
+    ...current,
+    goals: current.goals.map((g, idx) => (idx === goalIndex ? updatedGoal : g))
+  }
+}
+
+export function applyUpdateWorkerStatus(
+  current: WorkspaceGoalsData,
+  goalId: string,
+  subtaskId: string,
+  status: GoalSubtaskWorker['status'],
+  now = Date.now()
+): WorkspaceGoalsData {
+  const goalIndex = current.goals.findIndex((g) => g.id === goalId)
+  if (goalIndex === -1) {
+    throw new Error(`Goal with id "${goalId}" not found`)
+  }
+
+  const goal = current.goals[goalIndex]
+  const subtaskIndex = goal.subtasks.findIndex((st) => st.id === subtaskId)
+  if (subtaskIndex === -1) {
+    throw new Error(`Subtask with id "${subtaskId}" not found in goal "${goalId}"`)
+  }
+
+  const existing = goal.subtasks[subtaskIndex]
+  const updatedWorker: GoalSubtaskWorker | undefined = existing.worker
+    ? { ...existing.worker, status }
+    : undefined
+  const shouldComplete = status === 'completed'
+
+  const withWorkerState: WorkspaceGoalsData = {
+    ...current,
+    goals: current.goals.map((g, idx) =>
+      idx === goalIndex
+        ? {
+            ...g,
+            subtasks: g.subtasks.map((st, sidx) =>
+              sidx === subtaskIndex ? { ...st, worker: updatedWorker } : st
+            ),
+            updatedAt: now
+          }
+        : g
+    )
+  }
+
+  return shouldComplete
+    ? applyToggleSubtask(withWorkerState, goalId, subtaskId, true, now)
+    : withWorkerState
 }

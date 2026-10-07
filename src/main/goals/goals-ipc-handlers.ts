@@ -22,6 +22,7 @@ import {
   applyDeleteGoal,
   applyValidationResult
 } from './goals-state-transitions'
+import { registerGoalsAiAndWorkerIpcHandlers } from './goals-ai-worker-ipc-handlers'
 
 export type GoalsIpcTarget = Pick<IpcMain, 'handle' | 'removeHandler'>
 export type GoalsManagerTarget = Pick<WorktreeGoalsManager, 'getService'>
@@ -44,6 +45,7 @@ export function registerGoalsIpcHandlers(
   runner: GoalsRunnerTarget,
   broadcastEvent?: (channel: string, payload: unknown) => void
 ): () => void {
+  const unregisterAiWorker = registerGoalsAiAndWorkerIpcHandlers(ipcMain, manager)
   const unwatchers = new Map<string, () => void>()
 
   const broadcast = (channel: string, payload: unknown): void => {
@@ -243,6 +245,7 @@ export function registerGoalsIpcHandlers(
   )
 
   return () => {
+    unregisterAiWorker()
     for (const unsub of unwatchers.values()) {
       unsub()
     }
