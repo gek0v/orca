@@ -306,6 +306,7 @@ module.exports = {
     'out/main/droid/**',
     'out/main/gemini/**',
     'out/main/gitlab/project-ref-parser.js',
+    'out/main/goals/**',
     'out/main/grok/**',
     'out/main/hermes/**',
     'out/main/orca-profiles/profile-index-store.js',
