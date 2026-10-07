@@ -3,6 +3,7 @@ import {
   GOALS_IPC_CHANNELS,
   type GoalsChangedEvent,
   type GoalsCreateGoalRequest,
+  type GoalsDeleteGoalRequest,
   type GoalsGetRequest,
   type GoalsRunValidationRequest,
   type GoalsSetActiveRequest,
@@ -21,6 +22,8 @@ export const goalsApi = {
     ipcRenderer.invoke(GOALS_IPC_CHANNELS.TOGGLE_SUBTASK, args),
   updateGoal: (args: GoalsUpdateGoalRequest) =>
     ipcRenderer.invoke(GOALS_IPC_CHANNELS.UPDATE_GOAL, args),
+  deleteGoal: (args: GoalsDeleteGoalRequest) =>
+    ipcRenderer.invoke(GOALS_IPC_CHANNELS.DELETE_GOAL, args),
   runValidation: (args: GoalsRunValidationRequest) =>
     ipcRenderer.invoke(GOALS_IPC_CHANNELS.RUN_VALIDATION, args),
   onChanged: (callback: (event: GoalsChangedEvent) => void): (() => void) => {

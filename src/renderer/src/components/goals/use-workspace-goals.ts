@@ -98,6 +98,17 @@ export function useWorkspaceGoals(workspacePath: string | null | undefined) {
     [workspacePath, refresh]
   )
 
+  const deleteGoal = useCallback(
+    async (goalId: string): Promise<void> => {
+      if (!workspacePath || !window.api?.goals?.deleteGoal) {
+        return
+      }
+      await window.api.goals.deleteGoal({ workspacePath, goalId })
+      await refresh()
+    },
+    [workspacePath, refresh]
+  )
+
   const runValidation = useCallback(
     async (goalId?: string): Promise<GoalValidation | undefined> => {
       if (!workspacePath || !window.api?.goals?.runValidation) {
@@ -122,6 +133,7 @@ export function useWorkspaceGoals(workspacePath: string | null | undefined) {
     setActiveGoal,
     toggleSubtask,
     updateGoal,
+    deleteGoal,
     runValidation
   }
 }

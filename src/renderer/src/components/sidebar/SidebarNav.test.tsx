@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
   openTaskPage: vi.fn(),
   openAutomationsPage: vi.fn(),
+  openGoalsPage: vi.fn(),
   openActivityPage: vi.fn(),
   openMobilePage: vi.fn(),
   openArtifactsPage: vi.fn(),
@@ -89,6 +90,7 @@ vi.mock('@/components/ui/context-menu', () => ({
 
 import SidebarNav, {
   shouldShowAutomationsButton,
+  shouldShowGoalsButton,
   shouldShowArtifactsButton,
   shouldShowMobileButton
 } from './SidebarNav'
@@ -128,6 +130,7 @@ function setSidebarState({
     activeView: 'worktrees',
     openTaskPage: mocks.openTaskPage,
     openAutomationsPage: mocks.openAutomationsPage,
+    openGoalsPage: mocks.openGoalsPage,
     openActivityPage: mocks.openActivityPage,
     openMobilePage: mocks.openMobilePage,
     openArtifactsPage: mocks.openArtifactsPage,
@@ -378,6 +381,41 @@ describe('SidebarNav', () => {
     await clickButton(getHideButton(automationsMenu as HTMLElement))
 
     expect(mocks.updateSettings).toHaveBeenCalledWith({ showAutomationsButton: false })
+  })
+
+  it('shows the Goals entry by default for older settings', () => {
+    expect(shouldShowGoalsButton(null)).toBe(true)
+    expect(shouldShowGoalsButton({})).toBe(true)
+  })
+
+  it('omits the Goals row when the sidebar setting is off', async () => {
+    setSidebarState({
+      settings: {
+        ...getDefaultSettings('/tmp'),
+        showGoalsButton: false
+      }
+    })
+
+    const container = await renderSidebarNav()
+
+    expect(queryButtonByText(container, 'Goals')).toBeNull()
+  })
+
+  it('navigates to Goals page on click and hides Goals from context menu', async () => {
+    const container = await renderSidebarNav()
+
+    const goalsButton = getButtonByText(container, 'Goals')
+    await clickButton(goalsButton)
+    expect(mocks.openGoalsPage).toHaveBeenCalled()
+
+    const goalsMenu = goalsButton.closest('[data-testid="context-menu"]')
+    expect(goalsMenu).toBeInstanceOf(HTMLElement)
+    if (!(goalsMenu instanceof HTMLElement)) {
+      throw new Error('goalsMenu is not an HTMLElement')
+    }
+
+    await clickButton(getHideButton(goalsMenu))
+    expect(mocks.updateSettings).toHaveBeenCalledWith({ showGoalsButton: false })
   })
 
   it('hides Mobile from its sidebar context menu', async () => {

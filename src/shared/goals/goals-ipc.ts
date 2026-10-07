@@ -6,6 +6,7 @@ export const GOALS_IPC_CHANNELS = {
   SET_ACTIVE: 'goals:set-active',
   TOGGLE_SUBTASK: 'goals:toggle-subtask',
   UPDATE_GOAL: 'goals:update-goal',
+  DELETE_GOAL: 'goals:delete-goal',
   RUN_VALIDATION: 'goals:run-validation',
   CHANGED: 'goals:changed'
 } as const
@@ -47,6 +48,12 @@ export type GoalsUpdateGoalRequest = {
 }
 export type GoalsUpdateGoalResponse = void
 
+export type GoalsDeleteGoalRequest = {
+  workspacePath: string
+  goalId: string
+}
+export type GoalsDeleteGoalResponse = void
+
 export type GoalsRunValidationRequest = {
   workspacePath: string
   goalId?: string
@@ -78,6 +85,10 @@ export type GoalsIpcInvokeMap = {
   [GOALS_IPC_CHANNELS.UPDATE_GOAL]: {
     request: GoalsUpdateGoalRequest
     response: GoalsUpdateGoalResponse
+  }
+  [GOALS_IPC_CHANNELS.DELETE_GOAL]: {
+    request: GoalsDeleteGoalRequest
+    response: GoalsDeleteGoalResponse
   }
   [GOALS_IPC_CHANNELS.RUN_VALIDATION]: {
     request: GoalsRunValidationRequest

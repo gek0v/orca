@@ -261,6 +261,8 @@ export type GlobalSettings = NativeChatGlobalSettings & {
   showTasksButton: boolean
   /** Only toggles the sidebar shortcut; Automations stay reachable from Settings/View menu. */
   showAutomationsButton?: boolean
+  /** Only toggles the sidebar shortcut; Goals stay reachable from navigation. */
+  showGoalsButton?: boolean
   /** Deprecated: Artifacts are always available. Use showArtifactsButton for sidebar visibility. */
   artifactsEnabled?: boolean
   /** Capability gate for agent-driven publishing; off until granted, enforced in main, not just the UI. */

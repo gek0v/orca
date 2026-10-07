@@ -169,3 +169,26 @@ export function parseRunValidationArgs(
   }
   throw new Error('Invalid arguments for run-validation')
 }
+
+export function parseDeleteGoalArgs(
+  firstArg: unknown,
+  secondArg: unknown
+): {
+  workspacePath: string
+  goalId: string
+} {
+  if (typeof firstArg === 'string') {
+    return {
+      workspacePath: firstArg.trim(),
+      goalId: typeof secondArg === 'string' ? secondArg : ''
+    }
+  }
+  if (isRecord(firstArg)) {
+    return {
+      workspacePath:
+        typeof firstArg.workspacePath === 'string' ? firstArg.workspacePath.trim() : '',
+      goalId: typeof firstArg.goalId === 'string' ? firstArg.goalId : ''
+    }
+  }
+  throw new Error('Invalid arguments for delete-goal')
+}
