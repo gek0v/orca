@@ -9,3 +9,7 @@ export type AppThemePresetId =
   | 'solarized-light'
   | 'github-dark'
   | 'github-light'
+  | 'material-dark'
+  | 'material-light'
+  | 'liquid-glass-dark'
+  | 'liquid-glass-light'

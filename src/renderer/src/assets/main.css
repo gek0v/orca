@@ -744,6 +744,146 @@
   --editor-surface: #ffffff;
 }
 
+:root[data-theme='liquid-glass-dark'] {
+  --background: #080d14;
+  --foreground: #e6f1ff;
+  --card: #101826;
+  --card-foreground: #e6f1ff;
+  --popover: #101826;
+  --popover-foreground: #e6f1ff;
+  --primary: #00f0ff;
+  --primary-foreground: #080d14;
+  --secondary: #182338;
+  --secondary-foreground: #e6f1ff;
+  --muted: #182338;
+  --muted-foreground: #94a8c6;
+  --accent: #1c2b42;
+  --accent-foreground: #e6f1ff;
+  --border: #223550;
+  --input: #223550;
+  --ring: #00f0ff;
+  --sidebar: #0b111a;
+  --sidebar-foreground: #e6f1ff;
+  --sidebar-primary: #00f0ff;
+  --sidebar-primary-foreground: #080d14;
+  --sidebar-accent: #182338;
+  --sidebar-accent-foreground: #e6f1ff;
+  --sidebar-border: #223550;
+  --sidebar-ring: #00f0ff;
+  --worktree-sidebar: #06090e;
+  --worktree-sidebar-foreground: #e6f1ff;
+  --worktree-sidebar-accent: #0b111a;
+  --worktree-sidebar-accent-foreground: #e6f1ff;
+  --worktree-sidebar-border: #223550;
+  --worktree-sidebar-ring: #00f0ff;
+  --editor-surface: #080d14;
+}
+
+:root[data-theme='liquid-glass-light'] {
+  --background: #f0f4f9;
+  --foreground: #0d1726;
+  --card: #e4ecf6;
+  --card-foreground: #0d1726;
+  --popover: #e4ecf6;
+  --popover-foreground: #0d1726;
+  --primary: #007aff;
+  --primary-foreground: #ffffff;
+  --secondary: #d9e4f2;
+  --secondary-foreground: #0d1726;
+  --muted: #d9e4f2;
+  --muted-foreground: #4a5c73;
+  --accent: #cbdbee;
+  --accent-foreground: #0d1726;
+  --border: #c0d2e8;
+  --input: #c0d2e8;
+  --ring: #007aff;
+  --sidebar: #e8eff8;
+  --sidebar-foreground: #0d1726;
+  --sidebar-primary: #007aff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d9e4f2;
+  --sidebar-accent-foreground: #0d1726;
+  --sidebar-border: #c0d2e8;
+  --sidebar-ring: #007aff;
+  --worktree-sidebar: #dfe8f4;
+  --worktree-sidebar-foreground: #0d1726;
+  --worktree-sidebar-accent: #f0f4f9;
+  --worktree-sidebar-accent-foreground: #0d1726;
+  --worktree-sidebar-border: #c0d2e8;
+  --worktree-sidebar-ring: #007aff;
+  --editor-surface: #f0f4f9;
+}
+
+:root[data-theme='material-dark'] {
+  --background: #141218;
+  --foreground: #e6e0e9;
+  --card: #211f26;
+  --card-foreground: #e6e0e9;
+  --popover: #211f26;
+  --popover-foreground: #e6e0e9;
+  --primary: #d0bcff;
+  --primary-foreground: #381e72;
+  --secondary: #4a4458;
+  --secondary-foreground: #e8def8;
+  --muted: #2b2930;
+  --muted-foreground: #cac4d0;
+  --accent: #4f378b;
+  --accent-foreground: #eaddff;
+  --border: #49454f;
+  --input: #49454f;
+  --ring: #d0bcff;
+  --sidebar: #1d1b20;
+  --sidebar-foreground: #e6e0e9;
+  --sidebar-primary: #d0bcff;
+  --sidebar-primary-foreground: #381e72;
+  --sidebar-accent: #2b2930;
+  --sidebar-accent-foreground: #e6e0e9;
+  --sidebar-border: #49454f;
+  --sidebar-ring: #d0bcff;
+  --worktree-sidebar: #0f0d13;
+  --worktree-sidebar-foreground: #e6e0e9;
+  --worktree-sidebar-accent: #1d1b20;
+  --worktree-sidebar-accent-foreground: #e6e0e9;
+  --worktree-sidebar-border: #49454f;
+  --worktree-sidebar-ring: #d0bcff;
+  --editor-surface: #141218;
+}
+
+:root[data-theme='material-light'] {
+  --background: #fef7ff;
+  --foreground: #1d1b20;
+  --card: #f3edf7;
+  --card-foreground: #1d1b20;
+  --popover: #f3edf7;
+  --popover-foreground: #1d1b20;
+  --primary: #6750a4;
+  --primary-foreground: #ffffff;
+  --secondary: #e8def8;
+  --secondary-foreground: #1d192b;
+  --muted: #ece6f0;
+  --muted-foreground: #49454f;
+  --accent: #eaddff;
+  --accent-foreground: #21005d;
+  --border: #79747e;
+  --input: #cac4d0;
+  --ring: #6750a4;
+  --sidebar: #f7f2fa;
+  --sidebar-foreground: #1d1b20;
+  --sidebar-primary: #6750a4;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ece6f0;
+  --sidebar-accent-foreground: #1d1b20;
+  --sidebar-border: #cac4d0;
+  --sidebar-ring: #6750a4;
+  --worktree-sidebar: #f3edf7;
+  --worktree-sidebar-foreground: #1d1b20;
+  --worktree-sidebar-accent: #e6e0e9;
+  --worktree-sidebar-accent-foreground: #1d1b20;
+  --worktree-sidebar-border: #cac4d0;
+  --worktree-sidebar-ring: #6750a4;
+  --editor-surface: #fef7ff;
+}
+
 .plugin-security-chrome {
   /* Why: plugin themes may style the app, but provenance and consent must
      retain host-owned contrast so a pack cannot disguise a trust decision. */

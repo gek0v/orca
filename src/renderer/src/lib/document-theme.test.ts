@@ -192,5 +192,45 @@ describe('document theme', () => {
     })
     expect(root.dataset.theme).toBe('catppuccin-latte')
     expect(root.classList.contains('light')).toBe(true)
+
+    // System is dark -> material-dark
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'material-dark',
+      matchMedia: () => ({ matches: true }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('material-dark')
+    expect(root.classList.contains('dark')).toBe(true)
+
+    // System is light -> swaps to material-light
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'material-dark',
+      matchMedia: () => ({ matches: false }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('material-light')
+    expect(root.classList.contains('light')).toBe(true)
+
+    // System is dark -> liquid-glass-dark
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'liquid-glass-dark',
+      matchMedia: () => ({ matches: true }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('liquid-glass-dark')
+    expect(root.classList.contains('dark')).toBe(true)
+
+    // System is light -> swaps to liquid-glass-light
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'liquid-glass-dark',
+      matchMedia: () => ({ matches: false }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('liquid-glass-light')
+    expect(root.classList.contains('light')).toBe(true)
   })
 })

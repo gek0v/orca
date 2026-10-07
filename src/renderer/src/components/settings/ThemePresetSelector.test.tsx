@@ -37,6 +37,16 @@ describe('ThemePresetSelector', () => {
 
     const draculaBtn = Array.from(buttons ?? []).find((b) => b.textContent?.includes('Dracula'))
     expect(draculaBtn).toBeDefined()
+
+    const materialDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Material 3 Dark')
+    )
+    expect(materialDarkBtn).toBeDefined()
+
+    const liquidGlassDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('iOS 27 Liquid Glass Dark')
+    )
+    expect(liquidGlassDarkBtn).toBeDefined()
   })
 
   it('renders light presets when effectiveMode is light', () => {
@@ -52,6 +62,16 @@ describe('ThemePresetSelector', () => {
       b.textContent?.includes('Catppuccin Latte')
     )
     expect(latteBtn).toBeDefined()
+
+    const materialLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Material 3 Light')
+    )
+    expect(materialLightBtn).toBeDefined()
+
+    const liquidGlassLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('iOS 27 Liquid Glass Light')
+    )
+    expect(liquidGlassLightBtn).toBeDefined()
   })
 
   it('calls onChange when clicking a preset', () => {
