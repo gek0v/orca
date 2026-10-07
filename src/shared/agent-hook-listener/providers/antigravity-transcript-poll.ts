@@ -16,11 +16,18 @@ export function pollAntigravityTranscriptStatus<T extends AgentHookEventPayload>
   if (!roster) {
     return undefined
   }
-  const changed = reconcileAntigravitySubagentTranscript(transcript, roster, transcript.parent.filePath)
+  const changed = reconcileAntigravitySubagentTranscript(
+    transcript,
+    roster,
+    transcript.parent.filePath
+  )
   if (!changed) {
     return original
   }
   const subagents = antigravityRosterToSnapshots(roster)
+  if (roster.size === 0 && original.payload.state === 'done') {
+    state.antigravityCompletedTranscriptByPaneKey.set(original.paneKey, transcript.parent.filePath)
+  }
   return {
     ...original,
     payload: {

@@ -30,16 +30,10 @@ describe('antigravity-events', () => {
     )
 
     const state = createHookListenerState()
-    const payload = normalizeAntigravityEvent(
-      state,
-      'PreToolUse',
-      'Audit web',
-      'pane-1',
-      {
-        transcriptPath,
-        tool_call: { name: 'manage_subagents', args: { Action: 'list' } }
-      }
-    )
+    const payload = normalizeAntigravityEvent(state, 'PreToolUse', 'Audit web', 'pane-1', {
+      transcriptPath,
+      tool_call: { name: 'manage_subagents', args: { Action: 'list' } }
+    })
 
     expect(payload).not.toBeNull()
     expect(payload?.state).toBe('working')
@@ -55,15 +49,43 @@ describe('antigravity-events', () => {
 
   it('handles feedback tools as waiting', () => {
     const state = createHookListenerState()
-    const payload = normalizeAntigravityEvent(
-      state,
-      'PreToolUse',
-      'Ask question',
-      'pane-1',
-      {
-        toolCall: { name: 'ask_question', args: { questions: ['Proceed?'] } }
-      }
-    )
+    const payload = normalizeAntigravityEvent(state, 'PreToolUse', 'Ask question', 'pane-1', {
+      toolCall: { name: 'ask_question', args: { questions: ['Proceed?'] } }
+    })
     expect(payload?.state).toBe('waiting')
+  })
+
+  it('keeps transcript active on Stop when subagents are running', () => {
+    const testDir = join(tmpdir(), `orca-agy-events-stop-${Date.now()}`)
+    const brainDir = join(testDir, 'brain', 'parent-stop')
+    const subagentsDir = join(brainDir, '.system_generated', 'subagents')
+    const logsDir = join(brainDir, '.system_generated', 'logs')
+    mkdirSync(subagentsDir, { recursive: true })
+    mkdirSync(logsDir, { recursive: true })
+
+    const transcriptPath = join(logsDir, 'transcript.jsonl')
+    writeFileSync(transcriptPath, '')
+
+    writeFileSync(
+      join(subagentsDir, 'subagent-1.json'),
+      JSON.stringify({
+        conversationId: 'subagent-1',
+        subagentDescriptor: { typeName: 'worker', role: 'Worker' },
+        state: 'SUBAGENT_STATE_ALIVE'
+      })
+    )
+
+    const state = createHookListenerState()
+    const payload = normalizeAntigravityEvent(state, 'Stop', 'Wait for subagent', 'pane-1', {
+      transcriptPath
+    })
+
+    expect(payload?.state).toBe('done')
+    expect(payload?.subagents).toHaveLength(1)
+    // Completed transcript marker must not be set while subagents are running
+    expect(state.antigravityCompletedTranscriptByPaneKey.has('pane-1')).toBe(false)
+    expect(state.antigravitySubagentRosterByPaneKey.has('pane-1')).toBe(true)
+
+    rmSync(testDir, { recursive: true, force: true })
   })
 })

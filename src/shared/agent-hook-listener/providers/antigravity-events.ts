@@ -106,10 +106,25 @@ export function normalizeAntigravityEvent(
     { resetOnNewTurn: resetsTurn }
   )
 
+  if (resetsTurn) {
+    state.antigravitySubagentRosterByPaneKey.delete(paneKey)
+    state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
+  }
+
   if (transcriptPath) {
     const roster = getOrCreateAntigravitySubagentRoster(state, paneKey)
     const transcriptState = getOrCreateAntigravitySubagentTranscriptState(state, paneKey)
     reconcileAntigravitySubagentTranscript(transcriptState, roster, transcriptPath)
+  }
+
+  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop is terminal.
+  const hasRunningSubagents = hasAntigravityTranscriptSubagents(state, paneKey)
+  if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
+    if (!hasRunningSubagents) {
+      state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
+      state.antigravitySubagentRosterByPaneKey.delete(paneKey)
+      state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
+    }
   }
 
   const payload = normalizeAgentStatusPayload({
@@ -125,13 +140,5 @@ export function normalizeAntigravityEvent(
     lastAssistantMessageIsToolOutput: snapshot.lastAssistantMessageIsToolOutput,
     subagents: antigravityRosterToSnapshots(state.antigravitySubagentRosterByPaneKey.get(paneKey))
   })
-  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop is terminal, else the sidebar bounces done -> working and ignores later tool updates.
-  if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
-    state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
-    if (!hasAntigravityTranscriptSubagents(state, paneKey)) {
-      state.antigravitySubagentRosterByPaneKey.delete(paneKey)
-      state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
-    }
-  }
   return payload
 }
