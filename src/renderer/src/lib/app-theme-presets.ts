@@ -148,6 +148,58 @@ export const APP_THEME_PRESETS: readonly AppThemePreset[] = [
       accent: '#218bff'
     },
     matchingTerminalTheme: 'GitHub Light'
+  },
+  {
+    id: 'liquid-glass-dark',
+    name: 'iOS 27 Liquid Glass Dark',
+    mode: 'dark',
+    description: 'Translucent neon cyan glass with deep obsidian surfaces',
+    swatches: {
+      background: '#080d14',
+      card: '#101826',
+      primary: '#00f0ff',
+      accent: '#1c2b42'
+    },
+    matchingTerminalTheme: DEFAULT_TERMINAL_THEME_DARK
+  },
+  {
+    id: 'liquid-glass-light',
+    name: 'iOS 27 Liquid Glass Light',
+    mode: 'light',
+    description: 'Translucent azure glass with clean frosted surfaces',
+    swatches: {
+      background: '#f0f4f9',
+      card: '#e4ecf6',
+      primary: '#007aff',
+      accent: '#cbdbee'
+    },
+    matchingTerminalTheme: DEFAULT_TERMINAL_THEME_LIGHT
+  },
+  {
+    id: 'material-dark',
+    name: 'Material 3 Dark',
+    mode: 'dark',
+    description: 'Google Material You tonal palette with violet accents',
+    swatches: {
+      background: '#141218',
+      card: '#211f26',
+      primary: '#d0bcff',
+      accent: '#4f378b'
+    },
+    matchingTerminalTheme: 'Material Dark'
+  },
+  {
+    id: 'material-light',
+    name: 'Material 3 Light',
+    mode: 'light',
+    description: 'Clean Google Material You surface with deep violet accents',
+    swatches: {
+      background: '#fef7ff',
+      card: '#f3edf7',
+      primary: '#6750a4',
+      accent: '#eaddff'
+    },
+    matchingTerminalTheme: 'Builtin Tango Light'
   }
 ]
 
@@ -161,7 +213,11 @@ const COMPLEMENTARY_THEME_PAIRS: Readonly<Record<AppThemePresetId, AppThemePrese
   'solarized-dark': 'solarized-light',
   'solarized-light': 'solarized-dark',
   'github-dark': 'github-light',
-  'github-light': 'github-dark'
+  'github-light': 'github-dark',
+  'material-dark': 'material-light',
+  'material-light': 'material-dark',
+  'liquid-glass-dark': 'liquid-glass-light',
+  'liquid-glass-light': 'liquid-glass-dark'
 }
 
 /**
