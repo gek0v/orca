@@ -47,6 +47,34 @@ describe('ThemePresetSelector', () => {
       b.textContent?.includes('iOS 27 Liquid Glass Dark')
     )
     expect(liquidGlassDarkBtn).toBeDefined()
+
+    const dalaDarkBtn = Array.from(buttons ?? []).find((b) => b.textContent?.includes('Dala Dark'))
+    expect(dalaDarkBtn).toBeDefined()
+
+    const discordDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Discord Dark')
+    )
+    expect(discordDarkBtn).toBeDefined()
+
+    const dopeDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Dope Security Dark')
+    )
+    expect(dopeDarkBtn).toBeDefined()
+
+    const raycastDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Raycast Dark')
+    )
+    expect(raycastDarkBtn).toBeDefined()
+
+    const zkpassDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('zkPass Dark')
+    )
+    expect(zkpassDarkBtn).toBeDefined()
+
+    const mirandaDarkBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Miranda Ink')
+    )
+    expect(mirandaDarkBtn).toBeDefined()
   })
 
   it('renders light presets when effectiveMode is light', () => {
@@ -72,6 +100,36 @@ describe('ThemePresetSelector', () => {
       b.textContent?.includes('iOS 27 Liquid Glass Light')
     )
     expect(liquidGlassLightBtn).toBeDefined()
+
+    const dalaLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Dala Light')
+    )
+    expect(dalaLightBtn).toBeDefined()
+
+    const discordLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Discord Light')
+    )
+    expect(discordLightBtn).toBeDefined()
+
+    const dopeLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Dope Security Light')
+    )
+    expect(dopeLightBtn).toBeDefined()
+
+    const raycastLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Raycast Light')
+    )
+    expect(raycastLightBtn).toBeDefined()
+
+    const zkpassLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('zkPass Light')
+    )
+    expect(zkpassLightBtn).toBeDefined()
+
+    const mirandaLightBtn = Array.from(buttons ?? []).find((b) =>
+      b.textContent?.includes('Miranda Paper')
+    )
+    expect(mirandaLightBtn).toBeDefined()
   })
 
   it('calls onChange when clicking a preset', () => {
