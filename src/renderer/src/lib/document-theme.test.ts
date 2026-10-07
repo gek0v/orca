@@ -42,8 +42,11 @@ class FakeClassList {
   }
 }
 
-function createThemeRoot(): { classList: FakeClassList } {
-  return { classList: new FakeClassList() }
+function createThemeRoot(): {
+  classList: FakeClassList
+  dataset: Record<string, string | undefined>
+} {
+  return { classList: new FakeClassList(), dataset: {} }
 }
 
 function createFrameQueue(): {
@@ -151,5 +154,43 @@ describe('document theme', () => {
     frames.flushNextFrame()
     expect(root.classList.contains(THEME_TRANSITION_DISABLED_CLASS)).toBe(false)
     expect(frames.pendingCount()).toBe(0)
+  })
+
+  it('sets dataset.theme for custom theme presets and removes it for default', () => {
+    const root = createThemeRoot()
+
+    applyDocumentTheme('dark', { root, themePreset: 'dracula', disableTransitions: false })
+    expect(root.dataset.theme).toBe('dracula')
+    expect(root.classList.contains('dark')).toBe(true)
+
+    applyDocumentTheme('dark', { root, themePreset: 'nord', disableTransitions: false })
+    expect(root.dataset.theme).toBe('nord')
+
+    applyDocumentTheme('dark', { root, themePreset: 'default', disableTransitions: false })
+    expect(root.dataset.theme).toBeUndefined()
+  })
+
+  it('resolves preset variant according to effective mode in system theme', () => {
+    const root = createThemeRoot()
+
+    // System is dark -> catppuccin-mocha
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'catppuccin-mocha',
+      matchMedia: () => ({ matches: true }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('catppuccin-mocha')
+    expect(root.classList.contains('dark')).toBe(true)
+
+    // System is light -> swaps to catppuccin-latte
+    applyDocumentTheme('system', {
+      root,
+      themePreset: 'catppuccin-mocha',
+      matchMedia: () => ({ matches: false }),
+      disableTransitions: false
+    })
+    expect(root.dataset.theme).toBe('catppuccin-latte')
+    expect(root.classList.contains('light')).toBe(true)
   })
 })
