@@ -3,6 +3,7 @@
   "include": [
     "../src/cli/**/*",
     "../src/shared/**/*",
+    "../src/main/goals/goals-state-transitions.ts",
     "../src/main/goals/goals-validation-runner.ts",
     "../src/main/goals/worktree-goals-manager.ts",
     "../src/main/goals/worktree-goals-path.ts",

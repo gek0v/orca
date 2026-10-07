@@ -3,7 +3,7 @@ import { GLOBAL_FLAGS, type CommandSpec } from '../args'
 export const GOALS_COMMAND_SPEC: CommandSpec = {
   path: ['goal'],
   summary: 'Manage worktree goals and subtasks',
-  usage: 'orca goal <status|complete|validate|add-task> [args] [--worktree <path>] [--json]',
+  usage: 'orca goal <status|set|complete|validate|add-task> [args] [--worktree <path>] [--json]',
   allowedFlags: [...GLOBAL_FLAGS, 'worktree', 'json'],
   notes: [
     'Operates on .orca/goals.json in the current or specified worktree.',
@@ -11,6 +11,7 @@ export const GOALS_COMMAND_SPEC: CommandSpec = {
   ],
   examples: [
     'orca goal status',
+    'orca goal set "Implement AI goal generator"',
     'orca goal complete 1',
     'orca goal validate',
     'orca goal add-task "Implement feature"'
@@ -51,9 +52,34 @@ export const GOAL_ADD_TASK_COMMAND_SPEC: CommandSpec = {
   examples: ['orca goal add-task "Write unit tests"']
 }
 
+export const GOAL_SET_COMMAND_SPEC: CommandSpec = {
+  path: ['goal', 'set'],
+  summary: 'Set a new active goal for the workspace',
+  usage:
+    'orca goal set <title> [--description <desc>] [--validation <cmd>] [--worktree <path>] [--json]',
+  allowedFlags: [...GLOBAL_FLAGS, 'worktree', 'json', 'title', 'description', 'validation'],
+  positionalArgs: ['title'],
+  examples: [
+    'orca goal set "Implement AI goal generator"',
+    'orca goal set "Fix login bug" --validation "pnpm test"'
+  ]
+}
+
+export const GOAL_CREATE_COMMAND_SPEC: CommandSpec = {
+  path: ['goal', 'create'],
+  summary: 'Create and set a new active goal for the workspace',
+  usage:
+    'orca goal create <title> [--description <desc>] [--validation <cmd>] [--worktree <path>] [--json]',
+  allowedFlags: [...GLOBAL_FLAGS, 'worktree', 'json', 'title', 'description', 'validation'],
+  positionalArgs: ['title'],
+  examples: ['orca goal create "Implement AI goal generator"']
+}
+
 export const GOALS_COMMAND_SPECS: CommandSpec[] = [
   GOALS_COMMAND_SPEC,
   GOAL_STATUS_COMMAND_SPEC,
+  GOAL_SET_COMMAND_SPEC,
+  GOAL_CREATE_COMMAND_SPEC,
   GOAL_COMPLETE_COMMAND_SPEC,
   GOAL_VALIDATE_COMMAND_SPEC,
   GOAL_ADD_TASK_COMMAND_SPEC

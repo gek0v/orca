@@ -5,6 +5,8 @@ import os from 'node:os'
 import {
   GOALS_COMMAND_SPEC,
   GOAL_STATUS_COMMAND_SPEC,
+  GOAL_SET_COMMAND_SPEC,
+  GOAL_CREATE_COMMAND_SPEC,
   GOAL_COMPLETE_COMMAND_SPEC,
   GOAL_VALIDATE_COMMAND_SPEC,
   GOAL_ADD_TASK_COMMAND_SPEC,
@@ -26,6 +28,10 @@ describe('GOALS_COMMAND_SPEC and specs', () => {
     expect(GOALS_COMMAND_SPEC.allowedFlags).toContain('json')
 
     expect(GOAL_STATUS_COMMAND_SPEC.path).toEqual(['goal', 'status'])
+    expect(GOAL_SET_COMMAND_SPEC.path).toEqual(['goal', 'set'])
+    expect(GOAL_SET_COMMAND_SPEC.positionalArgs).toEqual(['title'])
+    expect(GOAL_CREATE_COMMAND_SPEC.path).toEqual(['goal', 'create'])
+    expect(GOAL_CREATE_COMMAND_SPEC.positionalArgs).toEqual(['title'])
     expect(GOAL_COMPLETE_COMMAND_SPEC.path).toEqual(['goal', 'complete'])
     expect(GOAL_COMPLETE_COMMAND_SPEC.positionalArgs).toEqual(['id-or-index'])
     expect(GOAL_COMPLETE_COMMAND_SPEC.allowedFlags).toContain('id-or-index')
@@ -37,6 +43,8 @@ describe('GOALS_COMMAND_SPEC and specs', () => {
 
     expect(GOALS_COMMAND_SPECS).toContain(GOALS_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_STATUS_COMMAND_SPEC)
+    expect(GOALS_COMMAND_SPECS).toContain(GOAL_SET_COMMAND_SPEC)
+    expect(GOALS_COMMAND_SPECS).toContain(GOAL_CREATE_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_COMPLETE_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_VALIDATE_COMMAND_SPEC)
     expect(GOALS_COMMAND_SPECS).toContain(GOAL_ADD_TASK_COMMAND_SPEC)
@@ -45,12 +53,14 @@ describe('GOALS_COMMAND_SPEC and specs', () => {
   it('is included in COMMAND_SPECS and resolvable', () => {
     expect(findCommandSpec(COMMAND_SPECS, ['goal'])).toBeDefined()
     expect(findCommandSpec(COMMAND_SPECS, ['goal', 'status'])).toBeDefined()
+    expect(findCommandSpec(COMMAND_SPECS, ['goal', 'set'])).toBeDefined()
+    expect(findCommandSpec(COMMAND_SPECS, ['goal', 'create'])).toBeDefined()
     expect(findCommandSpec(COMMAND_SPECS, ['goal', 'complete'])).toBeDefined()
     expect(findCommandSpec(COMMAND_SPECS, ['goal', 'validate'])).toBeDefined()
     expect(findCommandSpec(COMMAND_SPECS, ['goal', 'add-task'])).toBeDefined()
   })
 
-  it('normalizes positional arguments for complete and add-task', () => {
+  it('normalizes positional arguments for complete, add-task, and set', () => {
     const completeParsed = normalizeCommandPositionals(COMMAND_SPECS, {
       commandPath: ['goal', 'complete', '1'],
       flags: new Map()
@@ -64,6 +74,13 @@ describe('GOALS_COMMAND_SPEC and specs', () => {
     })
     expect(addTaskParsed.commandPath).toEqual(['goal', 'add-task'])
     expect(addTaskParsed.flags.get('title')).toBe('Build new feature')
+
+    const setParsed = normalizeCommandPositionals(COMMAND_SPECS, {
+      commandPath: ['goal', 'set', 'Configure target'],
+      flags: new Map()
+    })
+    expect(setParsed.commandPath).toEqual(['goal', 'set'])
+    expect(setParsed.flags.get('title')).toBe('Configure target')
   })
 })
 
@@ -161,6 +178,35 @@ describe('goals CLI dispatch', () => {
     const parsed = JSON.parse(raw)
     expect(parsed.activeGoalId).toBe('g-1')
     expect(parsed.activeGoal.title).toBe('JSON Test Goal')
+  })
+
+  it('handles goal set and activates goal with projection', async () => {
+    const ctx = createHandlerContext({
+      flags: new Map([
+        ['worktree', tempDir],
+        ['title', 'Goal from CLI'],
+        ['description', 'A test description'],
+        ['validation', 'npm test']
+      ])
+    })
+    await dispatch(['goal', 'set'], ctx)
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Active goal set: "Goal from CLI"')
+    )
+
+    const service = worktreeGoalsManager.getService(tempDir)
+    const data = await service.loadGoals()
+    expect(data.goals.length).toBe(1)
+    expect(data.activeGoalId).toBe(data.goals[0].id)
+    expect(data.goals[0].title).toBe('Goal from CLI')
+    expect(data.goals[0].description).toBe('A test description')
+    expect(data.goals[0].validation?.command).toBe('npm test')
+
+    // Check CURRENT_GOAL.md projection
+    const mdContent = await fs.readFile(path.join(tempDir, '.orca', 'CURRENT_GOAL.md'), 'utf8')
+    expect(mdContent).toContain('Goal from CLI')
+    expect(mdContent).toContain('A test description')
   })
 
   it('handles goal add-task and projects CURRENT_GOAL.md', async () => {
