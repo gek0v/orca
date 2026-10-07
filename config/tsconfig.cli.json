@@ -3,6 +3,10 @@
   "include": [
     "../src/cli/**/*",
     "../src/shared/**/*",
+    "../src/main/goals/goals-validation-runner.ts",
+    "../src/main/goals/worktree-goals-manager.ts",
+    "../src/main/goals/worktree-goals-path.ts",
+    "../src/main/goals/worktree-goals-service.ts",
     "../src/main/agent-state-file-reader.ts",
     "../src/main/gitlab/project-ref-parser.ts",
     "../src/main/agent-hooks/grok-replay-guard.ts",

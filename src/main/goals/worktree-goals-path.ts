@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { gitExecFileAsync } from '../git/runner'
+import { runProcess } from '../../shared/child-process/run-process'
 
 export function getOrcaDirectoryPath(workspacePath: string): string {
   return path.join(workspacePath, '.orca')
@@ -27,14 +27,18 @@ export async function resolveGitExcludePath(workspacePath: string): Promise<stri
   }
 
   try {
-    const { stdout } = await gitExecFileAsync(['rev-parse', '--git-path', 'info/exclude'], {
+    const result = await runProcess({
+      program: 'git',
+      args: ['rev-parse', '--git-path', 'info/exclude'],
       cwd: workspacePath
     })
-    const trimmed = stdout.trim()
-    if (!trimmed) {
-      return null
+    if (result.code === 0) {
+      const trimmed = result.stdout.trim()
+      if (trimmed) {
+        return path.resolve(workspacePath, trimmed)
+      }
     }
-    return path.resolve(workspacePath, trimmed)
+    return null
   } catch {
     // Fallback if git binary cannot execute in current environment.
     try {

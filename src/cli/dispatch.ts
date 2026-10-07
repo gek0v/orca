@@ -36,6 +36,11 @@ const ROUTES = buildRoutes(HANDLER_GROUPS)
 export const HANDLER_COMMAND_KEYS: ReadonlySet<string> = new Set(ROUTES.keys())
 
 export async function dispatch(commandPath: string[], ctx: HandlerContext): Promise<void> {
+  if (commandPath[0] === 'goal') {
+    const { dispatchGoal } = await import('./goals-dispatch.js')
+    await dispatchGoal(commandPath, ctx)
+    return
+  }
   const key = commandPath.join(' ')
   const group = ROUTES.get(key)
   if (!group) {
