@@ -1,0 +1,11 @@
+export type AppThemePresetId =
+  | 'default'
+  | 'dracula'
+  | 'nord'
+  | 'tokyo-night'
+  | 'catppuccin-mocha'
+  | 'catppuccin-latte'
+  | 'solarized-dark'
+  | 'solarized-light'
+  | 'github-dark'
+  | 'github-light'
