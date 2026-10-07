@@ -34,6 +34,19 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
         activeView: state.previousViewBeforeAutomations,
         worktreeNavHistoryIndex: rewindHistoryIndexPastView(state, 'automations')
       })),
+    openGoalsPage: () => {
+      get().recordViewVisit?.('goals')
+      set((state) => ({
+        activeView: 'goals',
+        previousViewBeforeGoals:
+          state.activeView === 'goals' ? state.previousViewBeforeGoals : state.activeView
+      }))
+    },
+    closeGoalsPage: () =>
+      set((state) => ({
+        activeView: state.previousViewBeforeGoals,
+        worktreeNavHistoryIndex: rewindHistoryIndexPastView(state, 'goals')
+      })),
     openSpacePage: () => {
       get().recordFeatureInteraction?.('workspace-cleanup')
       set((state) => ({

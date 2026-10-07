@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookOpen, CalendarClock, EyeOff, Files, Search, Smartphone } from 'lucide-react'
+import { BookOpen, CalendarClock, EyeOff, Files, Search, Smartphone, Target } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,12 @@ export function shouldShowAutomationsButton(
   return settings?.showAutomationsButton !== false
 }
 
+export function shouldShowGoalsButton(
+  settings: Partial<Pick<GlobalSettings, 'showGoalsButton'>> | null | undefined
+): boolean {
+  return settings?.showGoalsButton !== false
+}
+
 export function shouldShowArtifactsButton(
   settings: Partial<Pick<GlobalSettings, 'showArtifactsButton'>> | null | undefined
 ): boolean {
@@ -54,6 +60,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   useTranslation()
   const worktreePaletteShortcutCombos = useShortcutKeyComboDetails('worktree.palette')
   const openAutomationsPage = useAppStore((s) => s.openAutomationsPage)
+  const openGoalsPage = useAppStore((s) => s.openGoalsPage)
   const openMobilePage = useAppStore((s) => s.openMobilePage)
   const openArtifactsPage = useAppStore((s) => s.openArtifactsPage)
   const openSkillsPage = useAppStore((s) => s.openSkillsPage)
@@ -62,16 +69,21 @@ const SidebarNav = React.memo(function SidebarNav() {
   const activeView = useAppStore((s) => s.activeView)
   const showAgentDashboardButton = useAppStore((s) => shouldShowAgentDashboardButton(s.settings))
   const showAutomationsButton = useAppStore((s) => shouldShowAutomationsButton(s.settings))
+  const showGoalsButton = useAppStore((s) => shouldShowGoalsButton(s.settings))
   const showMobileButton = useAppStore((s) => shouldShowMobileButton(s.settings))
   const showArtifactsButton = useAppStore((s) => shouldShowArtifactsButton(s.settings))
   const showSkillsButton = useAppStore((s) => shouldShowSkillsButton(s.settings))
   const automationsActive = activeView === 'automations'
+  const goalsActive = activeView === 'goals'
   const mobileActive = activeView === 'mobile'
   const artifactsActive = activeView === 'artifacts'
   const skillsActive = activeView === 'skills'
   const mobileOnboardingBadge = useMobileSidebarOnboardingBadge(showMobileButton)
   const hideAutomationsButton = React.useCallback(() => {
     void updateSettings({ showAutomationsButton: false })
+  }, [updateSettings])
+  const hideGoalsButton = React.useCallback(() => {
+    void updateSettings({ showGoalsButton: false })
   }, [updateSettings])
   const hideMobileButton = React.useCallback(() => {
     void updateSettings({ showMobileButton: false })
@@ -204,6 +216,35 @@ const SidebarNav = React.memo(function SidebarNav() {
             </button>
           </ContextMenuTrigger>
           <HideSidebarMenu onHide={hideAutomationsButton} />
+        </ContextMenu>
+      ) : null}
+      {showGoalsButton ? (
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={openGoalsPage}
+              aria-current={goalsActive ? 'page' : undefined}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+                goalsActive
+                  ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
+                  : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
+              )}
+            >
+              <Target
+                className={cn(
+                  'size-4 shrink-0',
+                  !goalsActive && 'text-worktree-sidebar-foreground/30'
+                )}
+                strokeWidth={goalsActive ? 2.25 : 1.75}
+              />
+              <span className="flex-1">
+                {translate('auto.components.sidebar.SidebarNav.goals', 'Goals')}
+              </span>
+            </button>
+          </ContextMenuTrigger>
+          <HideSidebarMenu onHide={hideGoalsButton} />
         </ContextMenu>
       ) : null}
       {showAgentDashboardButton ? (

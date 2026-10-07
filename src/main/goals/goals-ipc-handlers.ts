@@ -11,8 +11,17 @@ import {
   parseSetActiveArgs,
   parseToggleSubtaskArgs,
   parseUpdateGoalArgs,
-  parseRunValidationArgs
+  parseRunValidationArgs,
+  parseDeleteGoalArgs
 } from './goals-ipc-payload-readers'
+import {
+  applyCreateGoal,
+  applySetActiveGoal,
+  applyToggleSubtask,
+  applyUpdateGoal,
+  applyDeleteGoal,
+  applyValidationResult
+} from './goals-state-transitions'
 
 export type GoalsIpcTarget = Pick<IpcMain, 'handle' | 'removeHandler'>
 export type GoalsManagerTarget = Pick<WorktreeGoalsManager, 'getService'>
@@ -88,37 +97,12 @@ export function registerGoalsIpcHandlers(
         }
 
         const service = resolveService(req.workspacePath)
-        const now = Date.now()
         let createdGoal: Goal | null = null
 
         await service.updateGoals((current) => {
-          const willBeActive = !current.activeGoalId
-          const id = `goal-${now}${current.goals.some((g) => g.id === `goal-${now}`) ? `-${current.goals.length + 1}` : ''}`
-          const goal: Goal = {
-            id,
-            title: req.title,
-            description: req.description,
-            status: willBeActive ? 'in_progress' : 'pending',
-            subtasks: (req.subtasks ?? []).map((title, idx) => ({
-              id: `task-${now}-${idx + 1}`,
-              title,
-              completed: false
-            })),
-            validation: req.validationCommand
-              ? {
-                  command: req.validationCommand,
-                  status: 'idle'
-                }
-              : undefined,
-            createdAt: now,
-            updatedAt: now
-          }
-
-          createdGoal = goal
-          return {
-            activeGoalId: willBeActive ? id : current.activeGoalId,
-            goals: [...current.goals, goal]
-          }
+          const result = applyCreateGoal(current, req)
+          createdGoal = result.created
+          return result.next
         })
 
         if (!createdGoal) {
@@ -143,15 +127,7 @@ export function registerGoalsIpcHandlers(
         }
 
         const service = resolveService(req.workspacePath)
-        await service.updateGoals((current) => {
-          if (req.goalId !== null && !current.goals.some((g) => g.id === req.goalId)) {
-            throw new Error(`Goal with id "${req.goalId}" not found`)
-          }
-          return {
-            ...current,
-            activeGoalId: req.goalId
-          }
-        })
+        await service.updateGoals((current) => applySetActiveGoal(current, req.goalId))
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         console.error(`[goals-ipc] Error in ${GOALS_IPC_CHANNELS.SET_ACTIVE}: ${message}`)
@@ -170,45 +146,9 @@ export function registerGoalsIpcHandlers(
         }
 
         const service = resolveService(req.workspacePath)
-        await service.updateGoals((current) => {
-          const goalIndex = current.goals.findIndex((g) => g.id === req.goalId)
-          if (goalIndex === -1) {
-            throw new Error(`Goal with id "${req.goalId}" not found`)
-          }
-
-          const goal = current.goals[goalIndex]
-          const subtaskIndex = goal.subtasks.findIndex((st) => st.id === req.subtaskId)
-          if (subtaskIndex === -1) {
-            throw new Error(`Subtask with id "${req.subtaskId}" not found in goal "${req.goalId}"`)
-          }
-
-          const updatedSubtasks = goal.subtasks.map((st, idx) =>
-            idx === subtaskIndex ? { ...st, completed: req.completed } : st
-          )
-
-          const allCompleted =
-            updatedSubtasks.length > 0 && updatedSubtasks.every((st) => st.completed)
-          let nextStatus = goal.status
-          if (allCompleted) {
-            nextStatus = 'completed'
-          } else if (goal.status === 'completed' && !allCompleted) {
-            nextStatus = 'in_progress'
-          }
-
-          const updatedGoal: Goal = {
-            ...goal,
-            subtasks: updatedSubtasks,
-            status: nextStatus,
-            updatedAt: Date.now()
-          }
-
-          const updatedGoals = [...current.goals]
-          updatedGoals[goalIndex] = updatedGoal
-          return {
-            ...current,
-            goals: updatedGoals
-          }
-        })
+        await service.updateGoals((current) =>
+          applyToggleSubtask(current, req.goalId, req.subtaskId, req.completed)
+        )
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         console.error(`[goals-ipc] Error in ${GOALS_IPC_CHANNELS.TOGGLE_SUBTASK}: ${message}`)
@@ -219,7 +159,7 @@ export function registerGoalsIpcHandlers(
 
   ipcMain.handle(
     GOALS_IPC_CHANNELS.UPDATE_GOAL,
-    async (_event: unknown, ...args: unknown[]): Promise<void> => {
+    async (_event: unknown, ...args: unknown[]): Promise<Goal> => {
       try {
         const req = parseUpdateGoalArgs(args[0], args[1], args[2])
         if (!req.workspacePath || !req.goalId) {
@@ -227,31 +167,40 @@ export function registerGoalsIpcHandlers(
         }
 
         const service = resolveService(req.workspacePath)
+        let updatedGoal: Goal | null = null
+
         await service.updateGoals((current) => {
-          const goalIndex = current.goals.findIndex((g) => g.id === req.goalId)
-          if (goalIndex === -1) {
-            throw new Error(`Goal with id "${req.goalId}" not found`)
-          }
-
-          const target = current.goals[goalIndex]
-          const updatedGoal: Goal = {
-            ...target,
-            ...req.updates,
-            id: target.id,
-            createdAt: target.createdAt,
-            updatedAt: Date.now()
-          }
-
-          const updatedGoals = [...current.goals]
-          updatedGoals[goalIndex] = updatedGoal
-          return {
-            ...current,
-            goals: updatedGoals
-          }
+          const result = applyUpdateGoal(current, req.goalId, req.updates)
+          updatedGoal = result.updated
+          return result.next
         })
+
+        if (!updatedGoal) {
+          throw new Error('Failed to update goal')
+        }
+        return updatedGoal
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         console.error(`[goals-ipc] Error in ${GOALS_IPC_CHANNELS.UPDATE_GOAL}: ${message}`)
+        throw error instanceof Error ? error : new Error(message)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    GOALS_IPC_CHANNELS.DELETE_GOAL,
+    async (_event: unknown, ...args: unknown[]): Promise<void> => {
+      try {
+        const req = parseDeleteGoalArgs(args[0], args[1])
+        if (!req.workspacePath || !req.goalId) {
+          throw new Error('workspacePath and goalId are required')
+        }
+
+        const service = resolveService(req.workspacePath)
+        await service.updateGoals((current) => applyDeleteGoal(current, req.goalId))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error(`[goals-ipc] Error in ${GOALS_IPC_CHANNELS.DELETE_GOAL}: ${message}`)
         throw error instanceof Error ? error : new Error(message)
       }
     }
@@ -273,36 +222,17 @@ export function registerGoalsIpcHandlers(
           throw new Error('No active goal to validate')
         }
 
-        const targetGoal = currentData.goals.find((g) => g.id === targetGoalId)
-        if (!targetGoal) {
+        const goal = currentData.goals.find((g) => g.id === targetGoalId)
+        if (!goal) {
           throw new Error(`Goal with id "${targetGoalId}" not found`)
         }
-        if (!targetGoal.validation?.command) {
-          throw new Error(`Goal "${targetGoalId}" has no validation command configured`)
+        if (!goal.validation?.command) {
+          throw new Error(`Goal "${goal.title}" has no validation command configured`)
         }
 
-        const command = targetGoal.validation.command
+        const command = goal.validation.command
         const result = await runner.runValidation(req.workspacePath, command, targetGoalId)
-
-        await service.updateGoals((current) => {
-          const idx = current.goals.findIndex((g) => g.id === targetGoalId)
-          if (idx === -1) {
-            return current
-          }
-          const goal = current.goals[idx]
-          const updatedGoal: Goal = {
-            ...goal,
-            validation: result,
-            updatedAt: Date.now()
-          }
-          const updatedGoals = [...current.goals]
-          updatedGoals[idx] = updatedGoal
-          return {
-            ...current,
-            goals: updatedGoals
-          }
-        })
-
+        await service.updateGoals((current) => applyValidationResult(current, targetGoalId, result))
         return result
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -322,6 +252,7 @@ export function registerGoalsIpcHandlers(
     ipcMain.removeHandler(GOALS_IPC_CHANNELS.SET_ACTIVE)
     ipcMain.removeHandler(GOALS_IPC_CHANNELS.TOGGLE_SUBTASK)
     ipcMain.removeHandler(GOALS_IPC_CHANNELS.UPDATE_GOAL)
+    ipcMain.removeHandler(GOALS_IPC_CHANNELS.DELETE_GOAL)
     ipcMain.removeHandler(GOALS_IPC_CHANNELS.RUN_VALIDATION)
   }
 }

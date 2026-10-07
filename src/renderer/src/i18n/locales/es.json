@@ -5398,7 +5398,8 @@
           "fee535205b": "Tareas",
           "d599269755": "Ocultar de la barra lateral",
           "artifacts": "Artefactos",
-          "skills": "Habilidades"
+          "skills": "Habilidades",
+          "goals": "Objetivos"
         },
         "SidebarRepositoryFilterSection": {
           "d3a9c4cea1": "Limpiar",
