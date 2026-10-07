@@ -1,7 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
-import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
+import {
+  getCachedAntigravityAccountsState,
+  setCachedAntigravityAccountsState,
+  subscribeAntigravityAccountsState,
+  updateCachedAccountUsage
+} from '@/hooks/useAntigravityAccounts'
 
 vi.mock('@/i18n/i18n', () => ({
   i18n: { language: 'en' },
@@ -298,9 +303,7 @@ describe('Antigravity status-bar segment', () => {
       ...mockStoreState,
       activeTabId: 'tab-pers',
       tabsByWorktree: {
-        'wt-1': [
-          { id: 'tab-pers', launchAgent: 'antigravity', launchAccountId: 'acc-personal' }
-        ]
+        'wt-1': [{ id: 'tab-pers', launchAgent: 'antigravity', launchAccountId: 'acc-personal' }]
       }
     }
 
@@ -348,5 +351,133 @@ describe('Antigravity status-bar segment', () => {
 
     expect(markup).toContain('max-w-[70px]')
     expect(markup).toContain('truncate')
+  })
+
+  it('preserves lastUsage and lastUsageAt in setCachedAntigravityAccountsState when incoming state has null or older values', () => {
+    const existingUsage: ProviderRateLimits = antigravityLimits()
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user1@example.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: existingUsage,
+          lastUsageAt: 5000
+        }
+      ],
+      activeAccountId: 'acc-1',
+      currentAccount: null,
+      selectedAccountId: 'acc-1'
+    })
+
+    // Incoming state has null lastUsage and null lastUsageAt
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user1@example.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          createdAt: 1000,
+          updatedAt: 2000,
+          lastUsage: null,
+          lastUsageAt: null
+        }
+      ],
+      activeAccountId: 'acc-1',
+      currentAccount: null,
+      selectedAccountId: 'acc-1'
+    })
+
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsage).toEqual(existingUsage)
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsageAt).toBe(5000)
+
+    // Incoming state has older lastUsageAt
+    const olderUsage: ProviderRateLimits = { ...antigravityLimits(), updatedAt: 2000 }
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user1@example.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          createdAt: 1000,
+          updatedAt: 3000,
+          lastUsage: olderUsage,
+          lastUsageAt: 4000
+        }
+      ],
+      activeAccountId: 'acc-1',
+      currentAccount: null,
+      selectedAccountId: 'acc-1'
+    })
+
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsage).toEqual(existingUsage)
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsageAt).toBe(5000)
+
+    // Incoming state has newer lastUsageAt
+    const newerUsage: ProviderRateLimits = { ...antigravityLimits(), updatedAt: 6000 }
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user1@example.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          createdAt: 1000,
+          updatedAt: 4000,
+          lastUsage: newerUsage,
+          lastUsageAt: 6000
+        }
+      ],
+      activeAccountId: 'acc-1',
+      currentAccount: null,
+      selectedAccountId: 'acc-1'
+    })
+
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsage).toEqual(newerUsage)
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsageAt).toBe(6000)
+  })
+
+  it('updates cached account usage and notifies listeners via updateCachedAccountUsage', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'user1@example.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          createdAt: 1000,
+          updatedAt: 1000
+        }
+      ],
+      activeAccountId: 'acc-1',
+      currentAccount: null,
+      selectedAccountId: 'acc-1'
+    })
+
+    const listener = vi.fn()
+    const unsubscribe = subscribeAntigravityAccountsState(listener)
+
+    const newUsage = antigravityLimits()
+    const beforeTime = Date.now()
+    updateCachedAccountUsage('acc-1', newUsage)
+    const afterTime = Date.now()
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    const notifiedState = listener.mock.calls[0][0]
+    expect(notifiedState?.accounts[0].lastUsage).toEqual(newUsage)
+    expect(notifiedState?.accounts[0].lastUsageAt).toBeGreaterThanOrEqual(beforeTime)
+    expect(notifiedState?.accounts[0].lastUsageAt).toBeLessThanOrEqual(afterTime)
+
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsage).toEqual(newUsage)
+    expect(getCachedAntigravityAccountsState()?.accounts[0].lastUsageAt).toBe(
+      notifiedState?.accounts[0].lastUsageAt
+    )
+
+    unsubscribe()
   })
 })
