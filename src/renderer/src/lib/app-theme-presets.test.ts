@@ -57,6 +57,28 @@ describe('app-theme-presets', () => {
     expect(resolveEffectiveThemePreset('dark', 'liquid-glass-light', true)).toBe(
       'liquid-glass-dark'
     )
+    // Dala Dark in light mode -> Dala Light
+    expect(resolveEffectiveThemePreset('light', 'dala-dark', false)).toBe('dala-light')
+    expect(resolveEffectiveThemePreset('dark', 'dala-light', true)).toBe('dala-dark')
+    // Discord Dark in light mode -> Discord Light
+    expect(resolveEffectiveThemePreset('light', 'discord-dark', false)).toBe('discord-light')
+    expect(resolveEffectiveThemePreset('dark', 'discord-light', true)).toBe('discord-dark')
+    // Dope Security Dark in light mode -> Dope Security Light
+    expect(resolveEffectiveThemePreset('light', 'dope-security-dark', false)).toBe(
+      'dope-security-light'
+    )
+    expect(resolveEffectiveThemePreset('dark', 'dope-security-light', true)).toBe(
+      'dope-security-dark'
+    )
+    // Raycast Dark in light mode -> Raycast Light
+    expect(resolveEffectiveThemePreset('light', 'raycast-dark', false)).toBe('raycast-light')
+    expect(resolveEffectiveThemePreset('dark', 'raycast-light', true)).toBe('raycast-dark')
+    // zkPass Dark in light mode -> zkPass Light
+    expect(resolveEffectiveThemePreset('light', 'zkpass-dark', false)).toBe('zkpass-light')
+    expect(resolveEffectiveThemePreset('dark', 'zkpass-light', true)).toBe('zkpass-dark')
+    // Miranda Light in dark mode -> Miranda Dark
+    expect(resolveEffectiveThemePreset('dark', 'miranda-light', true)).toBe('miranda-dark')
+    expect(resolveEffectiveThemePreset('light', 'miranda-dark', false)).toBe('miranda-light')
   })
 
   it('falls back to default for dark-only presets in light mode', () => {
@@ -80,5 +102,17 @@ describe('app-theme-presets', () => {
     expect(getMatchingTerminalTheme('material-light')).toBe('Builtin Tango Light')
     expect(getMatchingTerminalTheme('liquid-glass-dark')).toBe('Ghostty Default Style Dark')
     expect(getMatchingTerminalTheme('liquid-glass-light')).toBe('Builtin Tango Light')
+    expect(getMatchingTerminalTheme('dala-dark')).toBe('Dracula')
+    expect(getMatchingTerminalTheme('dala-light')).toBe('Builtin Tango Light')
+    expect(getMatchingTerminalTheme('discord-dark')).toBe('Tokyo Night')
+    expect(getMatchingTerminalTheme('discord-light')).toBe('Builtin Tango Light')
+    expect(getMatchingTerminalTheme('dope-security-dark')).toBe('Dracula')
+    expect(getMatchingTerminalTheme('dope-security-light')).toBe('Builtin Tango Light')
+    expect(getMatchingTerminalTheme('raycast-dark')).toBe('Nord')
+    expect(getMatchingTerminalTheme('raycast-light')).toBe('Builtin Solarized Light')
+    expect(getMatchingTerminalTheme('zkpass-dark')).toBe('Builtin Dark')
+    expect(getMatchingTerminalTheme('zkpass-light')).toBe('Builtin Solarized Light')
+    expect(getMatchingTerminalTheme('miranda-light')).toBe('Builtin Solarized Light')
+    expect(getMatchingTerminalTheme('miranda-dark')).toBe('Solarized Dark')
   })
 })
