@@ -2,10 +2,10 @@
 name: orca-cli
 description: >-
   Operate Orca-managed worktrees, folder contexts, terminals, repos, automations, artifacts,
-  skill sharing, worktree comments, and Orca's embedded browser through the `orca` CLI. Use
+  skill sharing, worktree comments, goals/subtasks, and Orca's embedded browser through the `orca` CLI. Use
   when the user says "$orca-cli", "Orca worktree", "child worktree", "spawn codex/claude in a
   worktree", "read/wait/send Orca terminal", "handoff" / "handover" / "give this to another
-  agent", "Orca browser", "orca artifacts", or "share skills". Prefer it over raw git
+  agent", "Orca browser", "orca artifacts", "orca goal", or "share skills". Prefer it over raw git
   worktree, ad hoc PTYs, or Computer Use when Orca state is involved. Use Computer Use only
   when a visible window needs GUI control that a CLI, filesystem, or API cannot do.
 ---
@@ -155,6 +155,32 @@ flags leave links unchanged; literal `null` clears only the named link on `set` 
 is refused on `create`. Folder-based repos can store numeric links, but missing
 source/remote identity prevents URL validation and may leave provider links unavailable.
 Old runtimes that predate these existing fields may ignore them; verify with `worktree show --json`.
+
+## Worktree Goals and Subtasks
+
+Worktree goals track active objectives, breakdown subtasks, and automated technical validation. The active goal is persisted in `.orca/goals.json` and projected into human- and agent-readable Markdown in `.orca/CURRENT_GOAL.md`.
+
+Agents must always interact with goals through `ORCA goal` CLI commands rather than editing `.orca/goals.json` directly.
+
+Common commands:
+
+```text
+ORCA goal status [--worktree <path>] [--json]
+ORCA goal set "<title>" [--description "<desc>"] [--validation "<cmd>"] [--worktree <path>] [--json]
+ORCA goal create "<title>" [--description "<desc>"] [--validation "<cmd>"] [--worktree <path>] [--json]
+ORCA goal add-task "<title>" [--worktree <path>] [--json]
+ORCA goal complete <id-or-index> [--worktree <path>] [--json]
+ORCA goal validate [--worktree <path>] [--json]
+```
+
+Goal rules:
+
+- `ORCA goal status` prints the active goal, its status (`pending`, `in_progress`, `in_verification`, `completed`, `failed`), all subtasks with 1-based indexes, and validation status.
+- `ORCA goal set <title>` (or `ORCA goal create <title>`) creates and immediately activates a new goal. Optional `--description` explains the intent; optional `--validation` sets a shell command (e.g. test or typecheck) to verify completion.
+- `ORCA goal add-task <title>` appends a new pending subtask to the active goal and refreshes `.orca/CURRENT_GOAL.md`.
+- `ORCA goal complete <id-or-index>` marks a subtask as completed. It accepts either the 1-based index (e.g. `ORCA goal complete 1`) or the unique task ID (e.g. `ORCA goal complete task-123`).
+- `ORCA goal validate` runs the goal's configured validation command in the worktree directory, captures stdout/stderr, updates validation status (`success` or `failed`), and logs output to `.orca/last_validation.log`.
+- All `ORCA goal` commands support `--worktree <path>` to target another worktree, and `--json` for structured machine output.
 
 ## Terminals
 
