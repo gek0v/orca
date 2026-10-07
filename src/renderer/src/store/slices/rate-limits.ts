@@ -1,5 +1,9 @@
 import type { StateCreator } from 'zustand'
-import type { RateLimitRuntimeTarget, RateLimitState } from '../../../../shared/rate-limit-types'
+import type {
+  ProviderRateLimits,
+  RateLimitRuntimeTarget,
+  RateLimitState
+} from '../../../../shared/rate-limit-types'
 import { createEmptyRateLimitState } from '../../../../shared/rate-limit-state-factory'
 import type { AppState } from '../types'
 
@@ -14,6 +18,7 @@ export type RateLimitSlice = {
   fetchInactiveClaudeAccountUsage: () => Promise<void>
   fetchInactiveCodexAccountUsage: () => Promise<void>
   setRateLimitsFromPush: (state: RateLimitState) => void
+  setAntigravityRateLimitsOptimistic: (targetUsage?: ProviderRateLimits | null) => void
 }
 
 export const createRateLimitSlice: StateCreator<AppState, [], [], RateLimitSlice> = (set, get) => ({
@@ -134,5 +139,24 @@ export const createRateLimitSlice: StateCreator<AppState, [], [], RateLimitSlice
 
   setRateLimitsFromPush: (state) => {
     set({ rateLimits: state })
+  },
+
+  setAntigravityRateLimitsOptimistic: (targetUsage) => {
+    const current = get().rateLimits
+    set({
+      rateLimits: {
+        ...current,
+        antigravity: targetUsage
+          ? { ...targetUsage, status: 'fetching' }
+          : {
+              provider: 'antigravity',
+              session: null,
+              weekly: null,
+              updatedAt: 0,
+              error: null,
+              status: 'fetching'
+            }
+      }
+    })
   }
 })

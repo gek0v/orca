@@ -9,6 +9,7 @@ import { useAppStore } from '../../store'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import {
   setCachedAntigravityAccountsState,
+  updateCachedAccountUsage,
   useAntigravityAccounts
 } from '@/hooks/useAntigravityAccounts'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
@@ -56,6 +57,9 @@ export function AntigravitySwitcherMenu({
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
+  const setAntigravityRateLimitsOptimistic = useAppStore(
+    (s) => s.setAntigravityRateLimitsOptimistic
+  )
   const activeRepoId = useAppStore((s) => s.activeRepoId)
   const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
   const repos = useAppStore((s) => s.repos)
@@ -104,8 +108,16 @@ export function AntigravitySwitcherMenu({
   }
 
   const handleSelectAccount = async (accountId: string): Promise<void> => {
+    if (isSwitching || accountId === activeAccount?.id) {
+      return
+    }
     try {
       setIsSwitching(true)
+      const targetAccount = accounts.find((a) => a.id === accountId)
+      if (activeAccount && antigravity?.status === 'ok') {
+        updateCachedAccountUsage(activeAccount.id, antigravity)
+      }
+      setAntigravityRateLimitsOptimistic?.(targetAccount?.lastUsage ?? null)
       const target =
         selectedGroup.runtimeTarget.runtime === 'host'
           ? { runtime: 'host' as const }
@@ -260,17 +272,25 @@ export function AntigravitySwitcherMenu({
               </div>
             ) : null}
             {accounts.map((account) => {
-              const isActive = account.id === activeAccount?.id
+              const isCurrentAccount = account.id === activeAccount?.id
               const label = account.alias || account.email || account.id
-              const usage = isActive ? antigravity : account.lastUsage
+              const isFreshForThisAccount =
+                isCurrentAccount &&
+                !isSwitching &&
+                (!antigravity.usageMetadata?.authProvenance ||
+                  antigravity.usageMetadata.authProvenance === account.id) &&
+                antigravity.status === 'ok'
+              const usage = isFreshForThisAccount ? antigravity : account.lastUsage
+              const isAccountFetching =
+                isCurrentAccount && (isSwitching || antigravity.status === 'fetching')
 
               return (
                 <DropdownMenuItem
                   key={account.id}
-                  disabled={isSwitching || isActive}
+                  disabled={isSwitching || isCurrentAccount}
                   onSelect={(event) => {
                     event.preventDefault()
-                    if (!isActive) {
+                    if (!isCurrentAccount) {
                       void handleSelectAccount(account.id)
                     }
                   }}
@@ -286,12 +306,12 @@ export function AntigravitySwitcherMenu({
                         />
                       ) : null}
                       <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
-                      {isActive ? (
+                      {isCurrentAccount ? (
                         <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
                           {translate('auto.components.status.bar.StatusBar.ff0fbe9311', 'Active')}
                         </span>
                       ) : null}
-                      {!isActive && account.id === projectDefaultAccountId ? (
+                      {!isCurrentAccount && account.id === projectDefaultAccountId ? (
                         <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
                           {translate(
                             'auto.components.status.bar.StatusBar.antigravityProjectDefaultBadge',
@@ -301,7 +321,7 @@ export function AntigravitySwitcherMenu({
                       ) : null}
                     </div>
                     {usage ? (
-                      <InlineUsageBars limits={usage} isFetching={false} />
+                      <InlineUsageBars limits={usage} isFetching={isAccountFetching} />
                     ) : (
                       <span className="text-[10px] text-muted-foreground/70">
                         {translate(

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
@@ -43,6 +44,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 const mockOpenSettingsPage = vi.fn()
 const mockOpenSettingsTarget = vi.fn()
 const mockRefreshRateLimits = vi.fn()
+const mockSetAntigravityRateLimitsOptimistic = vi.fn()
 
 type MockStoreRepo = {
   id: string
@@ -53,6 +55,7 @@ type MockAppStoreState = {
   openSettingsPage: () => void
   openSettingsTarget: (target: unknown) => void
   refreshRateLimits: () => void
+  setAntigravityRateLimitsOptimistic: (targetUsage?: ProviderRateLimits | null) => void
   usagePercentageDisplay: 'used'
   activeRepoId: string | null
   activeWorktreeId: string | null
@@ -63,6 +66,7 @@ const mockStoreState: MockAppStoreState = {
   openSettingsPage: mockOpenSettingsPage,
   openSettingsTarget: mockOpenSettingsTarget,
   refreshRateLimits: mockRefreshRateLimits,
+  setAntigravityRateLimitsOptimistic: mockSetAntigravityRateLimitsOptimistic,
   usagePercentageDisplay: 'used',
   activeRepoId: null,
   activeWorktreeId: null,
@@ -111,9 +115,17 @@ describe('AntigravitySwitcherMenu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCallAntigravityAccounts.mockReset()
+    mockCallAntigravityAccounts.mockResolvedValue({
+      accounts: [],
+      activeAccountId: null,
+      selectedAccountId: null,
+      currentAccount: null
+    })
     mockStoreState.activeRepoId = null
     mockStoreState.activeWorktreeId = null
     mockStoreState.repos = []
+    setCachedAntigravityAccountsState(null)
     setCachedAntigravityAccountsState({
       accounts: [
         {
@@ -298,5 +310,229 @@ describe('AntigravitySwitcherMenu', () => {
     )
 
     expect(screen.queryByText('Project Default')).toBeNull()
+  })
+
+  it('retains Account 1 usage and displays Account 2 lastUsage with updating state when switching to Account 2', async () => {
+    const acc1Usage = {
+      ...createRateLimits(20),
+      usageMetadata: { authProvenance: 'acc-1' }
+    }
+    const acc2Usage = {
+      ...createRateLimits(80),
+      usageMetadata: { authProvenance: 'acc-2' }
+    }
+
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'personal@gmail.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          emoji: '🏠',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: acc1Usage
+        },
+        {
+          id: 'acc-2',
+          email: 'work@company.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#10b981',
+          emoji: '💼',
+          createdAt: 2000,
+          updatedAt: 2000,
+          lastUsage: acc2Usage
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1',
+      currentAccount: {
+        email: 'personal@gmail.com',
+        subject: 'sub-1',
+        authMethod: 'oauth',
+        identityKnown: true
+      }
+    })
+
+    mockCallAntigravityAccounts.mockResolvedValueOnce({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'personal@gmail.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          emoji: '🏠',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: acc1Usage
+        },
+        {
+          id: 'acc-2',
+          email: 'work@company.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#10b981',
+          emoji: '💼',
+          createdAt: 2000,
+          updatedAt: 2000,
+          lastUsage: acc2Usage
+        }
+      ],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: {
+        email: 'work@company.com',
+        subject: 'sub-2',
+        authMethod: 'oauth',
+        identityKnown: true
+      }
+    })
+
+    const { rerender } = render(
+      <AntigravitySwitcherMenu antigravity={acc1Usage} compact={false} iconOnly={false} />
+    )
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    expect(screen.getAllByText('20%').length).toBeGreaterThan(0)
+    expect(screen.getByText('80%')).toBeDefined()
+
+    const workRow = screen.getByText('Trabajo')
+    await act(async () => {
+      fireEvent.click(workRow)
+    })
+
+    expect(mockCallAntigravityAccounts).toHaveBeenCalledWith(
+      { kind: 'local' },
+      { runtime: 'host' },
+      'Select',
+      'acc-2'
+    )
+
+    expect(screen.getAllByText('80%').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('20%').length).toBeGreaterThan(0)
+
+    rerender(
+      <AntigravitySwitcherMenu
+        antigravity={{ ...acc2Usage, status: 'fetching' }}
+        compact={false}
+        iconOnly={false}
+      />
+    )
+
+    expect(screen.getAllByText('80%').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('20%').length).toBeGreaterThan(0)
+    const pulsingElements = screen
+      .getAllByText('80%')
+      .map((el) => el.closest('.animate-pulse'))
+      .filter(Boolean)
+    expect(pulsingElements.length).toBeGreaterThan(0)
+  })
+
+  it('displays "No usage data yet" when switching to an account without prior usage without inheriting outgoing quota', async () => {
+    const acc1Usage = {
+      ...createRateLimits(20),
+      usageMetadata: { authProvenance: 'acc-1' }
+    }
+
+    mockCallAntigravityAccounts.mockResolvedValueOnce({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'personal@gmail.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          emoji: '🏠',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: acc1Usage
+        },
+        {
+          id: 'acc-2',
+          email: 'work@company.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#10b981',
+          emoji: '💼',
+          createdAt: 2000,
+          updatedAt: 2000,
+          lastUsage: null
+        }
+      ],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: {
+        email: 'work@company.com',
+        subject: 'sub-2',
+        authMethod: 'oauth',
+        identityKnown: true
+      }
+    })
+
+    render(<AntigravitySwitcherMenu antigravity={acc1Usage} compact={false} iconOnly={false} />)
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    expect(screen.getByText('No usage data yet')).toBeDefined()
+
+    const workRow = screen.getByText('Trabajo')
+    await act(async () => {
+      fireEvent.click(workRow)
+    })
+
+    expect(screen.getByText('No usage data yet')).toBeDefined()
+  })
+
+  it('disables switching actions and ignores rapid clicks while switching', async () => {
+    let resolveCall!: (value: unknown) => void
+    mockCallAntigravityAccounts.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCall = resolve
+        })
+    )
+
+    render(
+      <AntigravitySwitcherMenu
+        antigravity={createRateLimits(20)}
+        compact={false}
+        iconOnly={false}
+      />
+    )
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    const workRow = screen.getByText('Trabajo')
+    const workButton = workRow.closest('button')
+    expect(workButton).not.toBeNull()
+
+    fireEvent.click(workRow)
+    expect(mockCallAntigravityAccounts).toHaveBeenCalledTimes(1)
+
+    expect(workButton).toBeDisabled()
+
+    fireEvent.click(workRow)
+    expect(mockCallAntigravityAccounts).toHaveBeenCalledTimes(1)
+
+    resolveCall({
+      accounts: [],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: null
+    })
   })
 })
