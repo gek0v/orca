@@ -125,10 +125,21 @@ describe('agents beyond Claude and Codex', () => {
     expect(
       support({ agent: 'grok', hostCapabilities: REGISTERED, hostStructuredAgents: ['grok'] })
     ).toEqual({ supported: true })
+    expect(
+      support({
+        agent: 'antigravity',
+        hostCapabilities: REGISTERED,
+        hostStructuredAgents: ['antigravity']
+      })
+    ).toEqual({ supported: true })
   })
 
   it('are not offered by a host that does not advertise its registered agents', () => {
     expect(support({ agent: 'grok', hostStructuredAgents: ['grok'] })).toEqual({
+      supported: false,
+      blocker: 'runtime-capability'
+    })
+    expect(support({ agent: 'antigravity', hostStructuredAgents: ['antigravity'] })).toEqual({
       supported: false,
       blocker: 'runtime-capability'
     })
