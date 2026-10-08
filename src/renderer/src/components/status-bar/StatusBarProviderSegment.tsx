@@ -14,6 +14,7 @@ import {
   getProviderDisplayName,
   getProviderUsageStatusLabel
 } from './tooltip'
+import { isClaudeUsageWaitingForClaude } from './usage-error-copy'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
 import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
@@ -351,6 +352,8 @@ export function ProviderSegment({
 
   const limits = isAntigravity ? effectiveLimits : p
   const statusLabel = limits ? getProviderUsageStatusLabel(limits) : ''
+  // Why: not a problem; Claude updates its own login the next time it runs.
+  const calm = limits ? isClaudeUsageWaitingForClaude(limits) : false
 
   // Idle / initial load
   if (!limits || limits.status === 'idle') {
@@ -406,14 +409,14 @@ export function ProviderSegment({
         {isAntigravity ? (
           <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
         ) : null}
-        <AlertTriangle size={11} className="text-muted-foreground/80" />
+        {!calm && <AlertTriangle size={11} className="text-muted-foreground/80" />}
         {!compact && <span className="text-[11px] font-medium">{statusLabel}</span>}
       </span>
     )
   }
 
   // Has data (ok, fetching with stale data, or error with stale data)
-  const isStale = limits.status === 'error'
+  const isStale = limits.status === 'error' && !calm
   const showBalance = isExtraUsageActive(limits)
 
   return (
