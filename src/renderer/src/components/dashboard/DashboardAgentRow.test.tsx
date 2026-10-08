@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import { TooltipProvider } from '../ui/tooltip'
+import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import DashboardAgentRow from './DashboardAgentRow'
 import type { DashboardAgentRow as DashboardAgentRowData } from './useDashboardData'
 
@@ -525,5 +526,66 @@ describe('DashboardAgentRow', () => {
 
     expect(classTokens(markup)).toContain('worktree-agent-lineage-parent-row')
     expect(markup).toContain('aria-label="Show 2 child agents"')
+  })
+
+  it('renders Antigravity account badge when tab has launchAccountId', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-work',
+          email: 'work@corp.com',
+          subject: 'sub-work',
+          authMethod: 'oauth',
+          alias: 'Work Account',
+          color: '#10b981',
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: null,
+      currentAccount: null,
+      selectedAccountId: null
+    })
+
+    const agent = makeAgent({
+      agentType: 'antigravity',
+      tab: {
+        id: 'tab-1',
+        ptyId: null,
+        worktreeId: 'wt-1',
+        title: 'Antigravity',
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        createdAt: 1,
+        launchAgent: 'antigravity',
+        launchAccountId: 'acc-work'
+      }
+    })
+
+    const markup = renderRow(agent)
+    expect(markup).toContain('Work Account')
+    expect(markup).toContain('data-account-color="#10b981"')
+  })
+
+  it('does not render Antigravity account badge when launchAccountId is absent', () => {
+    const agent = makeAgent({
+      agentType: 'antigravity',
+      tab: {
+        id: 'tab-1',
+        ptyId: null,
+        worktreeId: 'wt-1',
+        title: 'Antigravity',
+        customTitle: null,
+        color: null,
+        sortOrder: 0,
+        createdAt: 1,
+        launchAgent: 'antigravity'
+      }
+    })
+
+    const markup = renderRow(agent)
+    expect(markup).not.toContain('data-account-color')
+    expect(markup).not.toContain('data-account-emoji')
   })
 })

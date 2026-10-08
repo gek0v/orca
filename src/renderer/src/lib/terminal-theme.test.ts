@@ -342,6 +342,8 @@ describe('custom design terminal themes', () => {
   const CUSTOM_TERMINAL_THEMES = [
     'Material 3 Dark',
     'Material 3 Light',
+    'Liquid Glass Dark',
+    'Liquid Glass Light',
     'iOS 27 Liquid Glass Dark',
     'iOS 27 Liquid Glass Light',
     'Dala Dark',

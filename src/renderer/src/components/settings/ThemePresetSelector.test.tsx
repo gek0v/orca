@@ -44,7 +44,7 @@ describe('ThemePresetSelector', () => {
     expect(materialDarkBtn).toBeDefined()
 
     const liquidGlassDarkBtn = Array.from(buttons ?? []).find((b) =>
-      b.textContent?.includes('iOS 27 Liquid Glass Dark')
+      b.textContent?.includes('Liquid Glass Dark')
     )
     expect(liquidGlassDarkBtn).toBeDefined()
 
@@ -97,7 +97,7 @@ describe('ThemePresetSelector', () => {
     expect(materialLightBtn).toBeDefined()
 
     const liquidGlassLightBtn = Array.from(buttons ?? []).find((b) =>
-      b.textContent?.includes('iOS 27 Liquid Glass Light')
+      b.textContent?.includes('Liquid Glass Light')
     )
     expect(liquidGlassLightBtn).toBeDefined()
 

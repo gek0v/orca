@@ -24,6 +24,8 @@ import {
   agentChildRowMessageLine,
   agentChildRowNoUpdateLabel
 } from '@/components/agent-child-row-text'
+import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
+import { AntigravityAccountTabBadge } from '@/components/tab-bar/AntigravityAccountTabBadge'
 
 function formatTimeAgo(ts: number, now: number): string {
   const delta = now - ts
@@ -175,6 +177,13 @@ const DashboardAgentRow = React.memo(function DashboardAgentRow({
   // failure does so even while subagents still run.
   const dotState: AgentDotState = agentRowDisplayDotState(agent)
   const dotTooltipLabel = stateDotTooltipLabel(agent, dotState, now)
+  const { getAccountById } = useAntigravityAccounts()
+  const isAntigravity =
+    agent.agentType === 'antigravity' || agent.tab?.launchAgent === 'antigravity'
+  const antigravityAccount =
+    isAntigravity && agent.tab?.launchAccountId && agent.rowSource !== 'subagent'
+      ? getAccountById(agent.tab.launchAccountId)
+      : null
   // Why: the elapsed gap is the whole content of an `unverifiable` row, so it rides the
   // row's own timestamp slot rather than hiding in a hover tooltip.
   const noUpdateLabel = dotState === 'unverifiable' ? rowNoUpdateLabel(agent, now) : null
@@ -264,6 +273,7 @@ const DashboardAgentRow = React.memo(function DashboardAgentRow({
             <AgentIcon agent={agentTypeToIconAgent(agent.agentType)} size={14} />
           </span>
         )}
+        {antigravityAccount && <AntigravityAccountTabBadge account={antigravityAccount} />}
         {/* Why: interpolate-size:allow-keywords is the only way to animate height to/from auto without measuring in JS; falls back to an instant swap where unsupported. */}
         <span
           className={cn(

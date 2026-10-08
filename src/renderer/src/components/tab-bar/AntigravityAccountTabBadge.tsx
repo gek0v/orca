@@ -1,15 +1,20 @@
 import React from 'react'
 import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 export type AntigravityAccountTabBadgeProps = {
   account?: AntigravityAccountSummary | null
+  compact?: boolean
+  className?: string
 }
 
 const DEFAULT_ACCOUNT_COLOR = '#3b82f6'
 
 export function AntigravityAccountTabBadge({
-  account
+  account,
+  compact = false,
+  className
 }: AntigravityAccountTabBadgeProps): React.JSX.Element | null {
   if (!account) {
     return null
@@ -21,7 +26,13 @@ export function AntigravityAccountTabBadge({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="flex items-center gap-1 shrink-0 select-none mr-1">
+        <span
+          className={cn(
+            'flex items-center gap-1 shrink-0 select-none mr-1',
+            compact && 'mr-0.5',
+            className
+          )}
+        >
           {account.emoji ? (
             <span
               className="text-[11px] leading-none select-none"
@@ -36,9 +47,11 @@ export function AntigravityAccountTabBadge({
               data-account-color={color}
             />
           )}
-          <span className="max-w-[54px] truncate text-[10px] font-medium text-muted-foreground">
-            {label}
-          </span>
+          {!compact ? (
+            <span className="max-w-[54px] truncate text-[10px] font-medium text-muted-foreground">
+              {label}
+            </span>
+          ) : null}
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={6}>

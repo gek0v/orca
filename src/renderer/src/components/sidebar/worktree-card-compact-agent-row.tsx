@@ -6,6 +6,8 @@ import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/da
 import { AgentIcon } from '@/lib/agent-catalog'
 import { agentTypeToIconAgent, formatAgentTypeLabel } from '@/lib/agent-status'
 import { cn } from '@/lib/utils'
+import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
+import { AntigravityAccountTabBadge } from '@/components/tab-bar/AntigravityAccountTabBadge'
 import { getAgentDotState } from './worktree-card-agent-summary'
 import { getAgentRowPrimaryText } from '@/lib/agent-row-primary-text'
 import { formatAgentToolPreview } from '@/lib/agent-row-tool-preview'
@@ -115,6 +117,13 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
   // "?" glyph. Nesting under the parent already conveys identity.
   const hideIcon = hideIdentityIcon || agent.rowSource === 'subagent'
   const dotState = getAgentDotState(agent)
+  const { getAccountById } = useAntigravityAccounts()
+  const isAntigravity =
+    agent.agentType === 'antigravity' || agent.tab?.launchAgent === 'antigravity'
+  const antigravityAccount =
+    isAntigravity && agent.tab?.launchAccountId && agent.rowSource !== 'subagent'
+      ? getAccountById(agent.tab.launchAccountId)
+      : null
   const conversationName = useAgentRowConversationName(agent)
   const primary = getCompactAgentPrimary(agent, conversationName)
   const isLineageChild = agent.lineage?.depth === 1
@@ -223,6 +232,9 @@ export const CompactAgentRow = React.memo(function CompactAgentRow({
             <span className="inline-flex shrink-0" title={formatAgentTypeLabel(agent.agentType)}>
               <AgentIcon agent={agentTypeToIconAgent(agent.agentType)} size={13} />
             </span>
+          )}
+          {antigravityAccount && (
+            <AntigravityAccountTabBadge account={antigravityAccount} compact />
           )}
           <span
             className="min-w-0 flex-1 truncate"
