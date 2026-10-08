@@ -6,14 +6,17 @@ import type {
 import type { FeatureTipId } from '../../../../../shared/feature-tips'
 import type { ContextualTourId } from '../../../../../shared/contextual-tours'
 import type { OrcaHookScriptKind } from '../../../lib/orca-hook-trust'
-import type { SettingsNavigationTarget } from '../../../lib/settings-navigation-types'
+import type {
+  SettingsNavigationInput,
+  SettingsNavigationTarget
+} from '../../../lib/settings-navigation-types'
 import type { ExecutionHostId } from '../../../../../shared/execution-host'
 
 export type UISliceContextual = {
   openSettingsPage: () => void
   closeSettingsPage: () => void
   settingsNavigationTarget: SettingsNavigationTarget | null
-  openSettingsTarget: (target: NonNullable<UISliceContextual['settingsNavigationTarget']>) => void
+  openSettingsTarget: (target: SettingsNavigationInput) => void
   clearSettingsTarget: () => void
   /** Entry keys retain last-pick order so regrouping resolves aliases. Renderer-only; never persisted. */
   settingsProjectHostSelection: Record<string, ExecutionHostId>

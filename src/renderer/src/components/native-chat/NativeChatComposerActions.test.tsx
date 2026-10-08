@@ -243,4 +243,50 @@ describe('NativeChatComposerActions', () => {
       expect(onResume).not.toHaveBeenCalled()
     })
   })
+
+  it('renders NativeChatAccountSelector when agent is antigravity', () => {
+    render(
+      <NativeChatComposerActions
+        agent="antigravity"
+        attachDisabled={false}
+        dictationDisabled={false}
+        sendDisabled={false}
+        primaryAction="send"
+        isWorking={false}
+        isDictating={false}
+        isDictationHoldMode={false}
+        onAttach={vi.fn()}
+        onDictationToggle={vi.fn()}
+        onDictationHoldStart={vi.fn()}
+        onDictationHoldEnd={vi.fn()}
+        onSend={vi.fn()}
+        sessionOptionsSurface={null}
+        sessionOptionsSnapshot={[]}
+      />
+    )
+    expect(screen.getByTestId('native-chat-account-selector-trigger')).toBeTruthy()
+  })
+
+  it('does not render NativeChatAccountSelector when agent is not antigravity', () => {
+    render(
+      <NativeChatComposerActions
+        agent="claude"
+        attachDisabled={false}
+        dictationDisabled={false}
+        sendDisabled={false}
+        primaryAction="send"
+        isWorking={false}
+        isDictating={false}
+        isDictationHoldMode={false}
+        onAttach={vi.fn()}
+        onDictationToggle={vi.fn()}
+        onDictationHoldStart={vi.fn()}
+        onDictationHoldEnd={vi.fn()}
+        onSend={vi.fn()}
+        sessionOptionsSurface={null}
+        sessionOptionsSnapshot={[]}
+      />
+    )
+    expect(screen.queryByTestId('native-chat-account-selector-trigger')).toBeNull()
+  })
 })

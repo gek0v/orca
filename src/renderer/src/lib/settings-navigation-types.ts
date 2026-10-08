@@ -79,7 +79,15 @@ export type SettingsNavigationTarget = {
   intent?: (typeof SETTINGS_NAV_INTENTS)[number]
 }
 
-export function isSettingsNavigationTarget(value: unknown): value is SettingsNavigationTarget {
+export type SettingsNavigationInput = {
+  pane: SettingsNavTarget
+  repoId?: string | null
+  hostId?: ExecutionHostId
+  sectionId?: string
+  intent?: (typeof SETTINGS_NAV_INTENTS)[number]
+}
+
+export function isSettingsNavigationTarget(value: unknown): value is SettingsNavigationInput {
   if (typeof value !== 'object' || value === null) {
     return false
   }
@@ -87,7 +95,7 @@ export function isSettingsNavigationTarget(value: unknown): value is SettingsNav
   return (
     typeof target.pane === 'string' &&
     SETTINGS_NAV_TARGET_SET.has(target.pane) &&
-    (typeof target.repoId === 'string' || target.repoId === null) &&
+    (target.repoId === undefined || typeof target.repoId === 'string' || target.repoId === null) &&
     (target.hostId === undefined ||
       (typeof target.hostId === 'string' && parseExecutionHostId(target.hostId) !== null)) &&
     (target.sectionId === undefined || typeof target.sectionId === 'string') &&

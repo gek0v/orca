@@ -32,7 +32,10 @@ import type { NativeChatComposerGoalMode } from './use-native-chat-composer-subm
 import { translate } from '@/i18n/i18n'
 import { useNativeChatComposerDraftUnsaved } from './use-native-chat-draft-unsaved'
 
+import type { NativeChatSupportedAgent } from '@/lib/native-chat-supported-agent'
+
 export type NativeChatComposerFieldProps = {
+  agent?: NativeChatSupportedAgent
   /** Pane identity published to the drop pipeline so a native file drop lands
    *  only in the composer it was dropped on. */
   dropScopeKey: string
@@ -123,6 +126,7 @@ function imeComposedSegment(base: string, settled: string): string {
 }
 
 export function NativeChatComposerField({
+  agent,
   dropScopeKey,
   draftScopeKey,
   textareaRef,
@@ -350,6 +354,7 @@ export function NativeChatComposerField({
             />
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <NativeChatComposerActions
+                agent={agent}
                 attachDisabled={attachDisabled}
                 dictationDisabled={dictationDisabled}
                 sendDisabled={primary.disabled}

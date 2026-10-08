@@ -367,6 +367,7 @@ const NativeChatComposerPane = forwardRef<NativeChatComposerHandle, NativeChatCo
         textareaRef={textareaRef}
         draft={draft}
         disabled={disabled}
+        agent={agent}
         hasPty={hasPty}
         canSend={canSend}
         autocomplete={autocomplete}

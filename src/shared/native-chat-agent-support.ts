@@ -8,6 +8,7 @@ export const NATIVE_CHAT_SUPPORTED_AGENT_LIST: readonly TuiAgent[] = [
   'claude',
   'openclaude',
   'codex',
+  'antigravity',
   'grok',
   'omp',
   'opencode',
@@ -17,6 +18,10 @@ export const NATIVE_CHAT_SUPPORTED_AGENT_LIST: readonly TuiAgent[] = [
 export const NATIVE_CHAT_SUPPORTED_AGENTS: ReadonlySet<string> = new Set(
   NATIVE_CHAT_SUPPORTED_AGENT_LIST
 )
+
+export type NativeChatSupportedAgent =
+  | (typeof NATIVE_CHAT_SUPPORTED_AGENT_LIST)[number]
+  | (string & {})
 
 export function isNativeChatSupportedAgent(agent: string | null | undefined): boolean {
   return agent != null && NATIVE_CHAT_SUPPORTED_AGENTS.has(agent)

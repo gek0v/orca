@@ -25,7 +25,12 @@ export function createUiSettingsActions(set: UISliceSet, get: UISliceGet): Parti
         }
         return
       }
-      set({ settingsNavigationTarget: target })
+      set({
+        settingsNavigationTarget: {
+          ...target,
+          repoId: target.repoId ?? null
+        }
+      })
     },
     clearSettingsTarget: () => set({ settingsNavigationTarget: null }),
     settingsProjectHostSelection: {},

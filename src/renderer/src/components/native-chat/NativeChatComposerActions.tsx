@@ -12,8 +12,11 @@ import { NativeChatContextUsageRing } from './NativeChatContextUsageRing'
 import type { NativeChatContextUsageSummary } from './native-chat-context-usage-summary'
 import type { NativeChatOptionPickerRequest } from './native-chat-composer-types'
 import type { NativeChatComposerPrimaryAction } from './native-chat-composer-primary-action'
+import { NativeChatAccountSelector } from './NativeChatAccountSelector'
+import type { NativeChatSupportedAgent } from '@/lib/native-chat-supported-agent'
 
 export type NativeChatComposerActionsProps = {
+  agent?: NativeChatSupportedAgent
   attachDisabled: boolean
   dictationDisabled: boolean
   sendDisabled: boolean
@@ -46,6 +49,7 @@ export type NativeChatComposerActionsProps = {
 }
 
 export function NativeChatComposerActions({
+  agent,
   attachDisabled,
   dictationDisabled,
   sendDisabled,
@@ -139,6 +143,7 @@ export function NativeChatComposerActions({
             {translate('components.native-chat.composer.attach', 'Attach file')}
           </TooltipContent>
         </Tooltip>
+        <NativeChatAccountSelector agent={agent} />
         {onExitGoalMode ? <NativeChatComposerGoalChip onExit={onExitGoalMode} /> : null}
       </div>
       <div className="ml-auto flex items-center gap-1.5">
