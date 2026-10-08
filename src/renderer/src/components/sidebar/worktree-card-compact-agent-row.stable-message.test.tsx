@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/dashboard/useDashboardData'
 import type { AgentStatusEntry, AgentStatusState } from '../../../../shared/agent-status-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
+import type { TuiAgent } from '../../../../shared/tui-agent'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import { CompactAgentRow } from './worktree-card-compact-agent-row'
@@ -32,7 +33,7 @@ function makeAgent({
   lastAssistantMessage?: string
   state?: AgentStatusState
   agentType?: string
-  launchAgent?: string
+  launchAgent?: TuiAgent
   launchAccountId?: string
 }): DashboardAgentRowData {
   const tab: TerminalTab = {

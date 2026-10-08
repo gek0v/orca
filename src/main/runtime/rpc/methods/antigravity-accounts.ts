@@ -35,6 +35,7 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
   }),
   defineMethod({
     name: 'accounts.antigravityUpdate',
+    permission: 'accounts-admin',
     params: AntigravityAccountUpdateParams,
     handler: async ({ target, accountId, alias, color, emoji }) =>
       getAntigravityAccountService(target).updateAccountMetadata(accountId, { alias, color, emoji })
