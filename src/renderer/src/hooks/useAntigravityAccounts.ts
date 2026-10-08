@@ -119,15 +119,25 @@ export function useAntigravityAccounts(): {
 export function useActiveWindowAntigravityAccount(): AntigravityAccountSummary | null {
   const { activeAccount, getAccountById } = useAntigravityAccounts()
   const activeTabLaunchAccountId = useAppStore((s) => {
-    if (!s.activeTabId) {
+    const activeTabId =
+      s.activeTabId ?? (s.activeWorktreeId ? s.activeTabIdByWorktree?.[s.activeWorktreeId] : null)
+    if (!activeTabId) {
       return null
     }
-    for (const tabs of Object.values(s.tabsByWorktree)) {
-      const match = tabs.find((t) => t.id === s.activeTabId)
+    for (const tabs of Object.values(s.tabsByWorktree ?? {})) {
+      const match = tabs.find((t) => t.id === activeTabId)
       if (match) {
         return match.launchAgent === 'antigravity' && match.launchAccountId
           ? match.launchAccountId
           : null
+      }
+    }
+    for (const tabs of Object.values(s.unifiedTabsByWorktree ?? {})) {
+      const match = tabs.find((t) => t.id === activeTabId)
+      if (match) {
+        const isAntigravity =
+          match.launchAgent === 'antigravity' || match.agentSessionAgent === 'antigravity'
+        return isAntigravity && match.launchAccountId ? match.launchAccountId : null
       }
     }
     return null

@@ -131,7 +131,8 @@ export async function fetchAntigravityRateLimits(
     return directLimits
   }
 
-  const allowCliFallback = options.allowCliFallback ?? !options.isAcp
+  // ACP sessions use direct CloudCode quota; never spawn CLI child processes in ACP mode.
+  const allowCliFallback = !options.isAcp && options.allowCliFallback !== false
   if (!allowCliFallback) {
     return unavailable(
       'Antigravity quota is unavailable via direct read and CLI fallback is disabled.',

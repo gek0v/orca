@@ -10,6 +10,11 @@ import { AGENT_HOOK_RUNTIME_ENV_KEYS } from '../ipc/pty/host-env/spawn-env-keys'
 import type { AcpDialect } from './acp-dialects/acp-dialect'
 import { GROK_ACP_DIALECT } from './acp-dialects/grok-dialect'
 import { ANTIGRAVITY_ACP_DIALECT } from './acp-dialects/antigravity-dialect'
+import {
+  ensureAntigravityAcpRuntime,
+  getAntigravityManagedInstallDir,
+  resolveAntigravityAcpBinary
+} from './runtime/antigravity-runtime-manager'
 
 export type AcpLaunchSpec = {
   /** The Orca agent id (a `TuiAgent`), which names the agent's records and its catalog label. */
@@ -33,7 +38,14 @@ export type AcpLaunchSpec = {
   /** The config directory the agent uses when the variable is unset, under the user's home. */
   defaultAccountHome(homePath: string): string
   /** Where the agent installs its own binary, searched after PATH. */
-  installDirectories(accountHomePath: string): string[]
+  installDirectories(accountHomePath: string, homePath?: string): string[]
+  /** Custom binary resolver checked before standard CLI resolution. */
+  resolveCommand?(input: {
+    command: string
+    pathEnv: string
+    homePath: string
+    env: Readonly<Record<string, string>>
+  }): Promise<string | null> | string | null
 }
 
 const GROK_LAUNCH_SPEC: AcpLaunchSpec = {
@@ -56,27 +68,59 @@ const GROK_LAUNCH_SPEC: AcpLaunchSpec = {
   installDirectories: (accountHomePath) => [join(accountHomePath, 'bin')]
 }
 
-const ANTIGRAVITY_LAUNCH_SPEC: AcpLaunchSpec = {
+export const ANTIGRAVITY_LAUNCH_SPEC: AcpLaunchSpec = {
   agent: 'antigravity',
   command: 'agy_acp_server',
-  args: ({ fullAccess }) => (fullAccess ? ['--yolo'] : []),
+  args: () => [],
   env: {},
   dialect: ANTIGRAVITY_ACP_DIALECT,
-  loginCommand: ['agy_acp_server', 'login'],
-  authMethod: ({ advertised, env }) =>
-    env.GEMINI_API_KEY?.trim() && advertised.includes('gemini-api-key')
-      ? 'gemini-api-key'
-      : advertised.includes('oauth-personal')
-        ? 'oauth-personal'
-        : advertised.includes('cached_token')
-          ? 'cached_token'
-          : undefined,
+  loginCommand: ['agy'],
+  authMethod: ({ advertised, env }) => {
+    const hasApiKey = Boolean(env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim())
+    if (hasApiKey && advertised.includes('gemini-api-key')) {
+      return 'gemini-api-key'
+    }
+    if (advertised.includes('cached_token')) {
+      return 'cached_token'
+    }
+    if (advertised.includes('oauth-personal')) {
+      return 'oauth-personal'
+    }
+    return undefined
+  },
   accountHomeVariable: 'GEMINI_ACP_HOME',
   defaultAccountHome: (homePath) => join(homePath, '.gemini', 'antigravity-acp'),
-  installDirectories: (accountHomePath) => [
-    join(accountHomePath, 'bin'),
-    join(accountHomePath, 'current')
-  ]
+  installDirectories: (accountHomePath, homePath) => {
+    const dirs = [join(accountHomePath, 'bin'), join(accountHomePath, 'current')]
+    if (homePath) {
+      const localAppData = process.env.LOCALAPPDATA ?? join(homePath, 'AppData', 'Local')
+      dirs.push(
+        getAntigravityManagedInstallDir(homePath),
+        join(homePath, '.local', 'bin'),
+        join(localAppData, 'agy', 'bin')
+      )
+    }
+    return dirs
+  },
+  resolveCommand: async ({ env, homePath }) => {
+    const existing = resolveAntigravityAcpBinary({
+      env,
+      homePath,
+      platform: process.platform
+    })
+    if (existing) {
+      return existing.command
+    }
+    try {
+      return await ensureAntigravityAcpRuntime({
+        homePath,
+        platform: process.platform,
+        arch: process.arch
+      })
+    } catch {
+      return null
+    }
+  }
 }
 
 export const ACP_LAUNCH_SPECS: readonly AcpLaunchSpec[] = [

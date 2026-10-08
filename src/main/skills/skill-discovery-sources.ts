@@ -142,6 +142,22 @@ export function buildSkillDiscoverySources(
       'gemini'
     ),
     source(
+      'home-antigravity-builtin',
+      'Antigravity built-in',
+      pathApi.join(home, '.gemini', 'antigravity-cli', 'builtin', 'skills'),
+      'bundled',
+      ['agent-skills'],
+      'antigravity'
+    ),
+    source(
+      'home-antigravity-cli',
+      'Antigravity CLI',
+      pathApi.join(home, '.gemini', 'antigravity-cli', 'skills'),
+      'home',
+      ['agent-skills'],
+      'antigravity'
+    ),
+    source(
       'home-antigravity',
       'Antigravity home',
       pathApi.join(home, '.gemini', 'config', 'skills'),
@@ -283,6 +299,14 @@ export function buildSkillDiscoverySources(
         'repo',
         ['agent-skills'],
         'aug'
+      ),
+      source(
+        `repo-antigravity-${stablePathId(repoPath)}`,
+        `${label} .gemini`,
+        pathApi.join(repoPath, '.gemini', 'skills'),
+        'repo',
+        ['agent-skills'],
+        'antigravity'
       )
     )
   }

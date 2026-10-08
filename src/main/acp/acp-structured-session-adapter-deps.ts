@@ -9,6 +9,8 @@ import type { AcpLaunchSpec } from './acp-launch-specs'
 import type { ConnectAcpAgent } from './acp-structured-connection'
 import type { AcpStructuredLaunch } from './acp-structured-launch-resolution'
 
+import type { AgentModelCatalogStore } from '../native-chat/agent-model-catalog/agent-model-catalog-store'
+
 /** How long a Stop, counted from its cancel, lets the agent end its turn before the child goes. */
 export const ACP_STOP_GRACE_MS = 4_000
 /** How long a model or effort pick waits for the agent's answer, as Claude's and Codex's do. */
@@ -39,4 +41,5 @@ export type AcpStructuredSessionAdapterDeps = {
   /** Bounds a pick's wait for the agent's answer; past it the pick fails. */
   optionWriteTimeoutMs?: number
   isWindowsProcessStartTimeAvailable?: () => boolean
+  modelCatalog?: AgentModelCatalogStore
 }

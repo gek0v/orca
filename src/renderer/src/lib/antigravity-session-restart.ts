@@ -1,6 +1,7 @@
 import type { AppState } from '@/store'
 import { useAppStore } from '@/store'
 import type { TerminalTab } from '../../../shared/terminal-tab-types'
+import type { Tab } from '../../../shared/tab-types'
 import type { AntigravityAccountTarget } from '../../../shared/antigravity-account-types'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
 import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
@@ -8,7 +9,7 @@ import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
 import { newAgentLaunchRequestId } from '@/lib/agent-launch-request-id'
 
 export type LocatedAntigravityTab = {
-  tab: TerminalTab
+  tab: TerminalTab | Tab
   worktreeId: string
   groupId?: string
 }
@@ -44,6 +45,39 @@ export function findActiveAntigravityTab(
       )
       return { tab, worktreeId: currentWorktreeId, groupId: unified?.groupId }
     }
+    const unifiedTabs = unifiedTabsByWorktree[currentWorktreeId] ?? []
+    const uTab = unifiedTabs.find(
+      (t) =>
+        (t.id === activeTabId || t.entityId === activeTabId) &&
+        t.contentType === 'agent-session' &&
+        (t.agentSessionAgent === 'antigravity' || t.launchAgent === 'antigravity')
+    )
+    if (uTab) {
+      return { tab: uTab, worktreeId: currentWorktreeId, groupId: uTab.groupId }
+    }
+  }
+
+  if (!currentWorktreeId && activeTabId) {
+    for (const [wId, tabs] of Object.entries(tabsByWorktree)) {
+      const tab = tabs.find((t) => t.id === activeTabId)
+      if (tab?.launchAgent === 'antigravity') {
+        const unified = (unifiedTabsByWorktree[wId] ?? []).find(
+          (u) => u.contentType === 'terminal' && u.entityId === tab.id
+        )
+        return { tab, worktreeId: wId, groupId: unified?.groupId }
+      }
+    }
+    for (const [wId, tabs] of Object.entries(unifiedTabsByWorktree)) {
+      const uTab = tabs.find(
+        (t) =>
+          (t.id === activeTabId || t.entityId === activeTabId) &&
+          t.contentType === 'agent-session' &&
+          (t.agentSessionAgent === 'antigravity' || t.launchAgent === 'antigravity')
+      )
+      if (uTab) {
+        return { tab: uTab, worktreeId: wId, groupId: uTab.groupId }
+      }
+    }
   }
 
   if (currentWorktreeId) {
@@ -55,6 +89,14 @@ export function findActiveAntigravityTab(
       )
       return { tab, worktreeId: currentWorktreeId, groupId: unified?.groupId }
     }
+    const uTab = (unifiedTabsByWorktree[currentWorktreeId] ?? []).find(
+      (t) =>
+        t.contentType === 'agent-session' &&
+        (t.agentSessionAgent === 'antigravity' || t.launchAgent === 'antigravity')
+    )
+    if (uTab) {
+      return { tab: uTab, worktreeId: currentWorktreeId, groupId: uTab.groupId }
+    }
   }
 
   for (const [wId, tabs] of Object.entries(tabsByWorktree)) {
@@ -64,6 +106,16 @@ export function findActiveAntigravityTab(
         (u) => u.contentType === 'terminal' && u.entityId === tab.id
       )
       return { tab, worktreeId: wId, groupId: unified?.groupId }
+    }
+  }
+  for (const [wId, tabs] of Object.entries(unifiedTabsByWorktree)) {
+    const uTab = tabs.find(
+      (t) =>
+        t.contentType === 'agent-session' &&
+        (t.agentSessionAgent === 'antigravity' || t.launchAgent === 'antigravity')
+    )
+    if (uTab) {
+      return { tab: uTab, worktreeId: wId, groupId: uTab.groupId }
     }
   }
 
@@ -84,6 +136,16 @@ export function findAntigravityTabById(
         (u) => u.contentType === 'terminal' && u.entityId === tab.id
       )
       return { tab, worktreeId: wId, groupId: unified?.groupId }
+    }
+  }
+  for (const [wId, tabs] of Object.entries(unifiedTabsByWorktree)) {
+    const matchedUnified = tabs.find(
+      (t) =>
+        (t.id === tabId || t.entityId === tabId) &&
+        (t.agentSessionAgent === 'antigravity' || t.launchAgent === 'antigravity')
+    )
+    if (matchedUnified) {
+      return { tab: matchedUnified, worktreeId: wId, groupId: matchedUnified.groupId }
     }
   }
   for (const [wId, tabs] of Object.entries(unifiedTabsByWorktree)) {
@@ -133,9 +195,19 @@ export async function switchAntigravityAccountAndRestartSession(args: {
   }
 
   const { tab, worktreeId, groupId } = located
-  const initialCwd = tab.startupCwd
+  const initialCwd = 'startupCwd' in tab ? tab.startupCwd : undefined
 
-  store.closeTab(tab.id)
+  if (
+    'contentType' in tab &&
+    tab.contentType === 'agent-session' &&
+    'closeUnifiedTab' in store &&
+    typeof store.closeUnifiedTab === 'function'
+  ) {
+    store.closeUnifiedTab(tab.id)
+  } else {
+    store.closeTab(tab.id)
+  }
+
   launchAgentInNewTab({
     requestId: newAgentLaunchRequestId(),
     agent: 'antigravity',

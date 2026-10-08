@@ -6,6 +6,7 @@ import {
   AcpInvalidResponseError,
   AcpRpcError
 } from './acp-errors'
+import type { AcpFilesystemHandler } from './acp-filesystem-handler'
 import { AcpJsonRpcPeer, type AcpPeerOptions, type AcpRequestContext } from './acp-json-rpc-peer'
 import {
   answerAcpPermission,
@@ -20,6 +21,7 @@ import {
 } from './acp-session-setup'
 export type { AcpSessionStarted, AcpSessionStartOptions } from './acp-session-setup'
 export type { AcpSessionEvent } from './acp-session-events'
+import type { AcpTerminalHandler } from './acp-terminal-handler'
 import {
   ACP_PROTOCOL_VERSION,
   InitializeResponseSchema,
@@ -48,6 +50,8 @@ const withMeta = (meta: Meta): { _meta?: Meta } => (meta ? { _meta: meta } : {})
 export type AcpSessionRuntimeOptions = {
   clientInfo?: InitializeRequest['clientInfo']
   peer?: AcpPeerOptions
+  terminalHandler?: AcpTerminalHandler
+  fsHandler?: AcpFilesystemHandler
   onPermission?: AcpPermissionHandler
   /** Agent requests other than permissions. The handler owns its request: once `context.signal`
    *  aborts, send the agent's own cancelled reply, finish an answer already in progress, or throw
@@ -58,6 +62,7 @@ export type AcpSessionRuntimeOptions = {
   onExtensionNotification?: (method: string, params: unknown) => void
   onDiagnostic?: (message: string) => void
   onClose?: (error: Error) => void
+  ignoredLine?: (line: string) => boolean
 }
 
 /** Stream-level protocol seam; production agents use createAcpAgentConnection. */
@@ -82,7 +87,8 @@ export class AcpSessionRuntime {
         onRequest: (method, params, context) => this.handleRequest(method, params, context),
         onNotification: (method, params) => this.handleNotification(method, params),
         onDiagnostic: options.onDiagnostic,
-        onClose: options.onClose
+        onClose: options.onClose,
+        ignoredLine: options.ignoredLine
       },
       options.peer
     )
@@ -100,11 +106,16 @@ export class AcpSessionRuntime {
   }
 
   initialize(): Promise<InitializeResponse> {
+    const fsCapabilities = this.options.fsHandler
+      ? { readTextFile: true, writeTextFile: true }
+      : { readTextFile: false, writeTextFile: false }
+    const terminalCapability = Boolean(this.options.terminalHandler)
+
     this.initialized ??= this.call(
       'initialize',
       {
         protocolVersion: ACP_PROTOCOL_VERSION,
-        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+        clientCapabilities: { fs: fsCapabilities, terminal: terminalCapability },
         ...(this.options.clientInfo === undefined ? {} : { clientInfo: this.options.clientInfo })
       } satisfies InitializeRequest,
       InitializeResponseSchema
@@ -248,6 +259,12 @@ export class AcpSessionRuntime {
   }
 
   private handleRequest(method: string, params: unknown, context: AcpRequestContext): unknown {
+    if (method.startsWith('terminal/') && this.options.terminalHandler) {
+      return this.options.terminalHandler.handleRequest(method, params, context)
+    }
+    if (method.startsWith('fs/') && this.options.fsHandler) {
+      return this.options.fsHandler.handleRequest(method, params, context)
+    }
     if (method !== 'session/request_permission') {
       if (!this.options.onRequest) {
         throw new AcpRpcError(-32601, `Unknown ACP client method: ${method}`)

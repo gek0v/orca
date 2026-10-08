@@ -185,10 +185,15 @@ function acpRegistration(spec: AcpLaunchSpec): StructuredAgentRuntimeRegistratio
           ...(deps.resolveAgentLaunchEnv ? { resolveLaunchEnv: deps.resolveAgentLaunchEnv } : {}),
           ...(deps.resolveAgentFullAccess ? { resolveFullAccess: deps.resolveAgentFullAccess } : {})
         }),
-        connect: (launch, options) => createAcpAgentConnection(launch, options),
+        connect: (launch, options) =>
+          createAcpAgentConnection(launch, {
+            ...options,
+            ignoredLine: spec.dialect.ignoredStdoutLine
+          }),
         ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
         onDispatchSettledLate: followUps.onDispatchSettledLate,
         logger: deps.logger,
+        modelCatalog: agentModelCatalogStore,
         // Every exit, expected or not: the host ends that child's record.
         onEvent: (event) => {
           if (event.type === 'ended') {

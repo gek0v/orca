@@ -1,4 +1,5 @@
 import type {
+  AiVaultSessionTitleRequest,
   AiVaultSessionTitlesArgs,
   AiVaultSessionTitlesResult
 } from '../../shared/ai-vault-session-title'
@@ -7,9 +8,16 @@ import {
   parseExecutionHostId,
   requestedExecutionHostScope
 } from '../../shared/execution-host'
+import type { SshAiVaultRelayTitleParams } from '../../shared/ssh-ai-vault-relay'
 import { resolveLocalAiVaultSessionTitles } from '../ai-vault/session-title-resolver'
 import { parseAiVaultSessionTitlesResult } from '../ai-vault/session-title-result-validation'
 import { requestActiveSshAiVaultSessionTitles } from './ssh'
+
+function isSshRelaySupportedTitleRequest(
+  request: AiVaultSessionTitleRequest
+): request is SshAiVaultRelayTitleParams['requests'][number] {
+  return request.agent === 'claude' || request.agent === 'codex'
+}
 
 export type RuntimeAiVaultSessionTitleResolver = (
   environmentId: string,
@@ -28,7 +36,7 @@ export async function resolveAiVaultSessionTitlesByHost(
   if (parsed?.kind === 'ssh') {
     try {
       const result = await requestActiveSshAiVaultSessionTitles(parsed.targetId, {
-        requests: args.requests
+        requests: args.requests.filter(isSshRelaySupportedTitleRequest)
       })
       return result === null ? { titles: [] } : parseAiVaultSessionTitlesResult(result)
     } catch {

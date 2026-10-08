@@ -584,13 +584,8 @@ describe('quota read safety and diagnostic precedence', () => {
     expect(runCommand).not.toHaveBeenCalled()
   })
 
-  it('allows CLI fallback when isAcp is true and allowCliFallback is explicitly true', async () => {
-    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[] }) => {
-      if (spec.args?.[0] === '--version') {
-        return processResult({ stdout: 'agy version 1.2.16\n' })
-      }
-      return processResult({ stdout: USAGE_ENVELOPE })
-    })
+  it('guards against CLI fallback when isAcp is true even if allowCliFallback is explicitly true', async () => {
+    const runCommand = vi.fn()
     const resolveCommand = vi
       .fn()
       .mockResolvedValue('C:\\Users\\test\\AppData\\Local\\agy\\agy.exe')
@@ -611,8 +606,41 @@ describe('quota read safety and diagnostic precedence', () => {
       now: () => 1_700_000_000_000
     })
 
-    expect(result.status).toBe('ok')
-    expect(runCommand).toHaveBeenCalled()
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
+  })
+
+  it('guards against CLI fallback when isAcp is true on darwin without direct quota', async () => {
+    const runCommand = vi.fn()
+    const result = await fetchAntigravityRateLimits({
+      platform: 'darwin',
+      isAcp: true,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
+  })
+
+  it('guards against CLI fallback on win32 when allowCliFallback is false and direct quota returns null', async () => {
+    const runCommand = vi.fn()
+    const readNativeCredential = vi.fn().mockResolvedValue(null)
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      allowCliFallback: false,
+      readNativeCredential,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
   })
 
   it('guards against CLI fallback when allowCliFallback is explicitly false', async () => {

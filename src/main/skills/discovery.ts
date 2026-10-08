@@ -20,6 +20,7 @@ import {
 } from './skill-discovery-sources'
 import { rootMayContainSourceKind } from './skill-discovery-source-filter'
 import { discoverClaudePluginSkillSources } from './claude-plugin-skill-sources'
+import { discoverAntigravityPluginSkillSources } from './antigravity-plugin-skill-sources'
 import { findSkillFiles } from './skill-root-file-walk'
 import { runSkillCandidateTasks } from './skill-candidate-concurrency'
 import {
@@ -59,7 +60,11 @@ export const MAX_LOGGED_ROOT_IDS = 12
 // root to rows that can no longer be checked.
 export const LAST_KNOWN_ROOT_SCAN_RETENTION_MS = 5 * 60_000
 
-type RootScan = { exists: boolean; skills: ScannedSkill[]; unavailable?: boolean }
+type RootScan = {
+  exists: boolean
+  skills: ScannedSkill[]
+  unavailable?: boolean
+}
 
 const rootScans = new SkillScanCoalescer<RootScan>(MAX_CACHED_SKILL_ROOTS)
 /** Last answered scan per root key, read only when a later scan goes unavailable. */
@@ -158,7 +163,10 @@ async function scanRoot(root: SkillScanRoot, signal: AbortSignal): Promise<Scann
       if (!summary) {
         return null
       }
-      const sourceKind = sourceKindForSkill(root, skillFilePath, { relative, sep })
+      const sourceKind = sourceKindForSkill(root, skillFilePath, {
+        relative,
+        sep
+      })
       return {
         id: stablePathId(canonicalSkillFilePath),
         name: summary.name ?? basename(directoryPath),
@@ -220,7 +228,11 @@ async function scanRootShared(
     // one turned an unanswered root into proof the skill is gone. Serve what the
     // root last held and let `unavailable` carry the uncertainty.
     return {
-      value: { exists: true, skills: readLastKnownRootScan(key), unavailable: true },
+      value: {
+        exists: true,
+        skills: readLastKnownRootScan(key),
+        unavailable: true
+      },
       cached: false
     }
   }
@@ -280,6 +292,9 @@ export async function discoverSkills(args: {
     args.includeCwd !== false &&
     (!args.sourceKinds?.length || args.sourceKinds.includes('plugin'))
       ? await discoverClaudePluginSkillSources({ homeDir, cwd: args.cwd })
+      : []),
+    ...(!args.sourceKinds?.length || args.sourceKinds.includes('plugin')
+      ? await discoverAntigravityPluginSkillSources({ homeDir })
       : [])
   ].filter((root) => rootMayContainSourceKind(root, args.sourceKinds))
   const scans = await Promise.all(roots.map((root) => scanRootShared(root, refresh)))

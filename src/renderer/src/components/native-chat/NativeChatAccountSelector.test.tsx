@@ -23,7 +23,10 @@ beforeEach(() => {
   root = createRoot(container)
   useAppStore.setState({
     settingsNavigationTarget: null,
-    activeView: 'terminal'
+    activeView: 'terminal',
+    activeTabId: null,
+    tabsByWorktree: {},
+    unifiedTabsByWorktree: {}
   })
 })
 
@@ -237,5 +240,100 @@ describe('NativeChatAccountSelector', () => {
       pane: 'accounts',
       repoId: null
     })
+  })
+
+  it('resolves active account from unified agent-session tab with launchAccountId', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [account1, account2],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    useAppStore.setState({
+      activeTabId: 'unified-chat-tab',
+      unifiedTabsByWorktree: {
+        w1: [
+          {
+            id: 'unified-chat-tab',
+            entityId: 'session-2',
+            groupId: 'grp-1',
+            worktreeId: 'w1',
+            contentType: 'agent-session',
+            agentSessionAgent: 'antigravity',
+            launchAccountId: 'acc-2',
+            label: 'Antigravity Session',
+            customLabel: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 0
+          }
+        ]
+      }
+    })
+
+    await act(async () => {
+      renderWithProviders(<NativeChatAccountSelector agent="antigravity" />)
+    })
+
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="native-chat-account-selector-trigger"]'
+    )
+    expect(trigger).not.toBeNull()
+    expect(trigger?.textContent).toContain('Work')
+  })
+
+  it('updates active unified tab launchAccountId in store when selecting an account', async () => {
+    setCachedAntigravityAccountsState({
+      accounts: [account1, account2],
+      activeAccountId: 'acc-1',
+      selectedAccountId: null,
+      currentAccount: null
+    })
+
+    useAppStore.setState({
+      activeTabId: 'unified-chat-tab',
+      unifiedTabsByWorktree: {
+        w1: [
+          {
+            id: 'unified-chat-tab',
+            entityId: 'session-1',
+            groupId: 'grp-1',
+            worktreeId: 'w1',
+            contentType: 'agent-session',
+            agentSessionAgent: 'antigravity',
+            launchAccountId: 'acc-1',
+            label: 'Antigravity Session',
+            customLabel: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 0
+          }
+        ]
+      }
+    })
+
+    vi.spyOn(runtimeClient, 'callAntigravityAccounts').mockResolvedValue({
+      accounts: [account1, account2],
+      activeAccountId: 'acc-2',
+      selectedAccountId: 'acc-2',
+      currentAccount: null
+    })
+
+    await act(async () => {
+      renderWithProviders(<NativeChatAccountSelector agent="antigravity" open={true} />)
+    })
+
+    const item2 = document.querySelector<HTMLElement>(
+      '[data-testid="native-chat-account-item-acc-2"]'
+    )
+    expect(item2).not.toBeNull()
+
+    await act(async () => {
+      item2?.click()
+    })
+
+    const unifiedTabs = useAppStore.getState().unifiedTabsByWorktree
+    expect(unifiedTabs?.w1?.[0]?.launchAccountId).toBe('acc-2')
   })
 })

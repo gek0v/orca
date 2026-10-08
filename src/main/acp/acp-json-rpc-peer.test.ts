@@ -315,4 +315,20 @@ describe('ACP JSON-RPC peer', () => {
     expect(peer.closed).toBe(true)
     input.destroy()
   })
+
+  it('silently ignores lines matched by ignoredLine without emitting diagnostic or closing', async () => {
+    const diagnostics: string[] = []
+    const { peer, agent } = fixture({
+      onDiagnostic: (msg) => diagnostics.push(msg),
+      ignoredLine: (line) => line.includes('Opening in existing browser session')
+    })
+    agent.stdout.write('Opening in existing browser session.\n')
+    await tick()
+    expect(diagnostics).toHaveLength(0)
+    expect(peer.closed).toBe(false)
+
+    agent.stdout.write('Some random invalid json line\n')
+    await tick()
+    expect(diagnostics).toContain('Ignored ACP line: invalid-json')
+  })
 })

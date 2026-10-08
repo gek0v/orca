@@ -16,11 +16,13 @@ const mocks = vi.hoisted(() => ({
   launchAgentInNewTab: vi.fn(),
   newAgentLaunchRequestId: vi.fn(() => 'test-req-123'),
   closeTab: vi.fn(),
+  closeUnifiedTab: vi.fn(),
   refreshRateLimits: vi.fn()
 }))
 
 type MockStoreState = {
   closeTab: (tabId: string) => void
+  closeUnifiedTab?: (tabId: string) => void
   refreshRateLimits?: () => void
   tabsByWorktree?: Record<string, TerminalTab[]>
   unifiedTabsByWorktree?: Record<string, Tab[]>
@@ -31,6 +33,7 @@ type MockStoreState = {
 
 const mockStoreState: MockStoreState = {
   closeTab: mocks.closeTab,
+  closeUnifiedTab: mocks.closeUnifiedTab,
   refreshRateLimits: mocks.refreshRateLimits,
   tabsByWorktree: {},
   unifiedTabsByWorktree: {},
@@ -189,6 +192,101 @@ describe('antigravity-session-restart', () => {
       })
     })
 
+    it('returns active unified agent-session tab with agentSessionAgent: antigravity', () => {
+      const uTab = createUnifiedTab({
+        id: 'u-agent',
+        entityId: 'session-123',
+        groupId: 'grp-agent',
+        contentType: 'agent-session',
+        agentSessionAgent: 'antigravity'
+      })
+      const state: AntigravityTabLookupState = {
+        tabsByWorktree: { w1: [] },
+        unifiedTabsByWorktree: { w1: [uTab] },
+        activeWorktreeId: 'w1',
+        activeTabIdByWorktree: { w1: 'u-agent' }
+      }
+
+      const result = findActiveAntigravityTab(state)
+      expect(result).toEqual({
+        tab: uTab,
+        worktreeId: 'w1',
+        groupId: 'grp-agent'
+      })
+    })
+
+    it('returns active unified agent-session tab with launchAgent: antigravity', () => {
+      const uTab = createUnifiedTab({
+        id: 'u-launch',
+        entityId: 'session-456',
+        groupId: 'grp-launch',
+        contentType: 'agent-session',
+        launchAgent: 'antigravity'
+      })
+      const state: AntigravityTabLookupState = {
+        tabsByWorktree: { w1: [] },
+        unifiedTabsByWorktree: { w1: [uTab] },
+        activeWorktreeId: 'w1',
+        activeTabIdByWorktree: { w1: 'u-launch' }
+      }
+
+      const result = findActiveAntigravityTab(state)
+      expect(result).toEqual({
+        tab: uTab,
+        worktreeId: 'w1',
+        groupId: 'grp-launch'
+      })
+    })
+
+    it('falls back to unified agent-session tab in active worktree if active tab is not antigravity', () => {
+      const uTab = createUnifiedTab({
+        id: 'u-agent',
+        entityId: 'session-789',
+        groupId: 'grp-fallback',
+        contentType: 'agent-session',
+        agentSessionAgent: 'antigravity'
+      })
+      const state: AntigravityTabLookupState = {
+        tabsByWorktree: {
+          w1: [createTerminalTab({ id: 't1', launchAgent: undefined })]
+        },
+        unifiedTabsByWorktree: { w1: [uTab] },
+        activeWorktreeId: 'w1',
+        activeTabIdByWorktree: { w1: 't1' }
+      }
+
+      const result = findActiveAntigravityTab(state)
+      expect(result).toEqual({
+        tab: uTab,
+        worktreeId: 'w1',
+        groupId: 'grp-fallback'
+      })
+    })
+
+    it('falls back to unified agent-session tab in another worktree if active worktree has none', () => {
+      const uTab = createUnifiedTab({
+        id: 'u-agent',
+        entityId: 'session-w2',
+        groupId: 'grp-w2',
+        contentType: 'agent-session',
+        agentSessionAgent: 'antigravity'
+      })
+      const state: AntigravityTabLookupState = {
+        tabsByWorktree: {
+          w1: [createTerminalTab({ id: 't1', launchAgent: undefined })]
+        },
+        unifiedTabsByWorktree: { w2: [uTab] },
+        activeWorktreeId: 'w1'
+      }
+
+      const result = findActiveAntigravityTab(state)
+      expect(result).toEqual({
+        tab: uTab,
+        worktreeId: 'w2',
+        groupId: 'grp-w2'
+      })
+    })
+
     it('handles undefined store structures without crashing', () => {
       const state: AntigravityTabLookupState = {}
       expect(findActiveAntigravityTab(state)).toBeNull()
@@ -226,6 +324,50 @@ describe('antigravity-session-restart', () => {
       })
     })
 
+    it('returns unified agent-session tab by id with agentSessionAgent: antigravity', () => {
+      const uTab = createUnifiedTab({
+        id: 'unified-target',
+        groupId: 'grp-u-target',
+        contentType: 'agent-session',
+        agentSessionAgent: 'antigravity'
+      })
+      const state: AntigravityTabLookupState = {
+        tabsByWorktree: {},
+        unifiedTabsByWorktree: {
+          w1: [uTab]
+        }
+      }
+
+      const result = findAntigravityTabById(state, 'unified-target')
+      expect(result).toEqual({
+        tab: uTab,
+        worktreeId: 'w1',
+        groupId: 'grp-u-target'
+      })
+    })
+
+    it('returns unified agent-session tab by id with launchAgent: antigravity', () => {
+      const uTab = createUnifiedTab({
+        id: 'unified-launch-target',
+        groupId: 'grp-u-launch',
+        contentType: 'agent-session',
+        launchAgent: 'antigravity'
+      })
+      const state: AntigravityTabLookupState = {
+        tabsByWorktree: {},
+        unifiedTabsByWorktree: {
+          w1: [uTab]
+        }
+      }
+
+      const result = findAntigravityTabById(state, 'unified-launch-target')
+      expect(result).toEqual({
+        tab: uTab,
+        worktreeId: 'w1',
+        groupId: 'grp-u-launch'
+      })
+    })
+
     it('constructs a fallback tab when only unifiedTabsByWorktree has the tab', () => {
       const state: AntigravityTabLookupState = {
         tabsByWorktree: {},
@@ -245,7 +387,7 @@ describe('antigravity-session-restart', () => {
       expect(result?.worktreeId).toBe('w1')
       expect(result?.groupId).toBe('grp-orphan')
       expect(result?.tab.id).toBe('orphan-tab')
-      expect(result?.tab.title).toBe('My Agent')
+      expect(result?.tab && 'title' in result.tab ? result.tab.title : null).toBe('My Agent')
     })
 
     it('returns null if tab id does not exist', () => {
@@ -336,6 +478,44 @@ describe('antigravity-session-restart', () => {
           initialCwd: '/other'
         })
       )
+    })
+
+    it('restarts unified agent-session tabs using closeUnifiedTab and launchAgentInNewTab', async () => {
+      mocks.callAntigravityAccounts.mockResolvedValueOnce({
+        activeAccountId: 'acc-work',
+        accounts: [{ id: 'acc-work', alias: 'Work' }]
+      })
+
+      const uTab = createUnifiedTab({
+        id: 'unified-chat-tab',
+        entityId: 'session-chat',
+        groupId: 'group-unified',
+        contentType: 'agent-session',
+        agentSessionAgent: 'antigravity'
+      })
+      mockStoreState.tabsByWorktree = { w1: [] }
+      mockStoreState.unifiedTabsByWorktree = {
+        w1: [uTab]
+      }
+      mockStoreState.activeWorktreeId = 'w1'
+      mockStoreState.activeTabIdByWorktree = { w1: 'unified-chat-tab' }
+
+      const res = await switchAntigravityAccountAndRestartSession({
+        targetAccountId: 'acc-work'
+      })
+
+      expect(res).toEqual({ restarted: true })
+      expect(mocks.closeUnifiedTab).toHaveBeenCalledWith('unified-chat-tab')
+      expect(mocks.closeTab).not.toHaveBeenCalled()
+      expect(mocks.launchAgentInNewTab).toHaveBeenCalledWith({
+        requestId: 'test-req-123',
+        agent: 'antigravity',
+        worktreeId: 'w1',
+        launchAccountId: 'acc-work',
+        groupId: 'group-unified',
+        initialCwd: undefined,
+        launchSource: 'tab_bar_quick_launch'
+      })
     })
 
     it('returns restarted: false if no antigravity tab was located', async () => {

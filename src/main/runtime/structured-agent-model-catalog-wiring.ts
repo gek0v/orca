@@ -7,6 +7,7 @@ import {
 } from '../native-chat/agent-model-catalog/agent-model-catalog-service'
 import { createCodexModelCatalogProbe } from '../codex/codex-model-catalog-probe'
 import { createClaudeModelCatalogProbe } from '../claude/claude-model-catalog-probe'
+import { createAntigravityModelCatalogProbe } from '../antigravity/antigravity-model-catalog-probe'
 import { workspaceMayOverrideDefaultModel } from '../native-chat/agent-model-catalog/agent-project-model-override'
 import type { ClaudeStructuredLaunchResolverDeps } from '../claude/claude-structured-launch-resolution'
 import type { CodexStructuredLaunchResolverDeps } from '../codex/codex-structured-launch-resolution'
@@ -61,6 +62,7 @@ export async function modelCatalogHostDeps(input: {
     resolveClaudeInheritedEnv: NonNullable<
       ClaudeStructuredLaunchResolverDeps['resolveInheritedEnv']
     >
+    resolveBaseEnvironment?: () => Promise<Record<string, string>>
   }
 }): Promise<{ modelCatalog?: AgentModelCatalogService }> {
   await attachAgentModelCatalogPersistenceOnce(input.deps.stateDirectory)
@@ -84,6 +86,10 @@ export async function modelCatalogHostDeps(input: {
         resolveAuthPolicy: deps.resolveClaudeAuthPolicy,
         ...(deps.resolveClaudeCommand ? { resolveCommand: deps.resolveClaudeCommand } : {}),
         ...(deps.resolveClaudeLaunchEnv ? { resolveEnv: deps.resolveClaudeLaunchEnv } : {})
+      }),
+      antigravity: createAntigravityModelCatalogProbe({
+        resolveEnvironment:
+          input.envResolvers.resolveBaseEnvironment ?? input.envResolvers.resolveClaudeInheritedEnv
       })
     }
   })

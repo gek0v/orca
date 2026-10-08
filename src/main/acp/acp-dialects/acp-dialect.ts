@@ -4,7 +4,16 @@ import type { AgentSessionPromptResponse } from '../../../shared/agent-session-q
 import type { NativeChatBackgroundTaskBlock } from '../../../shared/native-chat-types'
 import type { ProviderTimelineRequestBody } from '../../native-chat/agent-session-timeline/provider-timeline-event'
 import type { AcpAgentError } from '../acp-errors'
-import type { ToolCallUpdate } from '../generated/acp-protocol.generated'
+import type {
+  SessionConfigOption,
+  SessionModelState,
+  ToolCallUpdate
+} from '../generated/acp-protocol.generated'
+import type { AgentSessionOptionsResult } from '../../../shared/agent-session-wire'
+
+export type AcpOptionWrite =
+  | { method: 'config'; configId: string; value: string }
+  | { method: 'model'; modelId: string }
 
 export type AcpRequestPresentation = {
   body: ProviderTimelineRequestBody
@@ -55,6 +64,20 @@ export type AcpDialect = {
   promptErrorDetail?(error: AcpAgentError): string | undefined
   /** The row for a failed turn the provider gave no words for. */
   failedTurnText?(stopReason: string): string
+  /** Lines printed to stdout by provider processes/browsers to silently ignore without framing error. */
+  ignoredStdoutLine?(line: string): boolean
+  normalizeOptions?(raw: {
+    configOptions: SessionConfigOption[]
+    models: SessionModelState | null
+  }): Pick<AgentSessionOptionsResult, 'models' | 'current'> | undefined
+  resolveOptionWrite?(
+    key: string,
+    value: string,
+    raw: {
+      configOptions: SessionConfigOption[]
+      models: SessionModelState | null
+    }
+  ): AcpOptionWrite | undefined
 }
 
 export const GENERIC_ACP_DIALECT: AcpDialect = {}

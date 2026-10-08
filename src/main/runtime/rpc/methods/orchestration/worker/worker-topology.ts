@@ -102,7 +102,7 @@ export async function createStructuredWorkerSessionForWorktree(args: {
   launchPreferences?: AgentLaunchPreferences
   effects: WorkerEffect[]
 }): Promise<Awaited<ReturnType<typeof createStructuredWorkerSession>>> {
-  if (args.agent !== 'claude' && args.agent !== 'codex') {
+  if (args.agent !== 'claude' && args.agent !== 'codex' && args.agent !== 'antigravity') {
     throw new OrchestrationError(
       'agent_unconfigured',
       `Structured workers support claude and codex; ${args.agent} has no structured session.`

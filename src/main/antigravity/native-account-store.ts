@@ -53,10 +53,23 @@ function requireProtection(): void {
   }
 }
 
+type VaultCacheEntry = {
+  mtimeMs: number
+  size: number
+  vault: AntigravityAccountVault
+}
+
+const vaultCache = new Map<string, VaultCacheEntry>()
+
+export function clearAntigravityAccountStoreCacheForTests(): void {
+  vaultCache.clear()
+}
+
 export function createEncryptedAntigravityAccountStore(path: string): AntigravityAccountStore {
   return {
     read() {
       if (!existsSync(path)) {
+        vaultCache.delete(path)
         return { accounts: [], selectedAccountId: null }
       }
       requireProtection()
@@ -68,6 +81,10 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
           (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)
         ) {
           throw new Error('unsafe vault')
+        }
+        const cached = vaultCache.get(path)
+        if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+          return structuredClone(cached.vault)
         }
         const raw = readFileSync(path)
         let plaintext: string
@@ -106,8 +123,18 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
             throw new Error('inconsistent identity')
           }
         }
-        return { accounts: value.accounts, selectedAccountId: value.selectedAccountId }
+        const vault: AntigravityAccountVault = {
+          accounts: value.accounts,
+          selectedAccountId: value.selectedAccountId
+        }
+        vaultCache.set(path, {
+          mtimeMs: stat.mtimeMs,
+          size: stat.size,
+          vault: structuredClone(vault)
+        })
+        return vault
       } catch {
+        vaultCache.delete(path)
         throw new Error(
           'Antigravity account snapshots could not be read; the existing vault was preserved.'
         )
@@ -122,10 +149,17 @@ export function createEncryptedAntigravityAccountStore(path: string): Antigravit
           throw new Error('vault exceeds readable size')
         }
         writeCredentialFileAtomic(path, encrypted)
-        if (process.platform !== 'win32' && (statSync(path).mode & 0o077) !== 0) {
+        const newStat = statSync(path)
+        if (process.platform !== 'win32' && (newStat.mode & 0o077) !== 0) {
           throw new Error('unsafe permissions')
         }
+        vaultCache.set(path, {
+          mtimeMs: newStat.mtimeMs,
+          size: newStat.size,
+          vault: structuredClone(vault)
+        })
       } catch {
+        vaultCache.delete(path)
         throw new Error('Antigravity account snapshots could not be saved.')
       }
     },

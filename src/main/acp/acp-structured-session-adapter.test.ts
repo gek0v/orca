@@ -45,7 +45,7 @@ function chunk(promptId: string, text: string) {
 }
 
 describe('ACP structured session adapter: acquire', () => {
-  it('records the child before the handshake and starts a new session with client fs and terminals off', async () => {
+  it('records the child before the handshake and starts a new session with client fs and terminals on', async () => {
     const rig = await openAcpAdapterRig()
     const acquired = await rig.acquire()
     expect(rig.spawned).toEqual(['spawn', 'onSpawned', 'initialize'])
@@ -56,7 +56,7 @@ describe('ACP structured session adapter: acquire', () => {
       mintedAtFence: 1
     })
     expect(rig.sent('initialize')[0]?.params).toMatchObject({
-      clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false }
+      clientCapabilities: { fs: { readTextFile: true, writeTextFile: true }, terminal: true }
     })
     expect(rig.sent('session/new')[0]?.params).toEqual({
       cwd: '/workspace/project',

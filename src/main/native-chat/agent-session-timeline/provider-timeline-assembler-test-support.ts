@@ -132,6 +132,7 @@ export function messageText(body: AgentJournalItemBody | undefined): string | un
 
 const journals = createTrackedJournalOpener()
 const cleanups: (() => Promise<void>)[] = []
+const postCleanups: (() => Promise<void>)[] = []
 
 /** Call from `afterEach`. */
 export async function closeProviderTimelineRigs(): Promise<void> {
@@ -139,6 +140,9 @@ export async function closeProviderTimelineRigs(): Promise<void> {
     await cleanup()
   }
   await journals.closeAll()
+  for (const postCleanup of postCleanups.splice(0)) {
+    await postCleanup()
+  }
 }
 
 /** An assembler whose sink binds to the rig's journal only when `bind` is called, as a lane that
@@ -237,6 +241,8 @@ export async function openProviderTimelineRig(
   deferred.bind({ journal, fence: 1, publish: () => {} })
   cleanups.push(async () => {
     deferred.close()
+  })
+  postCleanups.push(async () => {
     await rm(root, { recursive: true, force: true })
   })
   const sink = providerTimelineSink(deferred.sink)

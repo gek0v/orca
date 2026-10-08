@@ -1,5 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -7,12 +15,16 @@ import {
   getSecretStore,
   setSecretStore
 } from '../../shared/secret-store'
-import { createEncryptedAntigravityAccountStore } from './native-account-store'
+import {
+  clearAntigravityAccountStoreCacheForTests,
+  createEncryptedAntigravityAccountStore
+} from './native-account-store'
 import { AntigravityAccountService } from './native-account-service'
 import { credential, harness } from './native-account-test-fixtures'
 
 let dir: string
 beforeEach(() => {
+  clearAntigravityAccountStoreCacheForTests()
   dir = mkdtempSync(join(tmpdir(), 'orca-agy-vault-test-'))
   setSecretStore({
     isEncryptionAvailable: () => true,
@@ -27,6 +39,7 @@ beforeEach(() => {
   })
 })
 afterEach(() => {
+  clearAntigravityAccountStoreCacheForTests()
   rmSync(dir, { recursive: true, force: true })
   _resetSecretStoreForTests()
 })
@@ -206,5 +219,109 @@ describe('protected Antigravity account snapshots', () => {
     const readback = store.read()
     expect(readback.accounts).toHaveLength(1)
     expect(readback.accounts[0].id).toBe(vault.accounts[0].id)
+  })
+
+  it('caches decrypted vault in memory and avoids repeated decryption calls', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    const path = join(dir, 'vault-cache')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(vault)
+
+    clearAntigravityAccountStoreCacheForTests()
+
+    const secretStore = getSecretStore()
+    const decryptSpy = vi.spyOn(secretStore, 'decryptString')
+
+    const firstRead = store.read()
+    expect(firstRead).toEqual(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(1)
+
+    const secondRead = store.read()
+    expect(secondRead).toEqual(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(1)
+
+    secondRead.accounts[0].email = 'mutated@example.com'
+    const thirdRead = store.read()
+    expect(thirdRead.accounts[0].email).toBe(vault.accounts[0].email)
+    expect(decryptSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('populates cache on write and serves subsequent reads without decrypting', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    const path = join(dir, 'vault-write-cache')
+    const store = createEncryptedAntigravityAccountStore(path)
+
+    const secretStore = getSecretStore()
+    const decryptSpy = vi.spyOn(secretStore, 'decryptString')
+
+    store.write(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(0)
+
+    const readback = store.read()
+    expect(readback).toEqual(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(0)
+  })
+
+  it('invalidates cache when file modification time or size changes externally', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    const path = join(dir, 'vault-invalidation')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(vault)
+
+    clearAntigravityAccountStoreCacheForTests()
+
+    const secretStore = getSecretStore()
+    const decryptSpy = vi.spyOn(secretStore, 'decryptString')
+
+    expect(store.read()).toEqual(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(1)
+
+    const statBefore = statSync(path)
+    utimesSync(path, (statBefore.atimeMs + 5000) / 1000, (statBefore.mtimeMs + 5000) / 1000)
+    expect(store.read()).toEqual(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(2)
+
+    expect(store.read()).toEqual(vault)
+    expect(decryptSpy).toHaveBeenCalledTimes(2)
+
+    const largerVault = {
+      ...vault,
+      accounts: [
+        ...vault.accounts,
+        {
+          ...vault.accounts[0],
+          id: 'acc-second',
+          subject: 'second',
+          credentials: credential('second')
+        }
+      ]
+    }
+    const encrypted = secretStore.encryptString(JSON.stringify(largerVault))
+    writeFileSync(path, encrypted)
+    expect(store.read().accounts).toHaveLength(2)
+    expect(decryptSpy).toHaveBeenCalledTimes(3)
+
+    expect(store.read().accounts).toHaveLength(2)
+    expect(decryptSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('clears cache and returns empty vault when file is deleted', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    const path = join(dir, 'vault-deleted')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(vault)
+
+    expect(store.read().accounts).toHaveLength(1)
+
+    rmSync(path)
+    expect(store.read()).toEqual({ accounts: [], selectedAccountId: null })
   })
 })

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { decideWorkerStartMode } from '../../orchestration-worker-start-mode'
 
 describe('Antigravity ACP orchestration worker mode', () => {
@@ -36,5 +36,22 @@ describe('Antigravity ACP orchestration worker mode', () => {
 
     expect(receipt.mode).toBe('terminal')
     expect(receipt.reason).toBe('reused_terminal')
+  })
+
+  it('accepts antigravity in createStructuredWorkerSessionForWorktree', async () => {
+    const { createStructuredWorkerSessionForWorktree } = await import('./worker-topology')
+    const effects: never[] = []
+    await expect(
+      createStructuredWorkerSessionForWorktree({
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: mock runtime for topology test
+        runtime: {
+          notifyStructuredSessionJournalActivity: vi.fn()
+        } as never,
+        worktreeId: 'wt_1',
+        agent: 'antigravity',
+        dispatchId: 'd_1',
+        effects
+      })
+    ).rejects.not.toThrow(/Structured workers support claude and codex/)
   })
 })

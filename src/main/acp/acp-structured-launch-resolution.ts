@@ -33,6 +33,7 @@ export type AcpStructuredLaunch = {
   cwd: string
   env: Record<string, string>
   fullAccess: boolean
+  accountHomePath?: string
   /** The provider session to load; null starts a new one. */
   resume: {
     sessionId: string
@@ -94,13 +95,31 @@ export function createAcpStructuredLaunchResolver(
       ...spec.env,
       [spec.accountHomeVariable]: accountHome.path
     }
-    const pathEnv = [env.PATH ?? env.Path, ...spec.installDirectories(accountHome.path)]
+    const effectiveHomePath = env.HOME ?? env.USERPROFILE ?? deps.homePath ?? homedir()
+    const pathEnv = [
+      env.PATH ?? env.Path,
+      ...spec.installDirectories(accountHome.path, effectiveHomePath)
+    ]
       .filter((entry): entry is string => Boolean(entry))
       .join(delimiter)
-    const command = (deps.resolveCommand ?? resolveCliCommand)(spec.command, {
-      pathEnv,
-      homePath: env.HOME ?? env.USERPROFILE ?? deps.homePath ?? homedir()
-    })
+    const resolvedSpecCommand = spec.resolveCommand
+      ? await spec.resolveCommand({
+          command: spec.command,
+          pathEnv,
+          homePath: effectiveHomePath,
+          env
+        })
+      : null
+    const command =
+      deps.resolveCommand?.(spec.command, {
+        pathEnv,
+        homePath: effectiveHomePath
+      }) ??
+      resolvedSpecCommand ??
+      resolveCliCommand(spec.command, {
+        pathEnv,
+        homePath: effectiveHomePath
+      })
     const fullAccess = deps.resolveFullAccess?.(spec.agent) ?? false
     const head = agentSessionProviderHandleChainHead(record.providerHandleChain)
     return {
@@ -110,6 +129,7 @@ export function createAcpStructuredLaunchResolver(
       cwd: await deps.resolveWorkspacePath(location.workspaceId),
       env,
       fullAccess,
+      accountHomePath: accountHome.path,
       resume: head
         ? {
             sessionId: head.handle.nativeId,

@@ -36,6 +36,7 @@ import {
   type StructuredWorkerIdentity
 } from '../../structured-worker-identity'
 import { createKeyedTrailingEdgeCoalescer } from '../../keyed-trailing-edge-coalescer'
+import type { TuiAgent } from '../../../../shared/tui-agent'
 import { createStructuredAgentSessionForWorktree } from './structured-agent-session-create'
 
 type StructuredWorkerBinding = {
@@ -79,7 +80,7 @@ export function releaseStructuredWorkerSession(
 export async function createStructuredWorkerSession(args: {
   runtime: OrcaRuntimeService
   worktreeId: string
-  agent: 'claude' | 'codex'
+  agent: TuiAgent
   dispatchId: string
   /** The dispatch's own `--model`/`--effort`, already narrowed to the seedable string subset. */
   options?: Readonly<Record<string, string>>

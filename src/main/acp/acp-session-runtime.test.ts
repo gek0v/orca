@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AcpAuthRequiredError, AcpConnectionClosedError, AcpRpcError } from './acp-errors'
+import { AcpFilesystemHandler } from './acp-filesystem-handler'
 import {
   AcpSessionRuntime,
   type AcpSessionRuntimeOptions,
   type AcpSessionEvent
 } from './acp-session-runtime'
+import { AcpTerminalHandler } from './acp-terminal-handler'
 import { AcpScriptedAgent, deferred } from './acp-scripted-agent.test-support'
 import type {
   AgentCapabilities,
@@ -410,5 +412,99 @@ describe('ACP session runtime', () => {
     expect(await prompt).toEqual({ stopReason: 'cancelled' })
     agent.on('session/prompt', (next) => agent.reply(next, { stopReason: 'end_turn' }))
     expect(await runtime.prompt([...textPrompt])).toEqual({ stopReason: 'end_turn' })
+  })
+
+  it('advertises fs and terminal capabilities when handlers are provided', async () => {
+    const fsHandler = new AcpFilesystemHandler('/workspace')
+    const terminalHandler = new AcpTerminalHandler('/workspace')
+    const { runtime, agent } = fixture({}, { fsHandler, terminalHandler })
+    await runtime.initialize()
+    expect(agent.frames[0].params).toEqual({
+      protocolVersion: 1,
+      clientCapabilities: {
+        fs: { readTextFile: true, writeTextFile: true },
+        terminal: true
+      }
+    })
+  })
+
+  it('advertises individual capabilities when only one handler is provided', async () => {
+    const fsOnly = fixture({}, { fsHandler: new AcpFilesystemHandler('/workspace') })
+    await fsOnly.runtime.initialize()
+    expect(fsOnly.agent.frames[0].params).toEqual({
+      protocolVersion: 1,
+      clientCapabilities: {
+        fs: { readTextFile: true, writeTextFile: true },
+        terminal: false
+      }
+    })
+
+    const termOnly = fixture({}, { terminalHandler: new AcpTerminalHandler('/workspace') })
+    await termOnly.runtime.initialize()
+    expect(termOnly.agent.frames[0].params).toEqual({
+      protocolVersion: 1,
+      clientCapabilities: {
+        fs: { readTextFile: false, writeTextFile: false },
+        terminal: true
+      }
+    })
+  })
+
+  it('delegates terminal/* and fs/* requests to the configured handlers', async () => {
+    const fsHandler = new AcpFilesystemHandler('/workspace')
+    const terminalHandler = new AcpTerminalHandler('/workspace')
+    const fsSpy = vi
+      .spyOn(fsHandler, 'handleRequest')
+      .mockResolvedValue({ content: 'test-content' })
+    const termSpy = vi
+      .spyOn(terminalHandler, 'handleRequest')
+      .mockResolvedValue({ terminalId: 'term-42' })
+    const vendorSpy = vi.fn().mockReturnValue({ answer: 'ok' })
+
+    const { runtime, agent } = fixture(
+      {},
+      {
+        fsHandler,
+        terminalHandler,
+        onRequest: (method, params) =>
+          method === '_vendor/ask'
+            ? vendorSpy(params)
+            : (() => {
+                throw new AcpRpcError(-32601, 'Unknown')
+              })()
+      }
+    )
+    await runtime.start(startOptions)
+
+    const fsResponse = await agent.request(1, 'fs/read_text_file', { path: 'foo.txt' })
+    expect(fsResponse).toMatchObject({ id: 1, result: { content: 'test-content' } })
+    expect(fsSpy).toHaveBeenCalledWith('fs/read_text_file', { path: 'foo.txt' }, expect.anything())
+
+    const termResponse = await agent.request(2, 'terminal/create', { command: 'echo' })
+    expect(termResponse).toMatchObject({ id: 2, result: { terminalId: 'term-42' } })
+    expect(termSpy).toHaveBeenCalledWith('terminal/create', { command: 'echo' }, expect.anything())
+
+    const vendorResponse = await agent.request(3, '_vendor/ask', 'hello')
+    expect(vendorResponse).toMatchObject({ id: 3, result: { answer: 'ok' } })
+    expect(vendorSpy).toHaveBeenCalledWith('hello')
+  })
+
+  it('falls back to onRequest or rejects when handler is not provided for terminal or fs methods', async () => {
+    const onRequest = vi.fn().mockReturnValue({ handled: true })
+    const { runtime, agent } = fixture({}, { onRequest })
+    await runtime.start(startOptions)
+
+    const termResponse = await agent.request(1, 'terminal/create', { command: 'echo' })
+    expect(termResponse).toMatchObject({ id: 1, result: { handled: true } })
+    expect(onRequest).toHaveBeenCalledWith(
+      'terminal/create',
+      { command: 'echo' },
+      expect.anything()
+    )
+
+    const unhandled = fixture()
+    await unhandled.runtime.start(startOptions)
+    const errResponse = await unhandled.agent.request(2, 'terminal/create', { command: 'echo' })
+    expect(errResponse).toMatchObject({ id: 2, error: { code: -32601 } })
   })
 })

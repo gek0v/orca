@@ -40,6 +40,7 @@ export type AcpPeerHandlers = {
   onNotification?: (method: string, params: unknown) => void
   onDiagnostic?: (message: string) => void
   onClose?: (error: Error) => void
+  ignoredLine?: (line: string) => boolean
 }
 type Pending = {
   method: string
@@ -85,15 +86,18 @@ export class AcpJsonRpcPeer {
     )
     this.framer = createIncrementalNdjsonFramer(
       (record) => this.dispatch(record),
-      (rejected) =>
-        rejected.kind === 'line-too-long'
-          ? settleOversizedAcpLine(rejected, {
-              rejectPending: (id, error) => this.rejectPending(id, error),
-              refuse: (id, error) => this.incoming.refuse(id, error),
-              close: (error) => this.close(error),
-              diagnose: (message) => this.diagnose(message)
-            })
-          : this.diagnose(`Ignored ACP line: ${rejected.kind}`),
+      (rejected) => {
+        if (rejected.kind === 'line-too-long') {
+          settleOversizedAcpLine(rejected, {
+            rejectPending: (id, error) => this.rejectPending(id, error),
+            refuse: (id, error) => this.incoming.refuse(id, error),
+            close: (error) => this.close(error),
+            diagnose: (message) => this.diagnose(message)
+          })
+        } else if (!handlers.ignoredLine?.(rejected.line)) {
+          this.diagnose(`Ignored ACP line: ${rejected.kind}`)
+        }
+      },
       { maxLineBytes: this.maxLineBytes }
     )
     input.setEncoding('utf8')

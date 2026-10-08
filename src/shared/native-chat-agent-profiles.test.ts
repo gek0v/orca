@@ -29,11 +29,10 @@ describe('native chat agent picker profiles', () => {
     })
   })
 
-  it('configures Antigravity with dollar skills and expandsSlashCommandsFromText', () => {
-    expect(getNativeChatAgentProfile('antigravity')).toMatchObject({
-      skillPrefix: '$',
-      skillSourceOwner: 'antigravity',
-      expandsSlashCommandsFromText: true
+  it('configures Antigravity with slash skills without expanding slash commands from text', () => {
+    expect(getNativeChatAgentProfile('antigravity')).toEqual({
+      skillPrefix: '/',
+      skillSourceOwner: 'antigravity'
     })
   })
 
@@ -65,6 +64,17 @@ describe('host-claimed native chat commands', () => {
     expect(names('custom-agent')).toEqual(['clear', 'help'])
     expect(names('grok')).toEqual([])
   })
+
+  it('claims verified catalog commands for Antigravity', () => {
+    const antigravityNames = names('antigravity')
+    expect(antigravityNames).toContain('clear')
+    expect(antigravityNames).toContain('plan')
+    expect(antigravityNames).toContain('usage')
+    expect(antigravityNames).toContain('model')
+    expect(antigravityNames).toEqual(
+      getVerifiedNativeChatCommands('antigravity').map((command) => command.name)
+    )
+  })
 })
 
 describe('native chat command replies', () => {
@@ -78,7 +88,15 @@ describe('native chat command replies', () => {
   })
 
   it('declares only /context, the one reply the desktop chat implements', () => {
-    for (const agent of ['claude', 'openclaude', 'codex', 'omp', 'grok', 'custom-agent']) {
+    for (const agent of [
+      'claude',
+      'openclaude',
+      'codex',
+      'omp',
+      'grok',
+      'antigravity',
+      'custom-agent'
+    ]) {
       const declared = getVerifiedNativeChatCommands(agent).filter(({ reply }) => reply)
       expect(declared.map(({ name }) => name)).toEqual(
         agent === 'omp' || agent === 'openclaude' ? ['context'] : []

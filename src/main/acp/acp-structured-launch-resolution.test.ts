@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   agentSessionProviderHandleKey,
@@ -93,7 +94,7 @@ describe('ACP launch resolution', () => {
       GROK_HOME: '/home/user/.grok-work',
       GROK_EXTRA: '1'
     })
-    expect(searched[0]).toContain('/home/user/.grok-work/bin')
+    expect(searched[0]).toContain(join('/home/user/.grok-work', 'bin'))
   })
 
   it('asks the agent to approve everything only under full access', async () => {
@@ -286,5 +287,52 @@ describe('Grok status: the structured session is the only producer', () => {
     )
     expect(Object.keys(spec.env).filter((key) => key.startsWith('ORCA_'))).toEqual([])
     expect(spec.env).toMatchObject({ PATH: '/usr/bin', GROK_HOME: '/home/user/.grok' })
+  })
+})
+
+describe('Antigravity launch resolution', () => {
+  const ANTIGRAVITY = acpLaunchSpecFor('antigravity')!
+  const antigravityIdentity = {
+    sessionId: 'session-ag-1',
+    workspaceId: 'workspace-1',
+    hostId: 'local',
+    agent: 'antigravity',
+    providerHandle: null
+  }
+
+  function antigravityRecord(overrides: Partial<AgentSessionRecord> = {}): AgentSessionRecord {
+    return {
+      ...agentSessionRecordFixture(),
+      provider: 'antigravity',
+      providerHandleChain: [],
+      accountHome: { variable: 'GEMINI_ACP_HOME', path: '/home/user/.gemini/antigravity-acp' },
+      ...overrides
+    }
+  }
+
+  it('resolves antigravity launch with custom spec.resolveCommand when available', async () => {
+    const resolve = createAcpStructuredLaunchResolver(
+      {
+        ...ANTIGRAVITY,
+        resolveCommand: () => '/mock/opt/agy_acp_server'
+      },
+      {
+        store: { getRecord: () => antigravityRecord() },
+        readJournal: () => null,
+        resolveWorkspacePath: async () => '/repo/worktree',
+        resolveEnvironment: async () => ({ PATH: '/usr/bin', HOME: '/home/user' }),
+        resolveFullAccess: () => true
+      }
+    )
+    const launch = await resolve({ identity: antigravityIdentity })
+    expect(launch).toMatchObject({
+      command: '/mock/opt/agy_acp_server',
+      args: [],
+      cwd: '/repo/worktree',
+      fullAccess: true
+    })
+    expect(launch.env).toMatchObject({
+      GEMINI_ACP_HOME: '/home/user/.gemini/antigravity-acp'
+    })
   })
 })

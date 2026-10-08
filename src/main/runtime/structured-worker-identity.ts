@@ -50,7 +50,7 @@ export type StructuredWorkerIdentity = {
    */
   sessionId: string
   /** Null when the entry was rehydrated from the durable row, which does not carry the provider. */
-  agent: 'claude' | 'codex' | null
+  agent: string | null
   paneKey: string
   processIncarnation: string
   worktreeId: string

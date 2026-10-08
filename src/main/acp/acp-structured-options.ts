@@ -19,13 +19,11 @@ import {
   type SessionConfigSelectOption,
   type SessionModelState
 } from './generated/acp-protocol.generated'
+import type { AcpDialect, AcpOptionWrite } from './acp-dialects/acp-dialect'
+
+export type { AcpOptionWrite }
 
 type SelectOption = Extract<SessionConfigOption, { type: 'select' }>
-
-/** How an Orca option key reaches the agent: a config option it declared, or the model method. */
-export type AcpOptionWrite =
-  | { method: 'config'; configId: string; value: string }
-  | { method: 'model'; modelId: string }
 
 function selectChoices(option: SelectOption): SessionConfigSelectOption[] {
   const choices: SessionConfigSelectOption[] = []
@@ -51,6 +49,8 @@ export class AcpStructuredOptions {
   private configOptions: SessionConfigOption[] = []
   private models: SessionModelState | null = null
   private commands: AgentSessionSlashCommand[] | undefined
+
+  constructor(private readonly dialect?: AcpDialect) {}
 
   /** The session state a new, load or resume response reported. */
   adoptSession(response: {
@@ -88,6 +88,13 @@ export class AcpStructuredOptions {
 
   /** Where a pick of `key` goes; null when the agent offers nothing for it. */
   write(key: string, value: string): AcpOptionWrite | null {
+    const customized = this.dialect?.resolveOptionWrite?.(key, value, {
+      configOptions: this.configOptions,
+      models: this.models
+    })
+    if (customized) {
+      return customized
+    }
     if (key === 'model') {
       const option = this.select('model')
       if (option) {
@@ -103,6 +110,13 @@ export class AcpStructuredOptions {
   }
 
   read(): Pick<AgentSessionOptionsResult, 'models' | 'current'> {
+    const customized = this.dialect?.normalizeOptions?.({
+      configOptions: this.configOptions,
+      models: this.models
+    })
+    if (customized) {
+      return customized
+    }
     const modelOption = this.select('model')
     const effortOption = this.select('thought_level')
     const efforts: AgentSessionOptionChoice[] = effortOption

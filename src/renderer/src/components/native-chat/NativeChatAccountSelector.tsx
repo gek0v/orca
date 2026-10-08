@@ -13,7 +13,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   useActiveWindowAntigravityAccount,
   useAntigravityAccounts,
-  refreshAntigravityAccounts
+  refreshAntigravityAccounts,
+  setCachedAntigravityAccountsState
 } from '@/hooks/useAntigravityAccounts'
 import { AntigravityAccountBadgeIcon } from '@/components/agent/AntigravityAccountSelector'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
@@ -82,8 +83,50 @@ export function NativeChatAccountSelector({
     }
     selectingRef.current = true
     try {
-      await callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'Select', accountId)
+      const res = await callAntigravityAccounts(
+        { kind: 'local' },
+        { runtime: 'host' },
+        'Select',
+        accountId
+      )
+      setCachedAntigravityAccountsState(res)
       await refreshAntigravityAccounts()
+
+      useAppStore.setState((s) => {
+        const activeTabId =
+          s.activeTabId ??
+          (s.activeWorktreeId ? s.activeTabIdByWorktree?.[s.activeWorktreeId] : null)
+        if (!activeTabId) {
+          return {}
+        }
+        let changed = false
+        const nextTabs = { ...s.tabsByWorktree }
+        for (const [wId, tabs] of Object.entries(nextTabs)) {
+          const tabIndex = tabs.findIndex((t) => t.id === activeTabId)
+          if (tabIndex !== -1 && tabs[tabIndex].launchAccountId !== accountId) {
+            const copy = [...tabs]
+            copy[tabIndex] = { ...copy[tabIndex], launchAccountId: accountId }
+            nextTabs[wId] = copy
+            changed = true
+          }
+        }
+        const nextUnified = { ...s.unifiedTabsByWorktree }
+        for (const [wId, tabs] of Object.entries(nextUnified)) {
+          const tabIndex = tabs.findIndex((t) => t.id === activeTabId || t.entityId === activeTabId)
+          if (tabIndex !== -1 && tabs[tabIndex].launchAccountId !== accountId) {
+            const copy = [...tabs]
+            copy[tabIndex] = { ...copy[tabIndex], launchAccountId: accountId }
+            nextUnified[wId] = copy
+            changed = true
+          }
+        }
+        return changed
+          ? {
+              tabsByWorktree: nextTabs,
+              unifiedTabsByWorktree: nextUnified
+            }
+          : {}
+      })
     } catch {
       // Best-effort selection update.
     } finally {

@@ -46,9 +46,8 @@ const NATIVE_CHAT_AGENT_PROFILES: Partial<Record<AgentType, NativeChatAgentProfi
     skillSourceOwner: 'grok'
   },
   antigravity: {
-    skillPrefix: '$',
-    skillSourceOwner: 'antigravity',
-    expandsSlashCommandsFromText: true
+    skillPrefix: '/',
+    skillSourceOwner: 'antigravity'
   }
 }
 
