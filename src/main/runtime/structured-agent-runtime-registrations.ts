@@ -156,12 +156,23 @@ function acpRegistration(spec: AcpLaunchSpec): StructuredAgentRuntimeRegistratio
   return {
     definition: acpStructuredAgentDefinition(spec),
     supportsLocation: (location) => supportsSupervisedProviderChildLocation(location),
-    resolveAccountHomePath: async ({ launchEnv }) =>
-      resolveStructuredEnvAccountHomePath({
+    resolveAccountHomePath: async ({ launchEnv }) => {
+      if (spec.agent === 'antigravity') {
+        const { getAntigravityAccountVaultPath } =
+          await import('../antigravity/native-account-host')
+        const { resolveStructuredAntigravityAccountHomePath } =
+          await import('../antigravity/native-account-vault-home')
+        return resolveStructuredAntigravityAccountHomePath({
+          launchEnv,
+          vaultDir: getAntigravityAccountVaultPath()
+        })
+      }
+      return resolveStructuredEnvAccountHomePath({
         launchEnv,
         variable: spec.accountHomeVariable,
         defaultPath: spec.defaultAccountHome
-      }),
+      })
+    },
     createAdapter: (context) => {
       const { deps, store, followUps } = context
       return new AcpStructuredSessionAdapter({
