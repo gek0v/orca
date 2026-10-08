@@ -134,29 +134,29 @@ export const STANDARD_THEME_PRESETS: readonly AppThemePreset[] = [
   },
   {
     id: 'liquid-glass-dark',
-    name: 'iOS 27 Liquid Glass Dark',
+    name: 'Liquid Glass Dark',
     mode: 'dark',
-    description: 'Translucent neon cyan glass with deep obsidian surfaces',
+    description: 'Refractive obsidian glass with specular highlights and Apple System Blue',
     swatches: {
-      background: '#080d14',
-      card: '#101826',
-      primary: '#00f0ff',
-      accent: '#1c2b42'
+      background: '#000000',
+      card: '#1c1c1e',
+      primary: '#0a84ff',
+      accent: '#2c2c2e'
     },
-    matchingTerminalTheme: 'iOS 27 Liquid Glass Dark'
+    matchingTerminalTheme: 'Liquid Glass Dark'
   },
   {
     id: 'liquid-glass-light',
-    name: 'iOS 27 Liquid Glass Light',
+    name: 'Liquid Glass Light',
     mode: 'light',
-    description: 'Translucent azure glass with clean frosted surfaces',
+    description: 'Frosted crystal glass with subtle specular borders and Apple System Blue',
     swatches: {
-      background: '#f0f4f9',
-      card: '#e4ecf6',
+      background: '#f2f2f7',
+      card: '#ffffff',
       primary: '#007aff',
-      accent: '#cbdbee'
+      accent: '#e5e5ea'
     },
-    matchingTerminalTheme: 'iOS 27 Liquid Glass Light'
+    matchingTerminalTheme: 'Liquid Glass Light'
   },
   {
     id: 'material-dark',
