@@ -47,14 +47,18 @@ describe('OMP terminal command catalog', () => {
     expect(classifyNativeChatSend('/plan', commands, '/plan', '/')).toBe('chat')
   })
 
-  it('lets a session command report replace the curated set and descriptions', () => {
-    expect(
-      sessionSlashCommandSuggestions('omp', [
-        { name: 'model', kind: 'command', description: 'Host model selector' },
-        { name: 'custom', kind: 'command' },
-        { name: 'plan', kind: 'skill' }
-      ])
-    ).toEqual([{ name: 'model', description: 'Host model selector' }, { name: 'custom' }])
-    expect(sessionSlashCommandSuggestions('omp', [])).toEqual([])
+  it('merges a session command report with the curated set and overrides descriptions', () => {
+    const suggestions = sessionSlashCommandSuggestions('omp', [
+      { name: 'model', kind: 'command', description: 'Host model selector' },
+      { name: 'custom', kind: 'command' },
+      { name: 'plan', kind: 'skill' }
+    ])
+    expect(suggestions.find((c) => c.name === 'model')).toEqual({
+      name: 'model',
+      description: 'Host model selector'
+    })
+    expect(suggestions.find((c) => c.name === 'custom')).toEqual({ name: 'custom' })
+    expect(suggestions.map((c) => c.name)).toContain('compact')
+    expect(sessionSlashCommandSuggestions('omp', [])).toEqual(getVerifiedNativeChatCommands('omp'))
   })
 })

@@ -31,12 +31,20 @@ describe('getAgentSlashCommands', () => {
     expect(names).toEqual([...getAgentSlashCommands('claude').map((c) => c.name), 'context'])
   })
 
-  it('returns Antigravity commands (e.g. /model, /effort, /usage) for antigravity', () => {
+  it('returns Antigravity commands (e.g. /model, /effort, /usage, /skills, /subagents) for antigravity', () => {
     const names = getAgentSlashCommands('antigravity').map((c) => c.name)
     expect(names).toContain('model')
     expect(names).toContain('effort')
     expect(names).toContain('usage')
     expect(names).toContain('plan')
+    expect(names).toContain('skills')
+    expect(names).toContain('subagents')
+    expect(names).toContain('mcp')
+    expect(names).toContain('diff')
+    expect(names).toContain('init')
+    expect(names).toContain('auth')
+    expect(names).toContain('browser')
+    expect(names).toContain('schedule')
   })
 
   it('falls back to a small common set for an unknown agent (never empty)', () => {
@@ -89,16 +97,48 @@ describe('a session that reports its own command surface', () => {
     { name: 'ref-oss', kind: 'skill' as const }
   ]
 
-  it('offers exactly the reported commands, described from the curated catalog', () => {
-    expect(sessionSlashCommandSuggestions('claude', reported)).toEqual([
-      { name: 'clear', description: 'Clear conversation history' },
-      { name: 'opsx:apply' }
-    ])
+  it('merges reported commands with curated commands containing plan, logout, model, effort, usage, clear', () => {
+    const antigravityReported = [
+      { name: 'plan', kind: 'command' as const, description: 'Switch to planning mode' },
+      { name: 'logout', kind: 'command' as const, description: 'Log out of account' }
+    ]
+    const suggestions = sessionSlashCommandSuggestions('antigravity', antigravityReported)
+    const names = suggestions.map((c) => c.name)
+    expect(names).toContain('plan')
+    expect(names).toContain('logout')
+    expect(names).toContain('model')
+    expect(names).toContain('effort')
+    expect(names).toContain('usage')
+    expect(names).toContain('clear')
+    expect(names).toContain('goal')
+    expect(names).toContain('skills')
+    expect(names).toContain('mcp')
   })
 
-  it('does not resurrect a curated command the session never reported', () => {
-    const names = sessionSlashCommandSuggestions('claude', reported).map((c) => c.name)
-    expect(names).not.toContain('compact')
+  it('overrides curated description when reported command has matching name', () => {
+    const suggestions = sessionSlashCommandSuggestions('antigravity', [
+      { name: 'plan', kind: 'command', description: 'Custom ACP plan mode' }
+    ])
+    const planCommand = suggestions.find((c) => c.name === 'plan')
+    expect(planCommand?.description).toBe('Custom ACP plan mode')
+    const modelCommand = suggestions.find((c) => c.name === 'model')
+    expect(modelCommand?.description).toBe('Choose the model')
+  })
+
+  it('merges reported commands with curated catalog and fills in missing descriptions', () => {
+    const suggestions = sessionSlashCommandSuggestions('claude', reported)
+    expect(suggestions.find((c) => c.name === 'clear')).toEqual({
+      name: 'clear',
+      description: 'Clear conversation history'
+    })
+    expect(suggestions.find((c) => c.name === 'opsx:apply')).toEqual({
+      name: 'opsx:apply'
+    })
+    const names = suggestions.map((c) => c.name)
+    expect(names).toContain('compact')
+    expect(names).toContain('init')
+    expect(names).toContain('review')
+    expect(names).toContain('help')
   })
 
   it('splits skills out for the picker to group on its own', () => {
@@ -106,37 +146,42 @@ describe('a session that reports its own command surface', () => {
   })
 
   it('prefers the description the session reported over the curated one', () => {
-    expect(
-      sessionSlashCommandSuggestions('claude', [
-        { name: 'clear', kind: 'command', description: 'Wipe the transcript' },
-        { name: 'goal', kind: 'command', description: 'Set or view the goal' },
-        { name: 'compact', kind: 'command' }
-      ])
-    ).toEqual([
-      { name: 'clear', description: 'Wipe the transcript' },
-      { name: 'goal', description: 'Set or view the goal' },
-      { name: 'compact', description: 'Summarize and compact the conversation' }
+    const suggestions = sessionSlashCommandSuggestions('claude', [
+      { name: 'clear', kind: 'command', description: 'Wipe the transcript' },
+      { name: 'goal', kind: 'command', description: 'Set or view the goal' },
+      { name: 'compact', kind: 'command' }
     ])
+    expect(suggestions.find((c) => c.name === 'clear')).toEqual({
+      name: 'clear',
+      description: 'Wipe the transcript'
+    })
+    expect(suggestions.find((c) => c.name === 'goal')).toEqual({
+      name: 'goal',
+      description: 'Set or view the goal'
+    })
+    expect(suggestions.find((c) => c.name === 'compact')).toEqual({
+      name: 'compact',
+      description: 'Summarize and compact the conversation'
+    })
+    expect(suggestions.map((c) => c.name)).toContain('init')
   })
 
   it('keeps a reported description and argument hint the curated catalog never claims', () => {
-    expect(
-      sessionSlashCommandSuggestions('codex', [
-        {
-          name: 'opsx:apply',
-          kind: 'command',
-          description: 'Apply the plan',
-          argumentHint: '<plan-id>',
-          kindUnspecified: true
-        }
-      ])
-    ).toEqual([
+    const suggestions = sessionSlashCommandSuggestions('codex', [
       {
         name: 'opsx:apply',
+        kind: 'command',
         description: 'Apply the plan',
         argumentHint: '<plan-id>',
         kindUnspecified: true
       }
     ])
+    expect(suggestions.find((c) => c.name === 'opsx:apply')).toEqual({
+      name: 'opsx:apply',
+      description: 'Apply the plan',
+      argumentHint: '<plan-id>',
+      kindUnspecified: true
+    })
+    expect(suggestions.map((c) => c.name)).toContain('model')
   })
 })

@@ -76,10 +76,13 @@ describe('composer catalog authority', () => {
         }
       }
     )
-    expect(result.current).toEqual({ agentCommands: [], sessionSkillNames: [] })
+    expect(result.current).toEqual({
+      agentCommands: getVerifiedNativeChatCommands('claude'),
+      sessionSkillNames: []
+    })
     rerender({ reported: [{ name: 'custom-command', kind: 'command' }] })
     expect(result.current).toEqual({
-      agentCommands: [{ name: 'custom-command' }],
+      agentCommands: [...getVerifiedNativeChatCommands('claude'), { name: 'custom-command' }],
       sessionSkillNames: []
     })
   })
@@ -146,7 +149,7 @@ it('Enter completes a known pre-init skill while still dispatching a built-in co
         setHistory: vi.fn()
       })
     },
-    { initialProps: { activeSuggestion: 1 } }
+    { initialProps: { activeSuggestion: 5 } }
   )
   const enter = { key: 'Enter', nativeEvent: {}, preventDefault: vi.fn() } as unknown as Parameters<
     typeof result.current

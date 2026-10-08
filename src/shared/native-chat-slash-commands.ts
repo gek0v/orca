@@ -133,6 +133,14 @@ const ANTIGRAVITY_COMMANDS: readonly SlashCommandSuggestion[] = [
   { name: 'plan', description: 'Switch to planning mode' },
   { name: 'goal', description: 'Set or inspect the current goal' },
   { name: 'review', description: 'Review recent changes' },
+  { name: 'diff', description: 'View current workspace diff and changes' },
+  { name: 'skills', description: 'Browse and manage active skills' },
+  { name: 'subagents', description: 'Inspect and manage active subagents' },
+  { name: 'mcp', description: 'List and manage MCP tools and servers' },
+  { name: 'browser', description: 'Interact with the web browser' },
+  { name: 'schedule', description: 'Schedule recurring instructions or timers' },
+  { name: 'auth', description: 'Switch or inspect active Google account' },
+  { name: 'init', description: 'Initialize workspace GEMINI.md instructions' },
   { name: 'clear', description: 'Clear conversation context' },
   { name: 'help', description: 'Show available commands' }
 ]
@@ -151,29 +159,60 @@ export function getAgentSlashCommands(agent: AgentType): readonly SlashCommandSu
   return COMMANDS_BY_AGENT[agent] ?? COMMON_COMMANDS
 }
 
-/** The command rows for a session that reports its own `/` surface. The report
- *  is the authority on WHICH commands exist and, when it carries one, on how a
- *  command is described; the curated catalog above only covers the names whose
- *  report is text-free. Skills are excluded — they render in the picker's own
- *  skills group. */
+/** The verified slash commands for an agent. Grok has no verified catalog yet,
+ *  so its slash surface stays skills-only. */
+export function getVerifiedNativeChatCommands(agent: AgentType): readonly SlashCommandSuggestion[] {
+  return agent === 'grok' ? [] : getAgentSlashCommands(agent)
+}
+
+/** The command rows for a session that reports its own `/` surface, merged with
+ *  curated commands so provider commands remain discoverable. Reported commands
+ *  override matching curated ones by name; new reported commands are appended.
+ *  Skills are excluded — they render in the picker's own skills group. */
 export function sessionSlashCommandSuggestions(
   agent: AgentType,
   reported: readonly AgentSessionSlashCommand[]
 ): readonly SlashCommandSuggestion[] {
-  const described = new Map(
-    getAgentSlashCommands(agent).map((command) => [command.name, command.description])
-  )
-  return reported
-    .filter((entry) => entry.kind === 'command')
-    .map((entry) => {
-      const description = entry.description ?? described.get(entry.name)
-      return {
-        name: entry.name,
+  const curated = getVerifiedNativeChatCommands(agent)
+  const reportedCommands = reported.filter((entry) => entry.kind === 'command')
+  const reportedByName = new Map<string, AgentSessionSlashCommand>()
+  for (const entry of reportedCommands) {
+    reportedByName.set(entry.name, entry)
+  }
+
+  const seen = new Set<string>()
+  const merged: SlashCommandSuggestion[] = []
+
+  for (const command of curated) {
+    seen.add(command.name)
+    const reportedEntry = reportedByName.get(command.name)
+    if (reportedEntry) {
+      const description = reportedEntry.description ?? command.description
+      merged.push({
+        name: reportedEntry.name,
         ...(description ? { description } : {}),
+        ...(reportedEntry.argumentHint ? { argumentHint: reportedEntry.argumentHint } : {}),
+        ...(reportedEntry.kindUnspecified ? { kindUnspecified: true as const } : {}),
+        ...(command.reply ? { reply: command.reply } : {})
+      })
+    } else {
+      merged.push(command)
+    }
+  }
+
+  for (const entry of reportedCommands) {
+    if (!seen.has(entry.name)) {
+      seen.add(entry.name)
+      merged.push({
+        name: entry.name,
+        ...(entry.description ? { description: entry.description } : {}),
         ...(entry.argumentHint ? { argumentHint: entry.argumentHint } : {}),
         ...(entry.kindUnspecified ? { kindUnspecified: true as const } : {})
-      }
-    })
+      })
+    }
+  }
+
+  return merged
 }
 
 /** Names the session reported as skills, in the order it reported them. */

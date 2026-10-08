@@ -1,6 +1,6 @@
 import type { AgentType } from './agent-status-types'
 import {
-  getAgentSlashCommands,
+  getVerifiedNativeChatCommands,
   type NativeChatCommandReply,
   type SlashCommandSuggestion
 } from './native-chat-slash-commands'
@@ -58,12 +58,7 @@ export function getNativeChatAgentProfile(
   return agent ? (NATIVE_CHAT_AGENT_PROFILES[agent] ?? null) : null
 }
 
-/** The catalog that send classification, collision detection, and transcript
- *  envelope surfacing key off. Grok has no verified catalog yet, so its slash
- *  surface stays skills-only — this is the single place that policy lives. */
-export function getVerifiedNativeChatCommands(agent: AgentType): readonly SlashCommandSuggestion[] {
-  return agent === 'grok' ? [] : getAgentSlashCommands(agent)
-}
+export { getVerifiedNativeChatCommands } from './native-chat-slash-commands'
 
 /** How the chat finds the reply to a verified command over a terminal session;
  *  null when the agent answers it in the terminal or the command is unknown. */
