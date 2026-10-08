@@ -18,6 +18,10 @@ import {
 import { parseAntigravityUsageStdout, stdoutShowsModelTurn } from './antigravity-usage-response'
 
 import { classifyAntigravityUsageFailure } from './antigravity-usage-error'
+import {
+  fetchAntigravityDirectQuota,
+  type FetchAntigravityDirectQuotaOptions
+} from './antigravity-direct-quota-fetch'
 
 const FAILURE_REASONS: Partial<Record<UsageRateLimitFailureKind, string>> = {
   'rate-limited':
@@ -55,9 +59,11 @@ export type AntigravityUsageDependencies = {
   now?: () => number
 }
 
-export type FetchAntigravityRateLimitsOptions = AntigravityUsageDependencies & {
-  signal?: AbortSignal
-}
+export type FetchAntigravityRateLimitsOptions = AntigravityUsageDependencies &
+  FetchAntigravityDirectQuotaOptions & {
+    allowCliFallback?: boolean
+    isAcp?: boolean
+  }
 
 function unavailable(
   message: string,
@@ -118,9 +124,24 @@ export async function fetchAntigravityRateLimits(
   if (usageCommandUnsupported) {
     return unavailable(UNSUPPORTED_USAGE_COMMAND_REASON, 'usage-unavailable', now())
   }
+  const platform = options.platform ?? process.platform
+
+  const directLimits = await fetchAntigravityDirectQuota(options)
+  if (directLimits) {
+    return directLimits
+  }
+
+  const allowCliFallback = options.allowCliFallback ?? !options.isAcp
+  if (!allowCliFallback) {
+    return unavailable(
+      'Antigravity quota is unavailable via direct read and CLI fallback is disabled.',
+      'cli-unavailable',
+      now()
+    )
+  }
+
   const run = options.runCommand ?? runProcess
   const resolve = options.resolveCommand ?? resolveCommandOnLocalPath
-  const platform = options.platform ?? process.platform
   const resolveEnvironment = options.resolveEnvironment ?? (() => resolveLoginShellEnvironment())
 
   // Why the login shell's env: agy installs to ~/.local/bin, which is on the user's PATH but not on

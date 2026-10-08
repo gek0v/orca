@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const electronApp = vi.hoisted(() => ({
   isPackaged: false,
   on: vi.fn(),
+  once: vi.fn(),
   getPath: vi.fn(() => '/tmp/orca-user-data'),
   getVersion: vi.fn(() => '0.0.0-test'),
   isReady: vi.fn(() => true),

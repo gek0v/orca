@@ -135,10 +135,11 @@ export async function initializeReadyRuntimeServices(): Promise<void> {
       console.warn('[agent-hooks] failed to reconcile managed hooks on startup:', error)
     )
   }
-  // Why: process-gone metrics only see survivors, and the gone-time host memory
-  // read lands after the corpse released its pages; both need a live pre-gone
-  // sample to compare against in crash reports.
-  startPreGoneCrashSampling()
+  // Why deferred: process-gone crash sampling queries process metrics and host memory,
+  // which can block the main loop during startup; defer until after first paint.
+  runAfterFirstWindowShown(() => {
+    startPreGoneCrashSampling()
+  }, WORKTREE_TRASH_SWEEP_FALLBACK_MS)
   app.on('child-process-gone', (_event, details) => {
     recordProcessGoneCrash('child', details.type, details.reason, details.exitCode ?? null, {
       name: details.name,

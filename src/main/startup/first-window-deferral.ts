@@ -31,7 +31,9 @@ export function runAfterFirstWindowShown(task: () => void, fallbackMs: number): 
   }
   const fallback = setTimeout(run, fallbackMs)
   fallback.unref?.()
-  app.once('browser-window-created', (_event: Electron.Event, window: BrowserWindow) => {
-    window.once('ready-to-show', run)
-  })
+  if (typeof app.once === 'function') {
+    app.once('browser-window-created', (_event: Electron.Event, window: BrowserWindow) => {
+      window.once('ready-to-show', run)
+    })
+  }
 }

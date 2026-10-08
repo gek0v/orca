@@ -488,4 +488,191 @@ describe('quota read safety and diagnostic precedence', () => {
     const lastCallEnv = runCommand.mock.calls[0][0].env as NodeJS.ProcessEnv
     expect(lastCallEnv.HOME).toBe('/Users/test')
   })
+
+  it('uses native credential on win32 to retrieve direct quota without running CLI', async () => {
+    const runCommand = vi.fn()
+    const readNativeCredential = vi.fn().mockResolvedValue({
+      contents: '{}',
+      authMethod: 'oauth',
+      identity: null,
+      accessToken: 'test-win-token',
+      refreshToken: 'test-refresh'
+    })
+    const fetchDirectQuota = vi.fn().mockResolvedValue({
+      session: { usedPercent: 15, windowMinutes: 300, resetsAt: 12345, resetDescription: null },
+      weekly: { usedPercent: 40, windowMinutes: 10_080, resetsAt: 67890, resetDescription: null },
+      buckets: [
+        {
+          id: 'gemini-3.1-pro',
+          name: '3.1 Pro',
+          usedPercent: 40,
+          windowMinutes: 10_080,
+          resetsAt: 67890,
+          resetDescription: null
+        }
+      ],
+      description: 'Direct zero-cost quota via Google CloudCode API.'
+    })
+
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      readNativeCredential,
+      fetchDirectQuota,
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('ok')
+    expect(result.usageMetadata?.source).toBe('oauth')
+    expect(result.usageMetadata?.credentialSource).toBe('antigravity-keychain')
+    expect(result.weekly?.usedPercent).toBe(40)
+    expect(fetchDirectQuota).toHaveBeenCalledWith('test-win-token', expect.any(Object))
+    expect(runCommand).not.toHaveBeenCalled()
+  })
+
+  it('falls back to CLI when direct quota returns null on win32', async () => {
+    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[] }) => {
+      if (spec.args?.[0] === '--version') {
+        return processResult({ stdout: 'agy version 1.2.16\n' })
+      }
+      return processResult({ stdout: USAGE_ENVELOPE })
+    })
+    const resolveCommand = vi
+      .fn()
+      .mockResolvedValue('C:\\Users\\test\\AppData\\Local\\agy\\agy.exe')
+    const resolveEnvironment = vi.fn().mockResolvedValue({
+      PATH: 'C:\\Users\\test\\AppData\\Local\\agy'
+    })
+    const readNativeCredential = vi.fn().mockResolvedValue({
+      contents: '{}',
+      authMethod: 'oauth',
+      identity: null,
+      accessToken: 'expired-token',
+      refreshToken: null
+    })
+    const fetchDirectQuota = vi.fn().mockResolvedValue(null)
+
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      readNativeCredential,
+      fetchDirectQuota,
+      resolveCommand,
+      resolveEnvironment,
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('ok')
+    expect(result.usageMetadata?.source).toBe('cli')
+    expect(runCommand).toHaveBeenCalled()
+  })
+
+  it('guards against CLI fallback when isAcp is true and direct quota is absent', async () => {
+    const runCommand = vi.fn()
+    const readNativeCredential = vi.fn().mockResolvedValue(null)
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      isAcp: true,
+      readNativeCredential,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
+  })
+
+  it('allows CLI fallback when isAcp is true and allowCliFallback is explicitly true', async () => {
+    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[] }) => {
+      if (spec.args?.[0] === '--version') {
+        return processResult({ stdout: 'agy version 1.2.16\n' })
+      }
+      return processResult({ stdout: USAGE_ENVELOPE })
+    })
+    const resolveCommand = vi
+      .fn()
+      .mockResolvedValue('C:\\Users\\test\\AppData\\Local\\agy\\agy.exe')
+    const resolveEnvironment = vi.fn().mockResolvedValue({
+      PATH: 'C:\\Users\\test\\AppData\\Local\\agy'
+    })
+    const readNativeCredential = vi.fn().mockResolvedValue(null)
+
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      isAcp: true,
+      allowCliFallback: true,
+      readNativeCredential,
+      resolveCommand,
+      resolveEnvironment,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('ok')
+    expect(runCommand).toHaveBeenCalled()
+  })
+
+  it('guards against CLI fallback when allowCliFallback is explicitly false', async () => {
+    const runCommand = vi.fn()
+    const result = await fetchAntigravityRateLimits({
+      platform: 'darwin',
+      allowCliFallback: false,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('cli-unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
+  })
+
+  it('bounds slow native credential reads with timeout', async () => {
+    const runCommand = vi.fn()
+    const readNativeCredential = vi
+      .fn()
+      .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(null), 500)))
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      isAcp: true,
+      credentialTimeoutMs: 10,
+      readNativeCredential,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
+  })
+
+  it('bounds slow direct quota network queries with timeout', async () => {
+    const runCommand = vi.fn()
+    const readNativeCredential = vi.fn().mockResolvedValue({
+      contents: '{}',
+      authMethod: 'oauth',
+      identity: null,
+      accessToken: 'token',
+      refreshToken: null
+    })
+    const fetchDirectQuota = vi
+      .fn()
+      .mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(null), 500)))
+    const result = await fetchAntigravityRateLimits({
+      platform: 'win32',
+      isAcp: true,
+      directQuotaTimeoutMs: 10,
+      readNativeCredential,
+      fetchDirectQuota,
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(runCommand).not.toHaveBeenCalled()
+  })
 })
