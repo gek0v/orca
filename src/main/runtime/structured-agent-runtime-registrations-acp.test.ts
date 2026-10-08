@@ -9,7 +9,20 @@ describe('ACP agents in the runtime registrations', () => {
   it('registers Grok beside Claude and Codex with its declared capabilities', () => {
     expect(
       STRUCTURED_AGENT_RUNTIME_REGISTRATIONS.map(({ definition }) => definition.agent)
-    ).toEqual(['codex', 'claude', 'grok'])
+    ).toEqual(['codex', 'claude', 'grok', 'antigravity'])
+    expect(structuredAgentRuntimeRegistration('antigravity')?.definition).toMatchObject({
+      handleTransport: 'acp',
+      accountHomeVariable: 'GEMINI_ACP_HOME',
+      capabilities: {
+        rewind: false,
+        compact: false,
+        threadGoal: false,
+        contextUsage: true,
+        imagePrompts: false,
+        steering: 'queue',
+        approvalEnforcement: 'orca'
+      }
+    })
     expect(structuredAgentRuntimeRegistration('grok')?.definition).toMatchObject({
       handleTransport: 'acp',
       accountHomeVariable: 'GROK_HOME',
