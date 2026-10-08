@@ -81,6 +81,34 @@ describe('openDefaultAgentChatInEmptyWorkspace', () => {
     )
   })
 
+  it('launches antigravity as a chat when set as preferred', () => {
+    seedSettings({ defaultTuiAgent: 'antigravity' })
+    useAppStore.setState({ detectedAgentIds: ['antigravity'] })
+
+    expect(openDefaultAgentChatInEmptyWorkspace('wt-1')).toEqual({ primaryTabId: 'chat-tab' })
+    expect(mocks.launchAgentInNewTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'antigravity',
+        worktreeId: 'wt-1',
+        pendingActivationSpawn: true
+      })
+    )
+  })
+
+  it('launches antigravity as a chat when detected and no other preferred agent', () => {
+    seedSettings({ defaultTuiAgent: null })
+    useAppStore.setState({ detectedAgentIds: ['antigravity'] })
+
+    expect(openDefaultAgentChatInEmptyWorkspace('wt-1')).toEqual({ primaryTabId: 'chat-tab' })
+    expect(mocks.launchAgentInNewTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'antigravity',
+        worktreeId: 'wt-1',
+        pendingActivationSpawn: true
+      })
+    )
+  })
+
   it('does nothing unless new agent tabs open as chat', () => {
     seedSettings({ openAgentTabsInChatByDefault: false })
 

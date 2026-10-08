@@ -52,10 +52,15 @@ describe('the settings default', () => {
     expect(prefersStructuredNativeChatByDefault(settings)).toBe(false)
     expect(agentTabsDefaultToNativeChat(settings)).toBe(false)
   })
+
+  it('defaults openAgentTabsInChatByDefault and experimentalStructuredNativeChat to true when native chat is enabled', () => {
+    expect(agentTabsDefaultToNativeChat({ experimentalNativeChat: true })).toBe(true)
+    expect(prefersStructuredNativeChatByDefault({ experimentalNativeChat: true })).toBe(true)
+  })
 })
 
 describe('per-launch structured feasibility', () => {
-  it.each(['claude', 'codex'] as const)('supports a local %s launch', (agent) => {
+  it.each(['claude', 'codex', 'antigravity'] as const)('supports a local %s launch', (agent) => {
     expect(support({ agent })).toEqual({ supported: true })
   })
 
@@ -125,21 +130,10 @@ describe('agents beyond Claude and Codex', () => {
     expect(
       support({ agent: 'grok', hostCapabilities: REGISTERED, hostStructuredAgents: ['grok'] })
     ).toEqual({ supported: true })
-    expect(
-      support({
-        agent: 'antigravity',
-        hostCapabilities: REGISTERED,
-        hostStructuredAgents: ['antigravity']
-      })
-    ).toEqual({ supported: true })
   })
 
   it('are not offered by a host that does not advertise its registered agents', () => {
     expect(support({ agent: 'grok', hostStructuredAgents: ['grok'] })).toEqual({
-      supported: false,
-      blocker: 'runtime-capability'
-    })
-    expect(support({ agent: 'antigravity', hostStructuredAgents: ['antigravity'] })).toEqual({
       supported: false,
       blocker: 'runtime-capability'
     })
@@ -155,8 +149,9 @@ describe('agents beyond Claude and Codex', () => {
     ).toEqual({ supported: false, blocker: 'agent-without-structured-session' })
   })
 
-  it('leave Claude and Codex offered by hosts that predate the capability', () => {
+  it('leave Claude, Codex, and Antigravity offered by hosts that predate the capability', () => {
     expect(support({ agent: 'claude' })).toEqual({ supported: true })
     expect(support({ agent: 'codex' })).toEqual({ supported: true })
+    expect(support({ agent: 'antigravity' })).toEqual({ supported: true })
   })
 })

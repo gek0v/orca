@@ -31,6 +31,7 @@ import {
 import { applyDefaultTerminalTabs } from '@/lib/worktree-default-terminal-tabs'
 import { openDefaultAgentChatInEmptyWorkspace } from '@/lib/empty-workspace-default-agent-chat'
 import { isEmptyWorkspaceDefaultSurfacePending } from '@/lib/empty-workspace-default-surface-claims'
+import { agentTabsDefaultToNativeChat } from '../../../shared/structured-native-chat-launch-route'
 
 function getSetupRunnerCommandPlatformForLaunch(setup: WorktreeSetupLaunch): 'windows' | 'posix' {
   return getSetupRunnerCommandPlatformForPath(
@@ -148,6 +149,14 @@ export function ensureWorktreeHasInitialTerminal(
   }
 
   const hasExplicitLaunchWork = Boolean(sequencedStartup || setup || issueCommand)
+  if (
+    isEmptyWorkspaceDefaultSurfacePending(worktreeId) &&
+    !hasExplicitLaunchWork &&
+    opts?.createNewTerminalForStartup !== true
+  ) {
+    return null
+  }
+
   // Why: a caller opening its own primary surface (a structured native chat) asked for that surface
   // alone. Setup launched in its own tab needs no shell to attach to, so seeding one leaves a stray
   // "Terminal 1" beside the chat. Splits and issue automation still need a pane to split from.
@@ -156,7 +165,6 @@ export function ensureWorktreeHasInitialTerminal(
     (useAppStore.getState().settings?.setupScriptLaunchMode ?? 'new-tab') !== 'new-tab'
   if (
     opts?.callerProvidesSurface === true &&
-    renderableTabCount === 0 &&
     !sequencedStartup &&
     !issueCommand &&
     !setupNeedsHostTerminal &&
@@ -189,10 +197,17 @@ export function ensureWorktreeHasInitialTerminal(
   // Why: an execution host that has not answered is not a host with no terminals; seeding into that
   // gap is what adds a tab per launch (STA-4658). Explicit launch work below is a request to create
   // a terminal now, so it stays ungated.
+  const effectiveRenderableTabCount = Math.max(
+    renderableTabCount,
+    store.tabsByWorktree[worktreeId]?.length ?? 0
+  )
   const shouldAutoCreate =
     hostAuthority === 'none' &&
-    shouldAutoCreateInitialTerminal(renderableTabCount, shouldHonourClosedTerminalTombstone)
-  const shouldCreateForExplicitWork = renderableTabCount === 0 && hasExplicitLaunchWork
+    shouldAutoCreateInitialTerminal(
+      effectiveRenderableTabCount,
+      shouldHonourClosedTerminalTombstone
+    )
+  const shouldCreateForExplicitWork = effectiveRenderableTabCount === 0 && hasExplicitLaunchWork
   const shouldCreateNewStartupTerminal =
     opts?.createNewTerminalForStartup === true && sequencedStartup !== undefined
   if (!shouldAutoCreate && !shouldCreateForExplicitWork && !shouldCreateNewStartupTerminal) {
@@ -229,13 +244,28 @@ export function ensureWorktreeHasInitialTerminal(
   const resolvedLaunchAccountId = opts?.launchAccountId ?? sequencedStartup?.launchAccountId
   if (
     opts?.seedUserDefaultSurface === true &&
+    agentTabsDefaultToNativeChat(ownerState.settings) &&
     !hasExplicitLaunchWork &&
     opts.activateCreatedTabs !== false
   ) {
-    const defaultChat = openDefaultAgentChatInEmptyWorkspace(worktreeId, resolvedLaunchAccountId)
+    const defaultChat = resolvedLaunchAccountId
+      ? openDefaultAgentChatInEmptyWorkspace(worktreeId, resolvedLaunchAccountId)
+      : openDefaultAgentChatInEmptyWorkspace(worktreeId)
     if (defaultChat) {
       return defaultChat.primaryTabId
     }
+  }
+
+  const latestRenderableTabCount = Math.max(
+    store.reconcileWorktreeTabModel(worktreeId).renderableTabCount,
+    store.tabsByWorktree[worktreeId]?.length ?? 0
+  )
+  if (
+    latestRenderableTabCount > 0 &&
+    !hasExplicitLaunchWork &&
+    opts?.createNewTerminalForStartup !== true
+  ) {
+    return store.tabsByWorktree[worktreeId]?.[0]?.id ?? null
   }
 
   // Why: tag this activation-created tab so its PTY spawn doesn't count as activity and reshuffle the Recent sort.

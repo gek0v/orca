@@ -69,7 +69,7 @@ export function agentTabsDefaultToNativeChat(
   settings: Partial<NativeChatDefaultSettings> | null | undefined
 ): boolean {
   return (
-    settings?.experimentalNativeChat === true && settings?.openAgentTabsInChatByDefault === true
+    settings?.experimentalNativeChat === true && (settings.openAgentTabsInChatByDefault ?? true)
   )
 }
 
@@ -78,7 +78,7 @@ export function prefersStructuredNativeChatByDefault(
   settings: Partial<NativeChatDefaultSettings> | null | undefined
 ): boolean {
   return (
-    agentTabsDefaultToNativeChat(settings) && settings?.experimentalStructuredNativeChat === true
+    agentTabsDefaultToNativeChat(settings) && (settings?.experimentalStructuredNativeChat ?? true)
   )
 }
 
