@@ -1,4 +1,4 @@
-import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
+import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
 import { clampUsedPercent } from './tooltip'
 import { getTightestUsageSection, type UsageSection } from './UsageRosterPanel'
 import { isCursorUsageBucket } from '../../../../shared/cursor-usage-buckets'
@@ -50,6 +50,20 @@ export function isVisibleStatusBarBucket(
     return !isExternalAntigravityModel(name)
   }
   return STATUS_BAR_BUCKET_NAMES.has(name) || isCursorUsageBucket(name)
+}
+
+export function getAntigravityStatusBarWindows(p: ProviderRateLimits): {
+  fiveHour: RateLimitWindow | null
+  weekly: RateLimitWindow | null
+} {
+  const visible = (p.buckets ?? []).filter((b) => isVisibleStatusBarBucket(b.name, 'antigravity'))
+  const fiveHour =
+    visible.find((b) => b.windowMinutes === 300 || /5h/i.test(b.name)) ??
+    (p.session?.windowMinutes === 300 ? p.session : null)
+  const weekly =
+    visible.find((b) => b.windowMinutes === 10_080 || /weekly|wl/i.test(b.name)) ??
+    (p.weekly?.windowMinutes === 10_080 ? p.weekly : (p.weekly ?? null))
+  return { fiveHour, weekly }
 }
 
 export function getAntigravityStatusTightestSection(p: ProviderRateLimits): UsageSection | null {

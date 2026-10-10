@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  formatCompactResetDuration,
   formatResetCountdown,
   formatResetDuration,
   getResetCountdownNextTickDelay
@@ -22,6 +23,21 @@ describe('formatResetDuration', () => {
     expect(formatResetDuration(2 * HOUR)).toBe('2h')
     expect(formatResetDuration(6 * DAY + 7 * HOUR)).toBe('6d 7h')
     expect(formatResetDuration(7 * DAY)).toBe('7d')
+  })
+})
+
+describe('formatCompactResetDuration', () => {
+  it('returns "now" for non-positive deltas', () => {
+    expect(formatCompactResetDuration(0)).toBe('now')
+    expect(formatCompactResetDuration(-1)).toBe('now')
+  })
+
+  it('floors to whole units without spaces', () => {
+    expect(formatCompactResetDuration(47 * MIN)).toBe('47m')
+    expect(formatCompactResetDuration(3 * HOUR + 54 * MIN)).toBe('3h54m')
+    expect(formatCompactResetDuration(2 * HOUR)).toBe('2h')
+    expect(formatCompactResetDuration(6 * DAY + 7 * HOUR)).toBe('6d7h')
+    expect(formatCompactResetDuration(7 * DAY)).toBe('7d')
   })
 })
 

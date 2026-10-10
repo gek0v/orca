@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 import React from 'react'
-import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
+import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import {
   getDisplayedUsagePercentage,
   type UsagePercentageDisplay
@@ -15,24 +15,29 @@ import {
   getProviderUsageStatusLabel
 } from './tooltip'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
-import { getQuotaBarColorClass, getQuotaTextColorClass } from './status-bar-quota-tones'
-import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
+import { getQuotaBarColorClass } from './status-bar-quota-tones'
 import { translate } from '@/i18n/i18n'
 import {
   useActiveWindowAntigravityAccount,
   useAntigravityAccounts
 } from '@/hooks/useAntigravityAccounts'
-import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
+import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import {
   formatCompactExtraUsage,
-  formatStatusBarBucketLabel,
+  getAntigravityStatusBarWindows,
   getAntigravityStatusTightestSection,
-  isExtraUsageActive,
-  isVisibleStatusBarBucket
+  isExtraUsageActive
 } from './status-bar-provider-buckets'
+import { WindowLabel } from './status-bar-window-label'
+import {
+  AntigravityStatusAccountBadge,
+  AntigravityStatusBarUsage
+} from './status-bar-antigravity-usage'
+import { VerboseProviderUsage } from './status-bar-verbose-usage'
 
 export {
   formatStatusBarBucketLabel,
+  getAntigravityStatusBarWindows,
   getAntigravityStatusTightestSection,
   isExternalAntigravityModel,
   isVisibleStatusBarBucket
@@ -55,26 +60,6 @@ function MiniBar({
         style={{ width: `${getDisplayedUsagePercentage(usedPct, display)}%` }}
       />
     </div>
-  )
-}
-
-function WindowLabel({
-  w,
-  label,
-  display,
-  showLabel = true
-}: {
-  w: RateLimitWindow
-  label: string
-  display: UsagePercentageDisplay
-  showLabel?: boolean
-}): React.JSX.Element {
-  const pct = getDisplayedUsagePercentage(w.usedPercent, display)
-  return (
-    <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-      <span className={getQuotaTextColorClass(w.usedPercent)}>{pct}%</span>
-      {showLabel ? <span className="text-[11px] text-muted-foreground">{label}</span> : null}
-    </span>
   )
 }
 
@@ -185,141 +170,18 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
   }
 }
 
-function VerboseProviderUsage({
-  p,
-  display
-}: {
-  p: ProviderRateLimits
-  display: UsagePercentageDisplay
-}): React.JSX.Element {
-  if (p.buckets && p.buckets.length > 0) {
-    const visibleBuckets = p.buckets.filter((bucket) =>
-      isVisibleStatusBarBucket(bucket.name, p.provider)
-    )
-    // Why: a provider whose buckets are all filtered out still has a headline
-    // window worth showing rather than rendering an empty segment.
-    // Why weekly is in the chain: a tier metered weekly only (Antigravity reports no 5h pool on
-    // some tiers) has no session window, and omitting weekly rendered an empty segment for an
-    // account that does have a limit worth showing.
-    const fallbackWindow = p.session ?? p.monthly ?? p.weekly ?? null
-    return (
-      <>
-        {visibleBuckets.map((bucket, index) => {
-          const pct = getDisplayedUsagePercentage(bucket.usedPercent, display)
-          return (
-            <React.Fragment key={bucket.name}>
-              {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
-              <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-                <span className="text-[11px] text-muted-foreground">
-                  {formatStatusBarBucketLabel(bucket.name, p.provider, bucket.windowMinutes)}
-                </span>
-                <span className={getQuotaTextColorClass(bucket.usedPercent)}>{pct}%</span>
-              </span>
-            </React.Fragment>
-          )
-        })}
-        {visibleBuckets.length === 0 && fallbackWindow ? (
-          <WindowLabel
-            w={fallbackWindow}
-            label={formatRateLimitWindowChipLabel(fallbackWindow)}
-            display={display}
-          />
-        ) : null}
-      </>
-    )
-  }
-
-  const visibleWindows = [
-    p.session
-      ? {
-          key: 'session',
-          window: p.session,
-          label: formatRateLimitWindowChipLabel(p.session)
-        }
-      : null,
-    p.weekly
-      ? {
-          key: 'weekly',
-          window: p.weekly,
-          label: formatRateLimitWindowChipLabel(p.weekly)
-        }
-      : null,
-    p.fableWeekly
-      ? {
-          key: 'fableWeekly',
-          window: p.fableWeekly,
-          label: translate('auto.components.status.bar.StatusBar.a79c64f87e', 'Fable')
-        }
-      : null,
-    // Why: monthly stays inline for monthly-only providers; otherwise the detail panel carries it.
-    p.monthly && !p.session && !p.weekly
-      ? {
-          key: 'monthly',
-          window: p.monthly,
-          label: formatRateLimitWindowChipLabel(p.monthly)
-        }
-      : null
-  ].filter((window): window is { key: string; window: RateLimitWindow; label: string } => {
-    return window !== null
-  })
-
-  return (
-    <>
-      {visibleWindows.map((window, index) => (
-        <React.Fragment key={window.key}>
-          {index > 0 ? <span className="text-muted-foreground/50">·</span> : null}
-          <WindowLabel w={window.window} label={window.label} display={display} />
-        </React.Fragment>
-      ))}
-    </>
-  )
-}
-
-function AntigravityStatusAccountBadge({
-  compact,
-  account
-}: {
-  compact: boolean
-  account?: AntigravityAccountSummary | null
-}): React.JSX.Element | null {
-  const activeWindowAccount = useActiveWindowAntigravityAccount()
-  const resolvedAccount = account !== undefined ? account : activeWindowAccount
-  if (!resolvedAccount) {
-    return null
-  }
-  const label = resolvedAccount.alias?.trim() || resolvedAccount.email?.split('@')[0] || ''
-  if (!label && !resolvedAccount.emoji) {
-    return null
-  }
-  return (
-    <span
-      data-antigravity-status-account
-      className={`inline-flex items-center gap-1 font-medium text-foreground ${compact ? 'max-w-[70px]' : 'max-w-[120px]'} truncate text-[11px]`}
-      title={resolvedAccount.email ?? undefined}
-    >
-      {resolvedAccount.emoji ? (
-        <span
-          className="select-none leading-none text-[12px]"
-          data-account-emoji={resolvedAccount.emoji}
-        >
-          {resolvedAccount.emoji}
-        </span>
-      ) : null}
-      {label ? <span className="truncate">{label}</span> : null}
-    </span>
-  )
-}
-
 export function ProviderSegment({
   p,
   compact,
   display,
-  mode = 'verbose'
+  mode = 'verbose',
+  tightestOnly = false
 }: {
   p: ProviderRateLimits | null
   compact: boolean
   display: UsagePercentageDisplay
   mode?: StatusBarUsageMode
+  tightestOnly?: boolean
 }): React.JSX.Element {
   const provider = p?.provider ?? 'claude'
   const isAntigravity = provider === 'antigravity'
@@ -351,6 +213,18 @@ export function ProviderSegment({
 
   const limits = isAntigravity ? effectiveLimits : p
   const statusLabel = limits ? getProviderUsageStatusLabel(limits) : ''
+
+  const resetTimes = React.useMemo(() => {
+    if (!limits) {
+      return []
+    }
+    if (limits.provider === 'antigravity') {
+      const { fiveHour, weekly } = getAntigravityStatusBarWindows(limits)
+      return [fiveHour?.resetsAt, weekly?.resetsAt]
+    }
+    return [limits.session?.resetsAt, limits.weekly?.resetsAt]
+  }, [limits])
+  const now = useResetCountdownClock(resetTimes)
 
   // Idle / initial load
   if (!limits || limits.status === 'idle') {
@@ -422,7 +296,14 @@ export function ProviderSegment({
       {isAntigravity ? (
         <AntigravityStatusAccountBadge compact={compact} account={displayedAccount} />
       ) : null}
-      {mode === 'verbose' ? (
+      {isAntigravity ? (
+        <AntigravityStatusBarUsage
+          p={limits}
+          display={display}
+          now={now}
+          tightestOnly={tightestOnly}
+        />
+      ) : mode === 'verbose' ? (
         <>
           {tightest && !compact ? (
             <MiniBar usedPct={tightest.window.usedPercent} display={display} />

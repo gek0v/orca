@@ -66,21 +66,21 @@ function antigravityLimits(overrides: Partial<ProviderRateLimits> = {}): Provide
 }
 
 describe('Antigravity status-bar segment', () => {
-  it('renders Gemini model pools as GM · WL and hides external Claude/GPT models from the status bar', async () => {
+  it('renders Gemini model pools and hides external Claude/GPT models from the status bar', async () => {
     // Why: Antigravity hides external model pools (Claude and GPT) from the status bar,
-    // formatting first-party Gemini pools concisely as GM · WL / GM · 5H.
+    // formatting first-party Gemini pools with their percentage and reset window.
     const { ProviderSegment } = await import('./StatusBar')
     const markup = renderToStaticMarkup(
       <ProviderSegment p={antigravityLimits()} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).toContain('GM · WL')
     expect(markup).toContain('100%')
+    expect(markup).toContain('(wk)')
     expect(markup).not.toContain('Gemini Models')
     expect(markup).not.toContain('Claude and GPT models')
   })
 
-  it('formats Gemini 5h and weekly limit buckets as GM · 5H and GM · WL', async () => {
+  it('formats Gemini 5h and weekly limit buckets as (5h) and (wk) when resetsAt is null', async () => {
     const { ProviderSegment } = await import('./StatusBar')
     const limits: ProviderRateLimits = {
       ...antigravityLimits(),
@@ -112,13 +112,87 @@ describe('Antigravity status-bar segment', () => {
       <ProviderSegment p={limits} compact={false} display="used" mode="verbose" />
     )
 
-    expect(markup).toContain('GM · 5H')
     expect(markup).toContain('40%')
-    expect(markup).toContain('GM · WL')
+    expect(markup).toContain('(5h)')
     expect(markup).toContain('25%')
+    expect(markup).toContain('(wk)')
     expect(markup).not.toContain('Gemini Models')
     expect(markup).not.toContain('Claude and GPT models')
     expect(markup).not.toContain('80%')
+  })
+
+  it('renders Gemini 5h and weekly limit countdowns in compact format like 40% (4h34m) · 25% (3d4h)', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const now = 1_700_000_000_000
+    vi.spyOn(Date, 'now').mockReturnValue(now)
+    const limits: ProviderRateLimits = {
+      ...antigravityLimits(),
+      buckets: [
+        {
+          name: 'Gemini Models · 5h Limit Remaining',
+          usedPercent: 40,
+          windowMinutes: 300,
+          resetsAt: now + (4 * 3600_000 + 34 * 60_000),
+          resetDescription: null
+        },
+        {
+          name: 'Gemini Models · Weekly Limit Remaining',
+          usedPercent: 25,
+          windowMinutes: 10_080,
+          resetsAt: now + (3 * 86400_000 + 4 * 3600_000),
+          resetDescription: null
+        }
+      ]
+    }
+    const markup = renderToStaticMarkup(
+      <ProviderSegment p={limits} compact={false} display="used" mode="compact" />
+    )
+
+    expect(markup).toContain('40%')
+    expect(markup).toContain('(4h34m)')
+    expect(markup).toContain('25%')
+    expect(markup).toContain('(3d4h)')
+    expect(markup).toContain('·')
+    vi.restoreAllMocks()
+  })
+
+  it('renders only tightest bucket when tightestOnly is true on constrained width', async () => {
+    const { ProviderSegment } = await import('./StatusBar')
+    const now = 1_700_000_000_000
+    vi.spyOn(Date, 'now').mockReturnValue(now)
+    const limits: ProviderRateLimits = {
+      ...antigravityLimits(),
+      buckets: [
+        {
+          name: 'Gemini Models · 5h Limit Remaining',
+          usedPercent: 40,
+          windowMinutes: 300,
+          resetsAt: now + (4 * 3600_000 + 34 * 60_000),
+          resetDescription: null
+        },
+        {
+          name: 'Gemini Models · Weekly Limit Remaining',
+          usedPercent: 65,
+          windowMinutes: 10_080,
+          resetsAt: now + (3 * 86400_000 + 4 * 3600_000),
+          resetDescription: null
+        }
+      ]
+    }
+    const markup = renderToStaticMarkup(
+      <ProviderSegment
+        p={limits}
+        compact={true}
+        display="used"
+        mode="compact"
+        tightestOnly={true}
+      />
+    )
+
+    expect(markup).toContain('65%')
+    expect(markup).toContain('(3d4h)')
+    expect(markup).not.toContain('40%')
+    vi.restoreAllMocks()
   })
 
   it('prioritizes Gemini models for tightest section in compact mode ignoring external models', async () => {
