@@ -28,5 +28,5 @@ Eres el **Ingeniero de CLI**, responsable de construir `crates/orca-cli`, el bin
    - Conexión instantánea al Named Pipe o Socket Unix de `orcad`.
    - Auto-detección y arranque en segundo plano de `orcad` si el daemon aún no está en ejecución.
 3. **Formateo y Experiencia de Usuario (`format.rs`):**
-   - Salida tabular limpia con `tabled` o alineación nativa para uso interactivo.
+   - Salida tabular limpia con alineación nativa para uso interactivo.
    - Salida JSON compacta y estructurada cuando se solicita `--json`.
