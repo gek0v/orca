@@ -1,4 +1,7 @@
-import { formatResetDuration } from '../../../shared/rate-limit-reset-format'
+import {
+  formatCompactResetDuration,
+  formatResetDuration
+} from '../../../shared/rate-limit-reset-format'
 
 /**
  * Returns a short human-readable label for a usage window duration.
@@ -46,6 +49,19 @@ export function formatRateLimitWindowChipLabel(
 ): string {
   if (window.resetsAt != null) {
     return formatResetDuration(window.resetsAt - now)
+  }
+  return formatWindowLabel(window.windowMinutes)
+}
+
+/**
+ * Compact chip label without spaces ("4h34m", "3d4h", "5h", "wk").
+ */
+export function formatCompactRateLimitWindowChipLabel(
+  window: { windowMinutes: number; resetsAt: number | null },
+  now: number = Date.now()
+): string {
+  if (window.resetsAt != null) {
+    return formatCompactResetDuration(window.resetsAt - now)
   }
   return formatWindowLabel(window.windowMinutes)
 }

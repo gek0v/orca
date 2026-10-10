@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { formatResetCountdown, formatResetDuration } from '../../../shared/rate-limit-reset-format'
-import { formatRateLimitWindowChipLabel, formatWindowLabel } from './window-label-formatter'
+import {
+  formatCompactRateLimitWindowChipLabel,
+  formatRateLimitWindowChipLabel,
+  formatWindowLabel
+} from './window-label-formatter'
 
 const MIN = 60_000
 const HOUR = 60 * MIN
@@ -69,5 +73,29 @@ describe('formatRateLimitWindowChipLabel', () => {
     expect(formatRateLimitWindowChipLabel({ windowMinutes: 300, resetsAt: now - MIN }, now)).toBe(
       'now'
     )
+  })
+})
+
+describe('formatCompactRateLimitWindowChipLabel', () => {
+  it('shows compact remaining time without spaces when resetsAt is known', () => {
+    const now = 1_700_000_000_000
+    const remainingMs = 4 * HOUR + 34 * MIN
+    const window = { windowMinutes: 300, resetsAt: now + remainingMs }
+
+    expect(formatCompactRateLimitWindowChipLabel(window, now)).toBe('4h34m')
+  })
+
+  it('falls back to window label when resetsAt is null', () => {
+    expect(formatCompactRateLimitWindowChipLabel({ windowMinutes: 300, resetsAt: null })).toBe('5h')
+    expect(formatCompactRateLimitWindowChipLabel({ windowMinutes: 10080, resetsAt: null })).toBe(
+      'wk'
+    )
+  })
+
+  it('reports "now" when reset timestamp is in the past', () => {
+    const now = 1_700_000_000_000
+    expect(
+      formatCompactRateLimitWindowChipLabel({ windowMinutes: 300, resetsAt: now - MIN }, now)
+    ).toBe('now')
   })
 })

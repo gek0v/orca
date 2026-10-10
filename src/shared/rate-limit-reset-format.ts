@@ -25,6 +25,28 @@ export function formatResetDuration(ms: number): string {
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
 }
 
+/**
+ * Compact duration without inner spaces (e.g. "47m", "3h54m", "6d7h").
+ * Suitable for high-density status-bar surfaces.
+ */
+export function formatCompactResetDuration(ms: number): string {
+  if (ms <= 0) {
+    return 'now'
+  }
+  const totalMins = Math.floor(ms / 60_000)
+  if (totalMins < 60) {
+    return `${totalMins}m`
+  }
+  const hours = Math.floor(totalMins / 60)
+  const mins = totalMins % 60
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24)
+    const remHours = hours % 24
+    return remHours > 0 ? `${days}d${remHours}h` : `${days}d`
+  }
+  return mins > 0 ? `${hours}h${mins}m` : `${hours}h`
+}
+
 /** "Resets in 3h 54m" / "Resets now" for a window's time-until-reset (ms). */
 export function formatResetCountdown(ms: number): string {
   const duration = formatResetDuration(ms)

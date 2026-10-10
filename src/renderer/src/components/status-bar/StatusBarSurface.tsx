@@ -158,6 +158,7 @@ export function StatusBarSurface({
                           compact={compact}
                           display={usagePercentageDisplay}
                           mode={usageTightestOnly ? 'compact' : statusBarUsageMode}
+                          tightestOnly={usageTightestOnly}
                         />
                       </span>
                     ))}
