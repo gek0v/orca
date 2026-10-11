@@ -79,9 +79,9 @@ impl RpcDispatcher {
                     .create_terminal(command, args, cols, rows, cwd, env)
                     .await
                 {
-                    Ok(term_id) => RuntimeRpcEnvelope::success(
+                    Ok((term_id, pid)) => RuntimeRpcEnvelope::success(
                         id,
-                        json!({ "handle": term_id, "terminalId": term_id, "id": term_id, "ok": true }),
+                        json!({ "handle": term_id, "terminalId": term_id, "id": term_id, "pid": pid, "ok": true }),
                         &self.runtime_id,
                     ),
                     Err(e) => RuntimeRpcEnvelope::failure(
@@ -93,7 +93,7 @@ impl RpcDispatcher {
                 }
             }
 
-            "terminal.input" => {
+            "terminal.input" | "terminal.write" => {
                 let term_id = params
                     .get("terminalId")
                     .or_else(|| params.get("id"))
@@ -174,7 +174,7 @@ impl RpcDispatcher {
                 }
             }
 
-            "terminal.kill" => {
+            "terminal.kill" | "terminal.shutdown" => {
                 let term_id = params
                     .get("terminalId")
                     .or_else(|| params.get("id"))

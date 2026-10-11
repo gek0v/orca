@@ -199,3 +199,61 @@ async fn test_daemon_idle_exit_triggers_cleanly() {
 
     daemon.shutdown().await.ok();
 }
+
+#[tokio::test]
+async fn test_daemon_terminal_event_streaming_over_ipc() {
+    let endpoint = make_test_endpoint("events");
+    let daemon = Server::start(&endpoint)
+        .await
+        .expect("Daemon must start successfully");
+
+    let mut client = test_client::connect(&endpoint)
+        .await
+        .expect("Client must connect to daemon");
+
+    let (cmd, args) = if cfg!(windows) {
+        (
+            "cmd.exe",
+            vec!["/c".to_string(), "echo ORCA_STREAM_EV_OK".to_string()],
+        )
+    } else {
+        (
+            "sh",
+            vec!["-c".to_string(), "echo ORCA_STREAM_EV_OK".to_string()],
+        )
+    };
+
+    let _term_id = client
+        .create_terminal(Some(cmd), Some(args))
+        .await
+        .expect("Terminal create must succeed");
+
+    let mut received_output = false;
+    let mut received_exit = false;
+
+    // Read events until output and exit are observed
+    for _ in 0..20 {
+        if let Some(val) = client.read_next_event(Duration::from_millis(300)).await {
+            if val.get("event").and_then(|e| e.as_str()) == Some("data") {
+                if let Some(data) = val.get("data").and_then(|d| d.as_str()) {
+                    if data.contains("ORCA_STREAM_EV_OK") {
+                        received_output = true;
+                    }
+                }
+            } else if val.get("event").and_then(|e| e.as_str()) == Some("exit") {
+                received_exit = true;
+            }
+        }
+        if received_output && received_exit {
+            break;
+        }
+    }
+
+    assert!(received_output, "Must have received terminal data event");
+    assert!(received_exit, "Must have received terminal exit event");
+
+    daemon
+        .shutdown()
+        .await
+        .expect("Daemon must shut down cleanly");
+}

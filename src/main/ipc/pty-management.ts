@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { DaemonPtyRouter } from '../daemon/daemon-pty-router'
 import { DegradedDaemonPtyProvider } from '../daemon/degraded-daemon-pty-provider'
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 import type { DaemonPtyAdapter } from '../daemon/daemon-pty-adapter'
 import {
   getCurrentDaemonMacTccAttributionHealth,
@@ -31,7 +32,7 @@ function sleep(ms: number): Promise<void> {
 
 function getDaemonAdapters(): DaemonPtyAdapter[] {
   const provider = getDaemonProvider()
-  if (!provider) {
+  if (!provider || provider instanceof OrcadNativePtyProvider) {
     return []
   }
   if (provider instanceof DaemonPtyRouter || provider instanceof DegradedDaemonPtyProvider) {
@@ -53,7 +54,14 @@ function isDaemonDegraded(): boolean {
 // legacy adapter's daemon must never satisfy the identity match that keeps the notice up.
 function readCurrentDaemonIdentity(): DaemonEndpointIdentity | null {
   const provider = getDaemonProvider()
-  return provider ? getCurrentDaemonAdapter(provider).getDaemonIdentity() : null
+  if (!provider) {
+    return null
+  }
+  if (provider instanceof OrcadNativePtyProvider) {
+    return provider.getDaemonIdentity()
+  }
+  const current = getCurrentDaemonAdapter(provider)
+  return current ? current.getDaemonIdentity() : null
 }
 
 async function collectSessions(adapters: DaemonPtyAdapter[]): Promise<DaemonSessionInfo[]> {

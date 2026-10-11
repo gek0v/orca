@@ -119,6 +119,32 @@ where
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
     let (reader, mut writer) = tokio::io::split(stream);
+    let (out_tx, mut out_rx) = tokio::sync::mpsc::channel::<String>(1024);
+
+    let writer_task = tokio::spawn(async move {
+        while let Some(msg) = out_rx.recv().await {
+            if writer.write_all(msg.as_bytes()).await.is_err() {
+                break;
+            }
+            if writer.flush().await.is_err() {
+                break;
+            }
+        }
+    });
+
+    let mut event_rx = dispatcher.terminal_manager.subscribe_all_events();
+    let event_tx = out_tx.clone();
+    let event_task = tokio::spawn(async move {
+        while let Ok(event) = event_rx.recv().await {
+            if let Ok(mut json_str) = serde_json::to_string(&event) {
+                json_str.push('\n');
+                if event_tx.send(json_str).await.is_err() {
+                    break;
+                }
+            }
+        }
+    });
+
     let mut lines = BufReader::new(reader).lines();
 
     while let Ok(Some(line)) = lines.next_line().await {
@@ -132,10 +158,9 @@ where
                 let resp = dispatcher.dispatch(req).await;
                 if let Ok(mut json_str) = serde_json::to_string(&resp) {
                     json_str.push('\n');
-                    if writer.write_all(json_str.as_bytes()).await.is_err() {
+                    if out_tx.send(json_str).await.is_err() {
                         break;
                     }
-                    let _ = writer.flush().await;
                 }
             }
             Err(e) => {
@@ -147,12 +172,15 @@ where
                 );
                 if let Ok(mut json_str) = serde_json::to_string(&err_resp) {
                     json_str.push('\n');
-                    if writer.write_all(json_str.as_bytes()).await.is_err() {
+                    if out_tx.send(json_str).await.is_err() {
                         break;
                     }
-                    let _ = writer.flush().await;
                 }
             }
         }
     }
+
+    event_task.abort();
+    drop(out_tx);
+    let _ = writer_task.await;
 }

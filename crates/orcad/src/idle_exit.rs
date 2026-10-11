@@ -70,6 +70,9 @@ impl IdleExitManager {
     }
 
     async fn check_and_arm(&self) {
+        if self.idle_timeout.is_zero() {
+            return;
+        }
         if self.active_connections.load(Ordering::SeqCst) == 0
             && self.active_terminals.load(Ordering::SeqCst) == 0
         {

@@ -25,6 +25,8 @@ pub struct WindowsPtySession {
     hpc: isize,
     input_write_handle: usize,
     output_rx: mpsc::Receiver<Bytes>,
+    pid: u32,
+    closed: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 unsafe impl Send for WindowsPtySession {}
@@ -157,17 +159,39 @@ pub async fn spawn_windows_pty(config: PtySessionConfig) -> Result<WindowsPtySes
                 PtyError::SpawnFailed(format!("Failed to spawn reader thread: {:?}", e))
             })?;
 
+        let closed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let closed_waiter = std::sync::Arc::clone(&closed);
+        let proc_handle_for_wait = proc_info.hProcess.0 as usize;
+        let hpc_raw = hpc.0;
+
+        std::thread::Builder::new()
+            .name("orca-pty-waiter".into())
+            .spawn(move || {
+                use windows::Win32::System::Threading::{WaitForSingleObject, INFINITE};
+                WaitForSingleObject(HANDLE(proc_handle_for_wait as _), INFINITE);
+                if !closed_waiter.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                    ClosePseudoConsole(HPCON(hpc_raw));
+                }
+            })
+            .ok();
+
         Ok(WindowsPtySession {
             job_handle: job_handle.0 as usize,
             process_handle: proc_info.hProcess.0 as usize,
             hpc: hpc.0,
             input_write_handle,
             output_rx,
+            pid: proc_info.dwProcessId,
+            closed,
         })
     }
 }
 
 impl WindowsPtySession {
+    pub fn pid(&self) -> u32 {
+        self.pid
+    }
+
     pub async fn write_input(&mut self, data: &[u8]) -> Result<(), PtyError> {
         let handle = HANDLE(self.input_write_handle as _);
         let mut written = 0u32;
@@ -207,8 +231,9 @@ impl WindowsPtySession {
                 }
             }
 
+            let was_closed = self.closed.swap(true, std::sync::atomic::Ordering::SeqCst);
             std::thread::spawn(move || unsafe {
-                if hpc != 0 {
+                if !was_closed && hpc != 0 {
                     ClosePseudoConsole(HPCON(hpc));
                 }
                 if proc != 0 {
@@ -237,8 +262,9 @@ impl Drop for WindowsPtySession {
                 }
             }
 
+            let was_closed = self.closed.swap(true, std::sync::atomic::Ordering::SeqCst);
             std::thread::spawn(move || unsafe {
-                if hpc != 0 {
+                if !was_closed && hpc != 0 {
                     ClosePseudoConsole(HPCON(hpc));
                 }
                 if proc != 0 {

@@ -111,6 +111,10 @@ pub async fn spawn_unix_pty(config: PtySessionConfig) -> Result<UnixPtySession, 
 }
 
 impl UnixPtySession {
+    pub fn pid(&self) -> u32 {
+        self.child_pid as u32
+    }
+
     pub async fn write_input(&mut self, data: &[u8]) -> Result<(), PtyError> {
         nix::unistd::write(&self.master_fd, data)
             .map_err(|e| PtyError::Io(std::io::Error::from_raw_os_error(e as i32)))?;

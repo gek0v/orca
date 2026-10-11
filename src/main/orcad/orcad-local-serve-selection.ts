@@ -51,7 +51,7 @@ function electron(reason: string): ServeRuntimeSelection {
   return { kind: 'electron', reason }
 }
 
-function resolveNativeBinary(input: ServeRuntimeSelectionInput): string | null {
+export function resolveNativeBinary(input: ServeRuntimeSelectionInput): string | null {
   if (input.nativeBinary) {
     return input.nativeBinary()
   }

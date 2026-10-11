@@ -39,6 +39,7 @@ pub struct TestClient {
     writer: WriteHalf<tokio::net::UnixStream>,
 
     req_counter: AtomicU64,
+    pub events: std::collections::VecDeque<serde_json::Value>,
 }
 
 #[cfg(windows)]
@@ -55,6 +56,7 @@ pub async fn connect(endpoint: &str) -> Result<TestClient, ClientError> {
                     reader: BufReader::new(r),
                     writer: w,
                     req_counter: AtomicU64::new(1),
+                    events: std::collections::VecDeque::new(),
                 });
             }
             Err(e) => {
@@ -92,6 +94,7 @@ pub async fn connect(endpoint: &str) -> Result<TestClient, ClientError> {
         }
     }
 
+    #[cfg(unix)]
     Err(ClientError::Io(last_err.unwrap_or_else(|| {
         std::io::Error::new(
             std::io::ErrorKind::TimedOut,
@@ -108,7 +111,7 @@ impl TestClient {
     ) -> Result<Value, ClientError> {
         let req_id = format!("req-{}", self.req_counter.fetch_add(1, Ordering::SeqCst));
         let request = RuntimeRpcRequest {
-            id: req_id,
+            id: req_id.clone(),
             method: method.to_string(),
             auth_token: None,
             params,
@@ -121,19 +124,74 @@ impl TestClient {
         self.writer.flush().await?;
 
         let mut line = String::new();
-        let bytes_read = self.reader.read_line(&mut line).await?;
-        if bytes_read == 0 {
-            return Err(ClientError::Closed);
-        }
+        loop {
+            line.clear();
+            let bytes_read = self.reader.read_line(&mut line).await?;
+            if bytes_read == 0 {
+                return Err(ClientError::Closed);
+            }
 
-        let envelope: RuntimeRpcEnvelope<Value> = serde_json::from_str(line.trim())?;
-        match envelope {
-            RuntimeRpcEnvelope::Success(s) => Ok(s.result),
-            RuntimeRpcEnvelope::Failure(f) => Err(ClientError::Rpc(f.error.message)),
-            RuntimeRpcEnvelope::Keepalive(k) => {
-                Ok(json!({ "ok": true, "_keepalive": k._keepalive }))
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
+                if val.get("type").and_then(|t| t.as_str()) == Some("event") {
+                    self.events.push_back(val);
+                    continue;
+                }
+            }
+
+            if let Ok(envelope) = serde_json::from_str::<RuntimeRpcEnvelope<Value>>(trimmed) {
+                match envelope {
+                    RuntimeRpcEnvelope::Success(s) => {
+                        if s.id == req_id {
+                            return Ok(s.result);
+                        }
+                    }
+                    RuntimeRpcEnvelope::Failure(f) => {
+                        if f.id == req_id {
+                            return Err(ClientError::Rpc(f.error.message));
+                        }
+                    }
+                    RuntimeRpcEnvelope::Keepalive(_) => {
+                        continue;
+                    }
+                }
             }
         }
+    }
+
+    pub async fn read_next_event(&mut self, timeout: Duration) -> Option<Value> {
+        if let Some(ev) = self.events.pop_front() {
+            return Some(ev);
+        }
+
+        let deadline = tokio::time::Instant::now() + timeout;
+        let mut line = String::new();
+        while tokio::time::Instant::now() < deadline {
+            line.clear();
+            let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            match tokio::time::timeout(remaining, self.reader.read_line(&mut line)).await {
+                Ok(Ok(n)) if n > 0 => {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
+                        if val.get("type").and_then(|t| t.as_str()) == Some("event") {
+                            return Some(val);
+                        }
+                    }
+                }
+                _ => break,
+            }
+        }
+        None
     }
 
     pub async fn send_ping(&mut self) -> Result<PingResponse, ClientError> {
@@ -251,5 +309,14 @@ impl TestClient {
         )
         .await?;
         Ok(())
+    }
+
+    pub async fn read_raw_line(&mut self) -> Result<String, ClientError> {
+        let mut line = String::new();
+        let bytes_read = self.reader.read_line(&mut line).await?;
+        if bytes_read == 0 {
+            return Err(ClientError::Closed);
+        }
+        Ok(line.trim().to_string())
     }
 }

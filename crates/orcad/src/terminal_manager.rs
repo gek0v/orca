@@ -20,9 +20,24 @@ pub enum TerminalError {
     Pty(#[from] PtyError),
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct TerminalEventNotification {
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub event: String,
+    pub id: String,
+    #[serde(rename = "terminalId")]
+    pub terminal_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<i32>,
+}
+
 pub struct ActiveTerminal {
     pub id: String,
     pub stream_id: u32,
+    pub pid: u32,
     pub session: Arc<Mutex<PtySession>>,
     pub output_tx: broadcast::Sender<TerminalStreamFrame>,
     pub raw_output_tx: broadcast::Sender<Bytes>,
@@ -33,16 +48,23 @@ pub struct TerminalManager {
     counter: AtomicU64,
     stream_counter: AtomicU32,
     idle_exit: Arc<IdleExitManager>,
+    event_tx: broadcast::Sender<TerminalEventNotification>,
 }
 
 impl TerminalManager {
     pub fn new(idle_exit: Arc<IdleExitManager>) -> Arc<Self> {
+        let (event_tx, _) = broadcast::channel(1024);
         Arc::new(Self {
             terminals: Arc::new(RwLock::new(HashMap::new())),
             counter: AtomicU64::new(1),
             stream_counter: AtomicU32::new(1),
             idle_exit,
+            event_tx,
         })
+    }
+
+    pub fn subscribe_all_events(&self) -> broadcast::Receiver<TerminalEventNotification> {
+        self.event_tx.subscribe()
     }
 
     pub async fn create_terminal(
@@ -53,7 +75,7 @@ impl TerminalManager {
         rows: Option<u16>,
         cwd: Option<PathBuf>,
         env: Option<HashMap<String, String>>,
-    ) -> Result<String, TerminalError> {
+    ) -> Result<(String, u32), TerminalError> {
         let cols = cols.unwrap_or(80);
         let rows = rows.unwrap_or(24);
         let default_cmd = if cfg!(windows) {
@@ -71,6 +93,7 @@ impl TerminalManager {
         }
 
         let session = spawn_pty(config).await?;
+        let pid = session.pid();
         let session = Arc::new(Mutex::new(session));
 
         let id_num = self.counter.fetch_add(1, Ordering::SeqCst);
@@ -83,6 +106,7 @@ impl TerminalManager {
         let active = Arc::new(ActiveTerminal {
             id: terminal_id.clone(),
             stream_id,
+            pid,
             session: Arc::clone(&session),
             output_tx: output_tx.clone(),
             raw_output_tx: raw_output_tx.clone(),
@@ -121,6 +145,16 @@ impl TerminalManager {
                         let _ = output_tx.send(frame.clone());
                         let encoded = encode_terminal_stream_frame(&frame);
                         let _ = raw_output_tx.send(encoded);
+
+                        let text = String::from_utf8_lossy(&payload).into_owned();
+                        let _ = mgr.event_tx.send(TerminalEventNotification {
+                            event_type: "event".to_string(),
+                            event: "data".to_string(),
+                            id: term_id_clone.clone(),
+                            terminal_id: term_id_clone.clone(),
+                            data: Some(text),
+                            code: None,
+                        });
                     }
                     None => {
                         // Shell exited
@@ -129,11 +163,20 @@ impl TerminalManager {
                 }
             }
 
+            let _ = mgr.event_tx.send(TerminalEventNotification {
+                event_type: "event".to_string(),
+                event: "exit".to_string(),
+                id: term_id_clone.clone(),
+                terminal_id: term_id_clone.clone(),
+                data: None,
+                code: Some(0),
+            });
+
             // Cleanup when PTY stream ends
             mgr.remove_terminal_silent(&term_id_clone).await;
         });
 
-        Ok(terminal_id)
+        Ok((terminal_id, pid))
     }
 
     pub async fn write_input(&self, terminal_id: &str, data: &[u8]) -> Result<(), TerminalError> {

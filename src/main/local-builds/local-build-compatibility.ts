@@ -9,6 +9,7 @@ import { DegradedDaemonPtyProvider } from '../daemon/degraded-daemon-pty-provide
 import { getDaemonProvider } from '../daemon/daemon-init'
 import { getLocalPtyProvider } from '../ipc/pty'
 import { LocalPtyProvider } from '../providers/local-pty-provider'
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 
 export type LocalBuildCompatibilityResult = {
   liveTerminalCount: number
@@ -37,6 +38,13 @@ async function getLiveDaemonProtocols(): Promise<{
     throw new Error(
       'Local build switching is blocked while the terminal service is in fallback mode. Restart Orca first.'
     )
+  }
+  if (provider instanceof OrcadNativePtyProvider) {
+    const pids = await provider.listProcesses()
+    return {
+      count: pids.length,
+      protocols: [1]
+    }
   }
   const adapters =
     provider instanceof DaemonPtyRouter ? provider.getAllAdapters() : [provider as DaemonPtyAdapter]
