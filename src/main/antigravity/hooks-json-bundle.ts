@@ -107,6 +107,7 @@ export function buildInstalledConfig(
   isManagedCommand: (command: string | undefined) => boolean
 ): void {
   const bundle = removeManagedCommandsFromBundle(getBundle(config), isManagedCommand)
+  delete bundle.enabled
 
   for (const event of ANTIGRAVITY_EVENTS) {
     const current = Array.isArray(bundle[event.eventName])

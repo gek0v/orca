@@ -416,4 +416,30 @@ describe('AntigravityHookService', () => {
       join(homeDir, '.orca', 'agent-hooks', ANTIGRAVITY_POST_TOOL_USE_COMMAND)
     )
   })
+
+  it('detects disabled bundle in getStatus and removes enabled: false upon install', () => {
+    const configPath = join(homeDir, '.gemini', 'config', 'hooks.json')
+    const service = new AntigravityHookService()
+    service.install()
+
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test fixture reads the serialized hooks config.
+    const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
+      'orca-status': Record<string, unknown>
+    }
+    config['orca-status'].enabled = false
+    writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+
+    const disabledStatus = service.getStatus()
+    expect(disabledStatus.state).toBe('partial')
+    expect(disabledStatus.detail).toContain('disabled')
+
+    const repairedStatus = service.install()
+    expect(repairedStatus.state).toBe('installed')
+
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test fixture asserts the written hooks config shape.
+    const repairedConfig = JSON.parse(readFileSync(configPath, 'utf8')) as {
+      'orca-status': Record<string, unknown>
+    }
+    expect(repairedConfig['orca-status'].enabled).toBeUndefined()
+  })
 })

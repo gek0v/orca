@@ -743,4 +743,92 @@ describe('split-pane runtime title attribution', () => {
       [makePaneKey('tab-1', LEAF_ID_3), 'gemini', 'working']
     ])
   })
+
+  it('retains an antigravity agent session row for a tab with neutral defaultTitle and launchAgent', () => {
+    const rows = buildWorktreeAgentRows({
+      tabs: [
+        makeTab('tab-1', {
+          title: 'Terminal 1',
+          defaultTitle: 'Terminal 1',
+          launchAgent: 'antigravity'
+        })
+      ],
+      entries: [],
+      retained: [],
+      ptyIdsByTabId: { 'tab-1': ['pty-1'] },
+      terminalLayoutsByTabId: { 'tab-1': makeSingleLayout(LEAF_ID_1) },
+      now: 2000
+    })
+
+    expect(rows.map((row) => [row.agentType, row.state, row.entry.lastAssistantMessage])).toEqual([
+      ['antigravity', 'idle', 'Idle']
+    ])
+    expect(rows.map((row) => row.paneKey)).toEqual([makePaneKey('tab-1', LEAF_ID_1)])
+  })
+
+  it('keeps an antigravity process-read row when tab title equals defaultTitle', () => {
+    const rows = buildWorktreeAgentRows({
+      tabs: [
+        makeTab('tab-1', {
+          title: 'Terminal 1',
+          defaultTitle: 'Terminal 1'
+        })
+      ],
+      entries: [],
+      retained: [],
+      ptyIdsByTabId: { 'tab-1': ['pty-1'] },
+      terminalLayoutsByTabId: { 'tab-1': makeSingleLayout(LEAF_ID_1) },
+      paneForegroundAgentByPaneKey: {
+        [makePaneKey('tab-1', LEAF_ID_1)]: processRead('antigravity')
+      },
+      now: 2000
+    })
+
+    expect(rows.map((row) => [row.agentType, row.state])).toEqual([['antigravity', 'idle']])
+  })
+
+  it('retires an antigravity launch row when shellForeground is true', () => {
+    const rows = buildWorktreeAgentRows({
+      tabs: [
+        makeTab('tab-1', {
+          title: 'Terminal 1',
+          defaultTitle: 'Terminal 1',
+          launchAgent: 'antigravity'
+        })
+      ],
+      entries: [],
+      retained: [],
+      ptyIdsByTabId: { 'tab-1': ['pty-1'] },
+      terminalLayoutsByTabId: { 'tab-1': makeSingleLayout(LEAF_ID_1) },
+      paneForegroundAgentByPaneKey: {
+        [makePaneKey('tab-1', LEAF_ID_1)]: {
+          agent: null,
+          agentEvidence: undefined,
+          shellForeground: true
+        }
+      },
+      now: 2000
+    })
+
+    expect(rows).toEqual([])
+  })
+
+  it('retires an antigravity launch row when the tab title becomes a shell', () => {
+    const rows = buildWorktreeAgentRows({
+      tabs: [
+        makeTab('tab-1', {
+          title: 'powershell.exe',
+          defaultTitle: 'Terminal 1',
+          launchAgent: 'antigravity'
+        })
+      ],
+      entries: [],
+      retained: [],
+      ptyIdsByTabId: { 'tab-1': ['pty-1'] },
+      terminalLayoutsByTabId: { 'tab-1': makeSingleLayout(LEAF_ID_1) },
+      now: 2000
+    })
+
+    expect(rows).toEqual([])
+  })
 })
