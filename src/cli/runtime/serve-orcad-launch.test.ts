@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { formatServeRuntimeSelection } from '../../shared/orcad-local-serve-selection'
 import type { runProcess } from '../../shared/child-process/run-process'
@@ -36,7 +37,7 @@ describe('orca serve asking the app which host to run', () => {
       expect.objectContaining({
         program: options.executable,
         args: [
-          `${options.appRoot}/out/main/orcad/orcad-local-serve-selection-entry.js`,
+          join(options.appRoot, 'out', 'main', 'orcad', 'orcad-local-serve-selection-entry.js'),
           '--user-data',
           options.userDataPath,
           '--app-root',
@@ -46,6 +47,16 @@ describe('orca serve asking the app which host to run', () => {
         stdio: ['ignore', 'pipe', 'inherit']
       })
     )
+  })
+
+  it('reads orcad-native answer correctly', async () => {
+    const selection = {
+      kind: 'orcad-native' as const,
+      binary: '/usr/local/bin/orcad',
+      version: '1.4.214'
+    }
+    const run = answering(`noise\n${formatServeRuntimeSelection(selection)}\n`)
+    expect(await resolveLocalServeRuntime(options, run)).toEqual(selection)
   })
 
   it('keeps packaged macOS on Electron without starting the app to ask', async () => {

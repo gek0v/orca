@@ -85,17 +85,19 @@ const spawnThroughChokepoint: SupervisorArgs['spawnChild'] = (program, args, opt
 
 /** Electron serve binds every interface (`exposeNetworkByDefault`); orcad does it on request. */
 export function serveWithOrcad(
-  selection: Extract<ServeRuntimeSelection, { kind: 'orcad' }>,
+  selection: Extract<ServeRuntimeSelection, { kind: 'orcad' | 'orcad-native' }>,
   args: ServeOrcaAppArgs,
   userDataPath: string,
   /** The caller's environment without `ELECTRON_RUN_AS_NODE`. */
   baseEnv: NodeJS.ProcessEnv,
   spawnChild: SupervisorArgs['spawnChild'] = spawnThroughChokepoint
 ): Promise<number> {
-  const childArgs = [selection.entry, ...orcadServeArgs(args)]
+  const isNative = selection.kind === 'orcad-native'
+  const executable = isNative ? selection.binary : selection.runtime
+  const childArgs = isNative ? orcadServeArgs(args) : [selection.entry, ...orcadServeArgs(args)]
   const spawnOptions: SupervisorArgs['spawnOptions'] = {
     detached: args.recipeJson === true,
-    cwd: dirname(selection.entry),
+    cwd: dirname(isNative ? selection.binary : selection.entry),
     stdio: args.recipeJson === true ? ['ignore', 'pipe', 'inherit'] : 'inherit',
     env: {
       ...baseEnv,
@@ -104,12 +106,12 @@ export function serveWithOrcad(
       ORCA_VERSION: selection.version
     }
   }
-  const child = spawnChild(selection.runtime, childArgs, spawnOptions)
+  const child = spawnChild(executable, childArgs, spawnOptions)
   if (args.recipeJson) {
     return waitForRecipeJson(child)
   }
   return superviseForegroundServe({
-    executable: selection.runtime,
+    executable,
     childArgs,
     spawnOptions,
     spawnChild,

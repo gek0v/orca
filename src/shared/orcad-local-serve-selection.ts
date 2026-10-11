@@ -15,6 +15,7 @@ const RESULT_MARKER = 'ORCA_SERVE_RUNTIME'
 
 export type ServeRuntimeSelection =
   | { kind: 'orcad'; runtime: string; entry: string; version: string }
+  | { kind: 'orcad-native'; binary: string; version: string }
   /** `reason` is null when Electron was asked for explicitly, so nothing is printed. */
   | { kind: 'electron'; reason: string | null }
 
@@ -36,6 +37,17 @@ export function parseServeRuntimeSelection(output: string): ServeRuntimeSelectio
       return null
     }
     const record = Object.fromEntries(Object.entries(parsed))
+    if (
+      record.kind === 'orcad-native' &&
+      typeof record.binary === 'string' &&
+      typeof record.version === 'string'
+    ) {
+      return {
+        kind: 'orcad-native',
+        binary: record.binary,
+        version: record.version
+      }
+    }
     if (
       record.kind === 'orcad' &&
       typeof record.runtime === 'string' &&

@@ -35,6 +35,8 @@ export type ServeRuntimeSelectionInput = {
   platform: NodeJS.Platform
   userDataPath: string
   templateDirs: readonly string[]
+  appRoot?: string
+  nativeBinary?: () => string | null
   hostTarget?: () => string
   materializeSlot?: typeof materializeOrcadArtifact
   materializeRuntime?: typeof materializeCachedNodeRuntime
@@ -49,12 +51,55 @@ function electron(reason: string): ServeRuntimeSelection {
   return { kind: 'electron', reason }
 }
 
+function resolveNativeBinary(input: ServeRuntimeSelectionInput): string | null {
+  if (input.nativeBinary) {
+    return input.nativeBinary()
+  }
+  const explicit = input.env.ORCAD_NATIVE_BIN
+  if (explicit && existsSync(explicit)) {
+    return explicit
+  }
+  const binaryName = input.platform === 'win32' ? 'orcad.exe' : 'orcad'
+  const roots = [
+    input.appRoot,
+    process.cwd(),
+    ...(process.resourcesPath ? [process.resourcesPath] : [])
+  ].filter((p): p is string => typeof p === 'string' && p.length > 0)
+
+  for (const root of roots) {
+    const candidates = [
+      join(root, 'bin', binaryName),
+      join(root, 'dist', 'bin', binaryName),
+      join(root, 'target', 'release', binaryName)
+    ]
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate
+      }
+    }
+  }
+  return null
+}
+
 export async function selectServeRuntime(
   input: ServeRuntimeSelectionInput
 ): Promise<ServeRuntimeSelection> {
   const requested = input.env[SERVE_RUNTIME_ENV]
   if (requested === SERVE_RUNTIME_ELECTRON) {
     return { kind: 'electron', reason: null }
+  }
+  if (requested === 'native' || requested === 'orcad-native') {
+    const nativeBin = resolveNativeBinary(input)
+    if (nativeBin) {
+      return { kind: 'orcad-native', binary: nativeBin, version: '1.4.214' }
+    }
+    return electron('no native orcad binary found for this host')
+  }
+  if (input.env.ORCA_SERVE_PREFER_NATIVE === '1') {
+    const nativeBin = resolveNativeBinary(input)
+    if (nativeBin) {
+      return { kind: 'orcad-native', binary: nativeBin, version: '1.4.214' }
+    }
   }
   if (requested && requested !== 'orcad') {
     return electron(`${SERVE_RUNTIME_ENV}=${requested} is neither orcad nor electron`)

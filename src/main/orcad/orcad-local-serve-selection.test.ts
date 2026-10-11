@@ -10,7 +10,11 @@ import {
   orcadNodeRuntimeRelativePath
 } from '../../shared/orcad-artifacts'
 import { formatOrcadNativePreflightReport } from '../../shared/orcad-native-preflight-report'
-import { SERVE_RUNTIME_ENV } from '../../shared/orcad-local-serve-selection'
+import {
+  formatServeRuntimeSelection,
+  parseServeRuntimeSelection,
+  SERVE_RUNTIME_ENV
+} from '../../shared/orcad-local-serve-selection'
 import { selectServeRuntime, type ServeRuntimeSelectionInput } from './orcad-local-serve-selection'
 
 const TARGET = 'linux-x64-glibc'
@@ -120,5 +124,43 @@ describe('orca serve runtime selection', () => {
   ])('falls back to Electron on %s and says why', async (_name, overrides, reason) => {
     const selection = await selectServeRuntime(input(overrides))
     expect(selection).toEqual({ kind: 'electron', reason: expect.stringContaining(reason) })
+  })
+
+  it('selects orcad-native when ORCA_SERVE_RUNTIME=native and binary is found', async () => {
+    const fakeBin = join(root, 'orcad-fake-bin')
+    writeFileSync(fakeBin, '')
+    const options = input({
+      env: { [SERVE_RUNTIME_ENV]: 'native' },
+      nativeBinary: () => fakeBin
+    })
+    expect(await selectServeRuntime(options)).toEqual({
+      kind: 'orcad-native',
+      binary: fakeBin,
+      version: '1.4.214'
+    })
+  })
+
+  it('falls back to Electron if ORCA_SERVE_RUNTIME=native but no native binary is found', async () => {
+    const options = input({
+      env: { [SERVE_RUNTIME_ENV]: 'native' },
+      nativeBinary: () => null
+    })
+    expect(await selectServeRuntime(options)).toEqual({
+      kind: 'electron',
+      reason: 'no native orcad binary found for this host'
+    })
+  })
+
+  it('parses orcad-native selection correctly', () => {
+    const formatted = formatServeRuntimeSelection({
+      kind: 'orcad-native',
+      binary: '/usr/bin/orcad',
+      version: '1.4.214'
+    })
+    expect(parseServeRuntimeSelection(formatted)).toEqual({
+      kind: 'orcad-native',
+      binary: '/usr/bin/orcad',
+      version: '1.4.214'
+    })
   })
 })

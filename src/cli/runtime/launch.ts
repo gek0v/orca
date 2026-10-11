@@ -100,8 +100,9 @@ async function serveWithSelectedRuntime(
     userDataPath: getDefaultUserDataPath(),
     usesMacUpdateHandoff: args.recipeJson !== true && getMacAppBundlePath(executable) !== null
   })
-  if (selection.kind === 'orcad') {
-    process.stderr.write(`[serve] running on orcad ${selection.version}\n`)
+  if (selection.kind === 'orcad' || selection.kind === 'orcad-native') {
+    const label = selection.kind === 'orcad-native' ? 'orcad (native)' : 'orcad'
+    process.stderr.write(`[serve] running on ${label} ${selection.version}\n`)
     return serveWithOrcad(
       selection,
       args,

@@ -139,6 +139,18 @@ const winSpeechNativeResource = {
   from: 'node_modules/sherpa-onnx-win-x64',
   to: 'node_modules/sherpa-onnx-win-x64'
 }
+function nativeOrcadResource(platform) {
+  const binaryName = platform === 'win32' ? 'orcad.exe' : 'orcad'
+  const distCandidate = join('dist', 'bin', binaryName)
+  const targetCandidate = join('target', 'release', binaryName)
+  if (existsSync(distCandidate)) {
+    return [{ from: distCandidate, to: `bin/${binaryName}` }]
+  }
+  if (existsSync(targetCandidate)) {
+    return [{ from: targetCandidate, to: `bin/${binaryName}` }]
+  }
+  return []
+}
 // electron-builder replaces these defaults when `depends` is configured; retain
 // Electron's loader requirements alongside Orca's headless-host dependencies.
 const debElectronRuntimeDependencies = [
@@ -481,6 +493,7 @@ module.exports = {
       ...commonExtraResources,
       ...windowsRuntimeResources,
       winSpeechNativeResource,
+      ...nativeOrcadResource('win32'),
       {
         from: 'resources/win32/bin/orca.cmd',
         to: 'bin/orca.cmd'
@@ -574,6 +587,7 @@ module.exports = {
       ...commonExtraResources,
       ...createPackagedRuntimeNodeModuleResources('darwin'),
       macSpeechNativeResource,
+      ...nativeOrcadResource('darwin'),
       {
         from: 'resources/darwin/bin/orca',
         to: 'bin/orca'
@@ -642,6 +656,7 @@ module.exports = {
       ...commonExtraResources,
       ...createPackagedRuntimeNodeModuleResources('linux'),
       linuxSpeechNativeResource,
+      ...nativeOrcadResource('linux'),
       {
         from: 'resources/linux/bin/orca-ide',
         to: 'bin/orca-ide'
