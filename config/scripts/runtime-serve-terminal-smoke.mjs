@@ -173,6 +173,16 @@ function resolveLaunch(userDataDir) {
   const target =
     flagIndex !== -1 ? process.argv[flagIndex + 1] : (process.env.ORCA_SMOKE_TARGET ?? 'electron')
   if (target === 'orcad') {
+    const daemonBinIndex = process.argv.indexOf('--daemon-bin')
+    const daemonBin = daemonBinIndex !== -1 ? process.argv[daemonBinIndex + 1] : null
+    if (daemonBin) {
+      return {
+        label: `orcad (${daemonBin})`,
+        command: daemonBin,
+        args: ['--port', String(PORT), '--json'],
+        env: { ORCA_USER_DATA: userDataDir }
+      }
+    }
     return {
       label: `orcad (${ORCAD_ENTRY})`,
       command: process.execPath,

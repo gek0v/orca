@@ -45,12 +45,12 @@
 **Interfaces:**
 - Produces: Compilable Cargo workspace with 4 initialized crates.
 
-- [ ] **Step 1: Install Rust stable toolchain if unconfigured**
+- [x] **Step 1: Install Rust stable toolchain if unconfigured**
 
 Run: `rustup default stable`
 Expected: Successfully configured default stable toolchain.
 
-- [ ] **Step 2: Create root `Cargo.toml` and `rust-toolchain.toml`**
+- [x] **Step 2: Create root `Cargo.toml` and `rust-toolchain.toml`**
 
 Define root workspace members:
 ```toml
@@ -70,7 +70,7 @@ authors = ["Orca Team"]
 license = "MIT"
 ```
 
-- [ ] **Step 3: Scaffold crate manifests and initial entrypoints**
+- [x] **Step 3: Scaffold crate manifests and initial entrypoints**
 
 Configure dependencies in:
 - `crates/orca-protocol/Cargo.toml`: `serde`, `serde_json`, `bytes`, `thiserror`.
@@ -78,12 +78,12 @@ Configure dependencies in:
 - `crates/orcad/Cargo.toml`: `orca-protocol`, `orca-pty`, `tokio` (full), `tokio-tungstenite`, `tracing`, `tracing-subscriber`.
 - `crates/orca-cli/Cargo.toml`: `orca-protocol`, `clap` (derive), `tokio` (macros, rt-multi-thread).
 
-- [ ] **Step 4: Verify workspace builds**
+- [x] **Step 4: Verify workspace builds**
 
 Run: `cargo check --workspace`
 Expected: PASS with 0 errors.
 
-- [ ] **Step 5: Commit scaffolding**
+- [x] **Step 5: Commit scaffolding**
 
 ```bash
 git add -f Cargo.toml rust-toolchain.toml crates/
@@ -105,7 +105,7 @@ git commit -m "chore(rust): scaffold Cargo workspace for orcad and orca-cli"
 - Consumes: Raw bytes / JSON strings.
 - Produces: `RuntimeRpcEnvelope<T>`, `TerminalStreamFrame`, `TerminalStreamOpcode`, `encode_terminal_stream_frame`, `decode_terminal_stream_frame`.
 
-- [ ] **Step 1: Write failing tests for JSON-RPC Envelope and Terminal Stream framing**
+- [x] **Step 1: Write failing tests for JSON-RPC Envelope and Terminal Stream framing**
 
 In `crates/orca-protocol/tests/terminal_stream_test.rs`:
 ```rust
@@ -150,22 +150,22 @@ fn test_roundtrip_rpc_success_with_additive_fields() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p orca-protocol`
 Expected: FAIL (modules not implemented).
 
-- [ ] **Step 3: Implement `rpc_envelope.rs` and `terminal_stream.rs`**
+- [x] **Step 3: Implement `rpc_envelope.rs` and `terminal_stream.rs`**
 
 - Implement `RuntimeRpcEnvelope` with serde untagged representation and camelCase serialization.
 - Implement 16-byte fixed header encoder/decoder using `bytes::BytesMut` and `bytes::BufMut`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test -p orca-protocol`
 Expected: PASS (all tests green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -f crates/orca-protocol/
@@ -187,7 +187,7 @@ git commit -m "feat(orca-protocol): implement JSON-RPC envelope and terminal str
 - Consumes: Shell command, arguments, environment map, initial cols/rows.
 - Produces: `PtySession` trait with `write_input(&[u8])`, `resize(cols, rows)`, `read_output() -> Stream<Item = Bytes>`, `terminate()`.
 
-- [ ] **Step 1: Write failing test for PTY lifecycle**
+- [x] **Step 1: Write failing test for PTY lifecycle**
 
 In `crates/orca-pty/tests/pty_session_test.rs`:
 ```rust
@@ -214,23 +214,23 @@ async fn test_pty_spawn_and_read() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p orca-pty`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement Win32 ConPTY and POSIX PTY drivers**
+- [x] **Step 3: Implement Win32 ConPTY and POSIX PTY drivers**
 
 - On Windows: Use `CreatePseudoConsole`, `CreateJobObjectW`, `SetInformationJobObject` with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` without `JOB_OBJECT_LIMIT_BREAKAWAY_OK`.
 - On Unix: Use `openpty` + `AsyncFd` + `setpgid`.
 - Wire asynchronous I/O channels in `session.rs`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test -p orca-pty`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -f crates/orca-pty/
@@ -253,7 +253,7 @@ git commit -m "feat(orca-pty): implement ConPTY with Job Objects and POSIX PTY"
 - Consumes: `orca-protocol`, `orca-pty`.
 - Produces: `orcad` daemon binary with IPC server, terminal multiplexing, and managed idle exit.
 
-- [ ] **Step 1: Write failing test for daemon IPC connectivity and terminal creation**
+- [x] **Step 1: Write failing test for daemon IPC connectivity and terminal creation**
 
 In `crates/orcad/tests/daemon_ipc_test.rs`:
 ```rust
@@ -272,23 +272,23 @@ async fn test_daemon_client_connect_and_ping() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p orcad`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement Tokio Named Pipe & Unix Socket servers with idle shutdown**
+- [x] **Step 3: Implement Tokio Named Pipe & Unix Socket servers with idle shutdown**
 
 - Implement IPC listener in `ipc.rs`.
 - Implement RPC dispatcher in `server.rs` matching `terminal.create`, `terminal.input`, `terminal.resize`, `terminal.kill`.
 - Implement `idle_exit.rs` with atomic reference counter and cancellation deadline.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test -p orcad`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -f crates/orcad/
@@ -308,7 +308,7 @@ git commit -m "feat(orcad): implement async IPC daemon with terminal manager and
 - Consumes: Agent session notifications, hook events.
 - Produces: `AgentStatusStore`, `AgentVerdict` (`Live`, `Unverifiable`, `Exited`), atomic write to `last-status.json`.
 
-- [ ] **Step 1: Write failing test for Agent Status Store transitions and persistence**
+- [x] **Step 1: Write failing test for Agent Status Store transitions and persistence**
 
 In `crates/orcad/tests/agent_status_store_test.rs`:
 ```rust
@@ -328,23 +328,23 @@ async fn test_agent_status_transitions_and_flush() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p orcad --test agent_status_store_test`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement `AgentStatusStore` with atomic file persistence**
+- [x] **Step 3: Implement `AgentStatusStore` with atomic file persistence**
 
 - Implement thread-safe store with `Arc<RwLock<HashMap<String, AgentRow>>>`.
 - Implement atomic file replacement via temp file + rename.
 - Expose subscription broadcast channel for `worktree.ps` readers.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test -p orcad --test agent_status_store_test`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -f crates/orcad/
@@ -366,7 +366,7 @@ git commit -m "feat(orcad): implement canonical agent status store and atomic sn
 - Consumes: `orcad` IPC socket.
 - Produces: Native `orca` binary supporting `orca ps`, `orca terminal`, `--json`.
 
-- [ ] **Step 1: Write failing test for CLI commands**
+- [x] **Step 1: Write failing test for CLI commands**
 
 In `crates/orca-cli/tests/cli_e2e_test.rs`:
 ```rust
@@ -380,22 +380,22 @@ fn test_cli_help() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cargo test -p orca-cli`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement CLI commands using `clap` and IPC client**
+- [x] **Step 3: Implement CLI commands using `clap` and IPC client**
 
 - Define CLI arguments with `clap(derive)` matching `src/cli/index.ts`.
 - Connect to `orcad` daemon, execute RPC, format human-readable table or raw JSON.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cargo test -p orca-cli`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -f crates/orca-cli/
@@ -414,23 +414,23 @@ git commit -m "feat(orca-cli): implement native command-line interface with sub-
 - Consumes: Built `./target/release/orcad` binary.
 - Produces: Successful end-to-end smoke verification against Orca's existing test gate.
 
-- [ ] **Step 1: Build release binaries for `orcad` and `orca-cli`**
+- [x] **Step 1: Build release binaries for `orcad` and `orca-cli`**
 
 Run: `cargo build --release -p orcad -p orca-cli`
 Expected: Successful release compilation creating `target/release/orcad.exe` (or `target/release/orcad`).
 
-- [ ] **Step 2: Run existing smoke test pointing to the Rust binary**
+- [x] **Step 2: Run existing smoke test pointing to the Rust binary**
 
 Run: `node config/scripts/runtime-serve-terminal-smoke.mjs --target orcad --daemon-bin ./target/release/orcad`
 Expected: PASS (terminals spawned, data echoed, session exited cleanly).
 
-- [ ] **Step 3: Measure performance improvements**
+- [x] **Step 3: Measure performance improvements**
 
 Run: `pnpm run bench:daemon-coldstart`
 Run: `pnpm run bench:idle-cpu`
 Expected: Memory usage < 10 MB RSS (vs 150 MB baseline), cold start < 15 ms.
 
-- [ ] **Step 4: Commit integration script update**
+- [x] **Step 4: Commit integration script update**
 
 ```bash
 git add config/scripts/runtime-serve-terminal-smoke.mjs
