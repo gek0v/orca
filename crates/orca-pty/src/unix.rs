@@ -8,13 +8,13 @@ use std::ffi::CString;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::time::Duration;
 use tokio::io::unix::AsyncFd;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use tokio::time::sleep;
 
 pub struct UnixPtySession {
     master_fd: OwnedFd,
     child_pid: i32,
-    output_rx: mpsc::Receiver<Bytes>,
+    output_rx: Mutex<mpsc::Receiver<Bytes>>,
 }
 
 pub async fn spawn_unix_pty(config: PtySessionConfig) -> Result<UnixPtySession, PtyError> {
@@ -69,7 +69,7 @@ pub async fn spawn_unix_pty(config: PtySessionConfig) -> Result<UnixPtySession, 
             Ok(UnixPtySession {
                 master_fd,
                 child_pid: child.as_raw(),
-                output_rx,
+                output_rx: Mutex::new(output_rx),
             })
         }
         Ok(ForkResult::Child) => {
@@ -121,8 +121,9 @@ impl UnixPtySession {
         Ok(())
     }
 
-    pub async fn next_output(&mut self) -> Option<Bytes> {
-        self.output_rx.recv().await
+    pub async fn next_output(&self) -> Option<Bytes> {
+        let mut rx = self.output_rx.lock().await;
+        rx.recv().await
     }
 
     pub fn resize(&self, cols: u16, rows: u16) -> Result<(), PtyError> {
@@ -148,8 +149,8 @@ impl UnixPtySession {
         }
     }
 
-    pub async fn terminate(&mut self) -> Result<(), PtyError> {
-        let pgid = Pid::from_raw(self.child_pid);
+    pub async fn terminate(&self) -> Result<(), PtyError> {
+        let _pgid = Pid::from_raw(self.child_pid);
         // Send SIGHUP/SIGTERM to process group
         let _ = kill(Pid::from_raw(-self.child_pid), Signal::SIGTERM);
         sleep(Duration::from_millis(100)).await;

@@ -13,7 +13,7 @@ async fn test_pty_spawn_and_read() {
         PtySessionConfig::new("sh", vec!["-c".into(), "echo ORCA_PTY_OK".into()], 80, 24)
     };
 
-    let mut session = spawn(config).await.expect("PTY must spawn successfully");
+    let session = spawn(config).await.expect("PTY must spawn successfully");
 
     let mut output = String::new();
     while let Some(chunk) = session.next_output().await {
@@ -42,7 +42,7 @@ async fn test_pty_interactive_input() {
         PtySessionConfig::new("sh", vec![], 80, 24)
     };
 
-    let mut session = spawn(config).await.expect("PTY must spawn successfully");
+    let session = spawn(config).await.expect("PTY must spawn successfully");
 
     // Write interactive command with CRLF
     session
@@ -77,7 +77,7 @@ async fn test_pty_resize_and_terminate() {
         PtySessionConfig::new("sh", vec![], 80, 24)
     };
 
-    let mut session = spawn(config).await.expect("PTY must spawn successfully");
+    let session = spawn(config).await.expect("PTY must spawn successfully");
 
     // Test resize
     session.resize(120, 30).expect("Resize must succeed");

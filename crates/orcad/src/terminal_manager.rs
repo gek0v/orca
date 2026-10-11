@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
-use tokio::sync::{broadcast, Mutex, RwLock};
+use tokio::sync::{broadcast, RwLock};
 
 use crate::idle_exit::IdleExitManager;
 
@@ -38,7 +38,7 @@ pub struct ActiveTerminal {
     pub id: String,
     pub stream_id: u32,
     pub pid: u32,
-    pub session: Arc<Mutex<PtySession>>,
+    pub session: Arc<PtySession>,
     pub output_tx: broadcast::Sender<TerminalStreamFrame>,
     pub raw_output_tx: broadcast::Sender<Bytes>,
 }
@@ -94,7 +94,7 @@ impl TerminalManager {
 
         let session = spawn_pty(config).await?;
         let pid = session.pid();
-        let session = Arc::new(Mutex::new(session));
+        let session = Arc::new(session);
 
         let id_num = self.counter.fetch_add(1, Ordering::SeqCst);
         let terminal_id = format!("term-{}", id_num);
@@ -127,10 +127,7 @@ impl TerminalManager {
         tokio::spawn(async move {
             let mut seq = 0u64;
             loop {
-                let chunk = {
-                    let mut guard = session_clone.lock().await;
-                    guard.next_output().await
-                };
+                let chunk = session_clone.next_output().await;
 
                 match chunk {
                     Some(payload) => {
@@ -187,8 +184,7 @@ impl TerminalManager {
 
         match terminal {
             Some(t) => {
-                let mut guard = t.session.lock().await;
-                guard.write_input(data).await?;
+                t.session.write_input(data).await?;
                 Ok(())
             }
             None => Err(TerminalError::NotFound(terminal_id.to_string())),
@@ -208,8 +204,7 @@ impl TerminalManager {
 
         match terminal {
             Some(t) => {
-                let guard = t.session.lock().await;
-                guard.resize(cols, rows)?;
+                t.session.resize(cols, rows)?;
                 Ok(())
             }
             None => Err(TerminalError::NotFound(terminal_id.to_string())),
@@ -224,10 +219,7 @@ impl TerminalManager {
 
         match terminal {
             Some(t) => {
-                {
-                    let mut guard = t.session.lock().await;
-                    let _ = guard.terminate().await;
-                }
+                let _ = t.session.terminate().await;
                 self.idle_exit.terminal_closed().await;
                 Ok(())
             }
@@ -255,8 +247,7 @@ impl TerminalManager {
         };
 
         for t in all_terminals {
-            let mut guard = t.session.lock().await;
-            let _ = guard.terminate().await;
+            let _ = t.session.terminate().await;
             self.idle_exit.terminal_closed().await;
         }
     }

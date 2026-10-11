@@ -1,7 +1,9 @@
 use crate::session::{PtyError, PtySessionConfig};
 use bytes::Bytes;
 use std::ffi::c_void;
+use std::sync::atomic::{AtomicIsize, AtomicUsize, Ordering};
 use tokio::sync::mpsc;
+use tokio::sync::Mutex;
 use windows::core::PWSTR;
 use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use windows::Win32::Storage::FileSystem::{ReadFile, WriteFile};
@@ -20,11 +22,11 @@ use windows::Win32::System::Threading::{
 };
 
 pub struct WindowsPtySession {
-    job_handle: usize,
-    process_handle: usize,
-    hpc: isize,
-    input_write_handle: usize,
-    output_rx: mpsc::Receiver<Bytes>,
+    job_handle: AtomicUsize,
+    process_handle: AtomicUsize,
+    hpc: AtomicIsize,
+    input_write_handle: AtomicUsize,
+    output_rx: Mutex<mpsc::Receiver<Bytes>>,
     pid: u32,
     closed: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
@@ -176,11 +178,11 @@ pub async fn spawn_windows_pty(config: PtySessionConfig) -> Result<WindowsPtySes
             .ok();
 
         Ok(WindowsPtySession {
-            job_handle: job_handle.0 as usize,
-            process_handle: proc_info.hProcess.0 as usize,
-            hpc: hpc.0,
-            input_write_handle,
-            output_rx,
+            job_handle: AtomicUsize::new(job_handle.0 as usize),
+            process_handle: AtomicUsize::new(proc_info.hProcess.0 as usize),
+            hpc: AtomicIsize::new(hpc.0),
+            input_write_handle: AtomicUsize::new(input_write_handle),
+            output_rx: Mutex::new(output_rx),
             pid: proc_info.dwProcessId,
             closed,
         })
@@ -192,8 +194,15 @@ impl WindowsPtySession {
         self.pid
     }
 
-    pub async fn write_input(&mut self, data: &[u8]) -> Result<(), PtyError> {
-        let handle = HANDLE(self.input_write_handle as _);
+    pub async fn write_input(&self, data: &[u8]) -> Result<(), PtyError> {
+        let raw = self.input_write_handle.load(Ordering::SeqCst);
+        if raw == 0 {
+            return Err(PtyError::Io(std::io::Error::new(
+                std::io::ErrorKind::BrokenPipe,
+                "PTY input handle closed",
+            )));
+        }
+        let handle = HANDLE(raw as _);
         let mut written = 0u32;
         unsafe {
             WriteFile(handle, Some(data), Some(&mut written), None)
@@ -202,26 +211,31 @@ impl WindowsPtySession {
         Ok(())
     }
 
-    pub async fn next_output(&mut self) -> Option<Bytes> {
-        self.output_rx.recv().await
+    pub async fn next_output(&self) -> Option<Bytes> {
+        let mut rx = self.output_rx.lock().await;
+        rx.recv().await
     }
 
     pub fn resize(&self, cols: u16, rows: u16) -> Result<(), PtyError> {
+        let raw_hpc = self.hpc.load(Ordering::SeqCst);
+        if raw_hpc == 0 {
+            return Ok(());
+        }
         let size = COORD {
             X: cols as i16,
             Y: rows as i16,
         };
         unsafe {
-            ResizePseudoConsole(HPCON(self.hpc), size)
+            ResizePseudoConsole(HPCON(raw_hpc), size)
                 .map_err(|e| PtyError::ResizeFailed(format!("{:?}", e)))
         }
     }
 
-    pub async fn terminate(&mut self) -> Result<(), PtyError> {
-        let job = std::mem::replace(&mut self.job_handle, 0);
-        let proc = std::mem::replace(&mut self.process_handle, 0);
-        let in_pipe = std::mem::replace(&mut self.input_write_handle, 0);
-        let hpc = std::mem::replace(&mut self.hpc, 0);
+    pub async fn terminate(&self) -> Result<(), PtyError> {
+        let job = self.job_handle.swap(0, Ordering::SeqCst);
+        let proc = self.process_handle.swap(0, Ordering::SeqCst);
+        let in_pipe = self.input_write_handle.swap(0, Ordering::SeqCst);
+        let hpc = self.hpc.swap(0, Ordering::SeqCst);
 
         if job != 0 {
             unsafe {
@@ -231,7 +245,7 @@ impl WindowsPtySession {
                 }
             }
 
-            let was_closed = self.closed.swap(true, std::sync::atomic::Ordering::SeqCst);
+            let was_closed = self.closed.swap(true, Ordering::SeqCst);
             std::thread::spawn(move || unsafe {
                 if !was_closed && hpc != 0 {
                     ClosePseudoConsole(HPCON(hpc));
@@ -249,10 +263,10 @@ impl WindowsPtySession {
 
 impl Drop for WindowsPtySession {
     fn drop(&mut self) {
-        let job = std::mem::replace(&mut self.job_handle, 0);
-        let proc = std::mem::replace(&mut self.process_handle, 0);
-        let in_pipe = std::mem::replace(&mut self.input_write_handle, 0);
-        let hpc = std::mem::replace(&mut self.hpc, 0);
+        let job = self.job_handle.swap(0, Ordering::SeqCst);
+        let proc = self.process_handle.swap(0, Ordering::SeqCst);
+        let in_pipe = self.input_write_handle.swap(0, Ordering::SeqCst);
+        let hpc = self.hpc.swap(0, Ordering::SeqCst);
 
         if job != 0 {
             unsafe {
@@ -262,7 +276,7 @@ impl Drop for WindowsPtySession {
                 }
             }
 
-            let was_closed = self.closed.swap(true, std::sync::atomic::Ordering::SeqCst);
+            let was_closed = self.closed.swap(true, Ordering::SeqCst);
             std::thread::spawn(move || unsafe {
                 if !was_closed && hpc != 0 {
                     ClosePseudoConsole(HPCON(hpc));
