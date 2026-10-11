@@ -257,3 +257,204 @@ async fn test_daemon_terminal_event_streaming_over_ipc() {
         .await
         .expect("Daemon must shut down cleanly");
 }
+
+#[tokio::test]
+async fn test_daemon_terminal_send_read_wait_lifecycle() {
+    let endpoint = make_test_endpoint("send_read_wait");
+    let daemon = Server::start(&endpoint)
+        .await
+        .expect("Daemon must start successfully");
+
+    let mut client = test_client::connect(&endpoint)
+        .await
+        .expect("Client must connect to daemon");
+
+    let (cmd, args): (&str, Vec<String>) = if cfg!(windows) {
+        ("cmd.exe", vec![])
+    } else {
+        ("sh", vec![])
+    };
+
+    let term_val = client
+        .send_raw_request(
+            "terminal.create",
+            Some(serde_json::json!({
+                "command": cmd,
+                "args": args,
+            })),
+        )
+        .await
+        .expect("Terminal create must succeed");
+
+    let tid = term_val
+        .get("handle")
+        .or_else(|| term_val.get("terminalId"))
+        .and_then(|v| v.as_str())
+        .expect("Must have handle")
+        .to_string();
+
+    // 1. Send input
+    let send_resp = client
+        .send_raw_request(
+            "terminal.send",
+            Some(serde_json::json!({
+                "terminalId": &tid,
+                "text": "echo PHASE2_NATIVE_OK",
+                "enter": true,
+            })),
+        )
+        .await
+        .expect("terminal.send must succeed");
+    assert_eq!(send_resp.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+    // Wait briefly for output to accumulate in scrollback
+    sleep(Duration::from_millis(300)).await;
+
+    // 2. Read output
+    let read_resp = client
+        .send_raw_request(
+            "terminal.read",
+            Some(serde_json::json!({
+                "terminalId": &tid,
+                "cursor": 0,
+                "limit": 4096,
+                "screen": false,
+            })),
+        )
+        .await
+        .expect("terminal.read must succeed");
+
+    let text = read_resp
+        .get("text")
+        .and_then(|v| v.as_str())
+        .expect("read must return text");
+    assert!(
+        text.contains("PHASE2_NATIVE_OK"),
+        "Scrollback must contain printed text, got: {text}"
+    );
+
+    // 3. Test tui-idle wait
+    let wait_idle_resp = client
+        .send_raw_request(
+            "terminal.wait",
+            Some(serde_json::json!({
+                "terminalId": &tid,
+                "for": "tui-idle",
+                "timeoutMs": 3000,
+            })),
+        )
+        .await
+        .expect("terminal.wait tui-idle must succeed");
+    assert_eq!(
+        wait_idle_resp.get("conditionMet").and_then(|v| v.as_bool()),
+        Some(true)
+    );
+
+    // 4. Close terminal
+    let close_resp = client
+        .send_raw_request(
+            "terminal.close",
+            Some(serde_json::json!({
+                "terminalId": &tid,
+            })),
+        )
+        .await
+        .expect("terminal.close must succeed");
+    assert_eq!(close_resp.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+    daemon.shutdown().await.expect("Clean shutdown");
+}
+
+#[tokio::test]
+async fn test_daemon_status_and_diagnostics_memory() {
+    let endpoint = make_test_endpoint("status_diag");
+    let daemon = Server::start(&endpoint)
+        .await
+        .expect("Daemon must start successfully");
+
+    let mut client = test_client::connect(&endpoint)
+        .await
+        .expect("Client must connect to daemon");
+
+    // 1. Check status
+    let status_val = client
+        .send_raw_request("status", None)
+        .await
+        .expect("status must succeed");
+    assert_eq!(status_val.get("ok").and_then(|v| v.as_bool()), Some(true));
+    assert_eq!(
+        status_val.get("ready").and_then(|v| v.as_bool()),
+        Some(true)
+    );
+    assert!(status_val.get("daemon").is_some());
+
+    // 2. Check diagnostics.memory
+    let mem_val = client
+        .send_raw_request("diagnostics.memory", None)
+        .await
+        .expect("diagnostics.memory must succeed");
+    assert_eq!(mem_val.get("ok").and_then(|v| v.as_bool()), Some(true));
+    assert!(mem_val.get("workingSetBytes").is_some());
+
+    daemon.shutdown().await.expect("Clean shutdown");
+}
+
+#[tokio::test]
+async fn test_daemon_worktree_operations() {
+    let endpoint = make_test_endpoint("worktree_ops");
+    let daemon = Server::start(&endpoint)
+        .await
+        .expect("Daemon must start successfully");
+
+    let mut client = test_client::connect(&endpoint)
+        .await
+        .expect("Client must connect to daemon");
+
+    // 1. worktree.list
+    let list_val = client
+        .send_raw_request("worktree.list", None)
+        .await
+        .expect("worktree.list must succeed");
+    assert_eq!(list_val.get("ok").and_then(|v| v.as_bool()), Some(true));
+    assert!(list_val.get("worktrees").is_some());
+
+    // 2. worktree.create
+    let create_val = client
+        .send_raw_request(
+            "worktree.create",
+            Some(serde_json::json!({
+                "name": "test-wt-native",
+                "branch": "test-wt-native",
+            })),
+        )
+        .await
+        .expect("worktree.create must succeed");
+    assert_eq!(create_val.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+    // 3. worktree.show
+    let show_val = client
+        .send_raw_request(
+            "worktree.show",
+            Some(serde_json::json!({
+                "worktree": "test-wt-native",
+            })),
+        )
+        .await
+        .expect("worktree.show must succeed");
+    assert_eq!(show_val.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+    // 4. worktree.rm
+    let rm_val = client
+        .send_raw_request(
+            "worktree.rm",
+            Some(serde_json::json!({
+                "worktree": "test-wt-native",
+                "force": true,
+            })),
+        )
+        .await
+        .expect("worktree.rm must succeed");
+    assert_eq!(rm_val.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+    daemon.shutdown().await.expect("Clean shutdown");
+}

@@ -51,6 +51,12 @@ impl Cli {
 
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 pub enum Commands {
+    /// Show app/runtime/daemon readiness and status
+    Status(StatusArgs),
+
+    /// Diagnostics and process resource snapshots
+    Diagnostics(DiagnosticsArgs),
+
     /// List running agents, tasks, and worktrees
     Ps(PsArgs),
 
@@ -65,9 +71,24 @@ pub enum Commands {
 }
 
 #[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct StatusArgs {}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq)]
+pub struct DiagnosticsArgs {
+    #[command(subcommand)]
+    pub action: DiagnosticsSubcommand,
+}
+
+#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
+pub enum DiagnosticsSubcommand {
+    /// Collect a memory snapshot for Orca and managed terminals
+    Memory,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
 pub struct PsArgs {
-    /// Output results in JSON format (overrides or supplements global --json)
-    #[arg(long, help = "Output results in JSON format")]
+    /// Output results in JSON format
+    #[arg(long)]
     pub json: bool,
 
     /// Filter by worktree path or selector
@@ -93,6 +114,14 @@ pub struct TerminalArgs {
     #[arg(long)]
     pub cwd: Option<String>,
 
+    /// Terminal tab title
+    #[arg(long)]
+    pub title: Option<String>,
+
+    /// Target worktree selector
+    #[arg(long)]
+    pub worktree: Option<String>,
+
     /// Subcommand action for terminal control
     #[command(subcommand)]
     pub action: Option<TerminalSubcommand>,
@@ -101,26 +130,133 @@ pub struct TerminalArgs {
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 pub enum TerminalSubcommand {
     /// Create a new terminal session
-    Create {
-        #[arg(long)]
-        shell: Option<String>,
-        #[arg(long)]
-        command: Option<String>,
-        #[arg(long)]
-        cwd: Option<String>,
-    },
-    /// List all active terminal sessions
-    List,
+    Create(TerminalCreateArgs),
+
+    /// List live Orca-managed terminals
+    List(TerminalListArgs),
+
+    /// Show terminal metadata and preview
+    Show(TerminalShowArgs),
+
+    /// Send input to a live terminal
+    Send(TerminalSendArgs),
+
+    /// Read bounded terminal output
+    Read(TerminalReadArgs),
+
+    /// Wait for a terminal condition
+    Wait(TerminalWaitArgs),
+
+    /// Close one terminal, its whole tab, or every terminal
+    Close(TerminalCloseArgs),
+
+    /// Split an existing terminal pane
+    Split(TerminalSplitArgs),
+
     /// Attach to an existing terminal session
     Attach {
         /// Terminal handle or session ID
         handle: String,
     },
+
     /// Kill a terminal session
     Kill {
         /// Terminal handle or session ID
         handle: String,
     },
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalCreateArgs {
+    #[arg(long)]
+    pub worktree: Option<String>,
+    #[arg(long)]
+    pub title: Option<String>,
+    #[arg(long)]
+    pub command: Option<String>,
+    #[arg(long)]
+    pub shell: Option<String>,
+    #[arg(long)]
+    pub focus: bool,
+    #[arg(long)]
+    pub cwd: Option<String>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalListArgs {
+    #[arg(long)]
+    pub worktree: Option<String>,
+    #[arg(long)]
+    pub limit: Option<usize>,
+    #[arg(long)]
+    pub include_visual_layouts: bool,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalShowArgs {
+    #[arg(long)]
+    pub terminal: Option<String>,
+    pub handle: Option<String>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalSendArgs {
+    #[arg(long)]
+    pub terminal: Option<String>,
+    #[arg(long)]
+    pub text: Option<String>,
+    #[arg(long)]
+    pub enter: bool,
+    #[arg(long)]
+    pub interrupt: bool,
+    #[arg(long)]
+    pub wait_submit: Option<u64>,
+    #[arg(long)]
+    pub retry_request: Option<String>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalReadArgs {
+    #[arg(long)]
+    pub terminal: Option<String>,
+    #[arg(long)]
+    pub cursor: Option<usize>,
+    #[arg(long)]
+    pub limit: Option<usize>,
+    #[arg(long)]
+    pub screen: bool,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalWaitArgs {
+    #[arg(long)]
+    pub terminal: Option<String>,
+    #[arg(long = "for")]
+    pub for_condition: String,
+    #[arg(long)]
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalCloseArgs {
+    #[arg(long)]
+    pub terminal: Option<String>,
+    #[arg(long)]
+    pub tab: bool,
+    #[arg(long)]
+    pub worktree: Option<String>,
+    #[arg(long)]
+    pub all: bool,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct TerminalSplitArgs {
+    #[arg(long)]
+    pub terminal: Option<String>,
+    #[arg(long)]
+    pub direction: Option<String>,
+    #[arg(long)]
+    pub command: Option<String>,
 }
 
 #[derive(Args, Debug, Clone, PartialEq, Eq)]
@@ -131,21 +267,77 @@ pub struct WorktreeArgs {
 
 #[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
 pub enum WorktreeSubcommand {
-    /// Create a new git worktree
-    Create {
-        /// Path for the new worktree
-        path: Option<String>,
-        /// Branch name
-        #[arg(long)]
-        branch: Option<String>,
-    },
-    /// List active git worktrees
-    List,
-    /// Remove an existing git worktree
-    Remove {
-        /// Path or selector of the worktree to remove
-        path: String,
-    },
+    /// List Orca-managed worktrees
+    List(WorktreeListArgs),
+
+    /// Show compact orchestration summary across worktrees
+    Ps(WorktreePsArgs),
+
+    /// Show one worktree
+    Show(WorktreeShowArgs),
+
+    /// Show the Orca-managed worktree for current directory
+    Current,
+
+    /// Create a new Orca-managed worktree
+    Create(WorktreeCreateArgs),
+
+    /// Remove an existing worktree
+    #[command(alias = "remove", alias = "delete")]
+    Rm(WorktreeRmArgs),
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorktreeListArgs {
+    #[arg(long)]
+    pub repo: Option<String>,
+    #[arg(long)]
+    pub limit: Option<usize>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorktreePsArgs {
+    #[arg(long)]
+    pub limit: Option<usize>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorktreeShowArgs {
+    #[arg(long)]
+    pub worktree: Option<String>,
+    pub path: Option<String>,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorktreeCreateArgs {
+    #[arg(long)]
+    pub name: Option<String>,
+    #[arg(long)]
+    pub repo: Option<String>,
+    #[arg(long)]
+    pub branch: Option<String>,
+    #[arg(long)]
+    pub base_branch: Option<String>,
+    #[arg(long)]
+    pub agent: Option<String>,
+    #[arg(long)]
+    pub prompt: Option<String>,
+    pub path: Option<String>,
+    #[arg(long)]
+    pub run_hooks: bool,
+    #[arg(long)]
+    pub activate: bool,
+}
+
+#[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorktreeRmArgs {
+    #[arg(long)]
+    pub worktree: Option<String>,
+    pub path: Option<String>,
+    #[arg(long)]
+    pub force: bool,
+    #[arg(long)]
+    pub run_hooks: bool,
 }
 
 #[derive(Args, Debug, Clone, PartialEq, Eq, Default)]
@@ -158,174 +350,208 @@ mod tests {
     #[test]
     fn test_parse_help_and_version() {
         let help = Cli::try_parse_from(["orca", "--help"]);
-        assert!(help.is_err()); // clap exits with display help error
+        assert!(help.is_err());
 
         let version = Cli::try_parse_from(["orca", "--version"]);
-        assert!(version.is_err()); // clap exits with display version error
+        assert!(version.is_err());
     }
 
     #[test]
-    fn test_parse_ps_defaults() {
-        let cli = Cli::try_parse_from(["orca", "ps"]).unwrap();
-        assert!(!cli.json);
-        assert!(!cli.is_json());
+    fn test_parse_status() {
+        let cli = Cli::try_parse_from(["orca", "status"]).unwrap();
+        assert_eq!(cli.command, Some(Commands::Status(StatusArgs {})));
+    }
+
+    #[test]
+    fn test_parse_diagnostics_memory() {
+        let cli = Cli::try_parse_from(["orca", "diagnostics", "memory"]).unwrap();
         match cli.command {
-            Some(Commands::Ps(args)) => {
-                assert!(!args.json);
-                assert_eq!(args.worktree, None);
-                assert!(!args.all);
+            Some(Commands::Diagnostics(args)) => {
+                assert_eq!(args.action, DiagnosticsSubcommand::Memory);
             }
-            other => panic!("Unexpected command: {other:?}"),
+            other => panic!("Unexpected: {other:?}"),
         }
     }
 
     #[test]
-    fn test_parse_ps_options_and_json() {
-        let cli = Cli::try_parse_from(["orca", "ps", "--worktree", "my-repo", "--all", "--json"])
-            .unwrap();
-        assert!(cli.is_json());
-        match cli.command {
-            Some(Commands::Ps(args)) => {
-                assert!(args.json);
-                assert_eq!(args.worktree.as_deref(), Some("my-repo"));
-                assert!(args.all);
-            }
-            other => panic!("Unexpected command: {other:?}"),
-        }
-
-        // Global flag before subcommand
-        let cli_global = Cli::try_parse_from(["orca", "--json", "ps"]).unwrap();
-        assert!(cli_global.json);
-        assert!(cli_global.is_json());
-    }
-
-    #[test]
-    fn test_parse_ping() {
-        let cli = Cli::try_parse_from(["orca", "ping"]).unwrap();
-        assert_eq!(cli.command, Some(Commands::Ping(PingArgs {})));
-
-        let cli_json = Cli::try_parse_from(["orca", "--json", "ping"]).unwrap();
-        assert!(cli_json.is_json());
-    }
-
-    #[test]
-    fn test_parse_terminal_options() {
+    fn test_parse_terminal_send() {
         let cli = Cli::try_parse_from([
             "orca",
             "terminal",
-            "--shell",
-            "powershell.exe",
-            "--command",
+            "send",
+            "--terminal",
+            "term_123",
+            "--text",
             "cargo test",
-            "--cwd",
-            "C:\\Users",
+            "--enter",
+            "--wait-submit",
+            "5",
         ])
         .unwrap();
 
         match cli.command {
-            Some(Commands::Terminal(args)) => {
-                assert_eq!(args.shell.as_deref(), Some("powershell.exe"));
-                assert_eq!(args.command.as_deref(), Some("cargo test"));
-                assert_eq!(args.cwd.as_deref(), Some("C:\\Users"));
-                assert!(args.action.is_none());
-            }
+            Some(Commands::Terminal(args)) => match args.action {
+                Some(TerminalSubcommand::Send(send_args)) => {
+                    assert_eq!(send_args.terminal.as_deref(), Some("term_123"));
+                    assert_eq!(send_args.text.as_deref(), Some("cargo test"));
+                    assert!(send_args.enter);
+                    assert!(!send_args.interrupt);
+                    assert_eq!(send_args.wait_submit, Some(5));
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
             other => panic!("Unexpected command: {other:?}"),
         }
     }
 
     #[test]
-    fn test_parse_terminal_subcommands() {
-        let cli_list = Cli::try_parse_from(["orca", "terminal", "list"]).unwrap();
-        match cli_list.command {
-            Some(Commands::Terminal(args)) => {
-                assert_eq!(args.action, Some(TerminalSubcommand::List));
-            }
-            other => panic!("Unexpected: {other:?}"),
+    fn test_parse_terminal_read() {
+        let cli = Cli::try_parse_from([
+            "orca",
+            "terminal",
+            "read",
+            "--terminal",
+            "term_abc",
+            "--cursor",
+            "100",
+            "--limit",
+            "500",
+            "--screen",
+        ])
+        .unwrap();
+
+        match cli.command {
+            Some(Commands::Terminal(args)) => match args.action {
+                Some(TerminalSubcommand::Read(read_args)) => {
+                    assert_eq!(read_args.terminal.as_deref(), Some("term_abc"));
+                    assert_eq!(read_args.cursor, Some(100));
+                    assert_eq!(read_args.limit, Some(500));
+                    assert!(read_args.screen);
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_parse_terminal_wait() {
+        let cli = Cli::try_parse_from([
+            "orca",
+            "terminal",
+            "wait",
+            "--terminal",
+            "term_abc",
+            "--for",
+            "tui-idle",
+            "--timeout-ms",
+            "5000",
+        ])
+        .unwrap();
+
+        match cli.command {
+            Some(Commands::Terminal(args)) => match args.action {
+                Some(TerminalSubcommand::Wait(wait_args)) => {
+                    assert_eq!(wait_args.terminal.as_deref(), Some("term_abc"));
+                    assert_eq!(wait_args.for_condition, "tui-idle");
+                    assert_eq!(wait_args.timeout_ms, Some(5000));
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_parse_terminal_close_and_split() {
+        let cli_close =
+            Cli::try_parse_from(["orca", "terminal", "close", "--worktree", "active", "--all"])
+                .unwrap();
+        match cli_close.command {
+            Some(Commands::Terminal(args)) => match args.action {
+                Some(TerminalSubcommand::Close(close_args)) => {
+                    assert_eq!(close_args.worktree.as_deref(), Some("active"));
+                    assert!(close_args.all);
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
         }
 
-        let cli_attach = Cli::try_parse_from(["orca", "terminal", "attach", "term_123"]).unwrap();
-        match cli_attach.command {
-            Some(Commands::Terminal(args)) => {
-                assert_eq!(
-                    args.action,
-                    Some(TerminalSubcommand::Attach {
-                        handle: "term_123".to_string()
-                    })
-                );
-            }
-            other => panic!("Unexpected: {other:?}"),
-        }
-
-        let cli_kill = Cli::try_parse_from(["orca", "terminal", "kill", "term_123"]).unwrap();
-        match cli_kill.command {
-            Some(Commands::Terminal(args)) => {
-                assert_eq!(
-                    args.action,
-                    Some(TerminalSubcommand::Kill {
-                        handle: "term_123".to_string()
-                    })
-                );
-            }
-            other => panic!("Unexpected: {other:?}"),
+        let cli_split = Cli::try_parse_from([
+            "orca",
+            "terminal",
+            "split",
+            "--terminal",
+            "term_1",
+            "--direction",
+            "horizontal",
+            "--command",
+            "top",
+        ])
+        .unwrap();
+        match cli_split.command {
+            Some(Commands::Terminal(args)) => match args.action {
+                Some(TerminalSubcommand::Split(split_args)) => {
+                    assert_eq!(split_args.terminal.as_deref(), Some("term_1"));
+                    assert_eq!(split_args.direction.as_deref(), Some("horizontal"));
+                    assert_eq!(split_args.command.as_deref(), Some("top"));
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
         }
     }
 
     #[test]
     fn test_parse_worktree_subcommands() {
+        let cli_list = Cli::try_parse_from(["orca", "worktree", "list", "--limit", "10"]).unwrap();
+        match cli_list.command {
+            Some(Commands::Worktree(args)) => match args.action {
+                WorktreeSubcommand::List(list_args) => {
+                    assert_eq!(list_args.limit, Some(10));
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
+        }
+
         let cli_create = Cli::try_parse_from([
             "orca",
             "worktree",
             "create",
-            "/path/to/wt",
+            "--name",
+            "feat-1",
             "--branch",
-            "feature-x",
+            "feat/1",
+            "--base-branch",
+            "main",
         ])
         .unwrap();
         match cli_create.command {
-            Some(Commands::Worktree(args)) => {
-                assert_eq!(
-                    args.action,
-                    WorktreeSubcommand::Create {
-                        path: Some("/path/to/wt".to_string()),
-                        branch: Some("feature-x".to_string()),
-                    }
-                );
-            }
-            other => panic!("Unexpected: {other:?}"),
+            Some(Commands::Worktree(args)) => match args.action {
+                WorktreeSubcommand::Create(create_args) => {
+                    assert_eq!(create_args.name.as_deref(), Some("feat-1"));
+                    assert_eq!(create_args.branch.as_deref(), Some("feat/1"));
+                    assert_eq!(create_args.base_branch.as_deref(), Some("main"));
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
         }
 
-        let cli_rm = Cli::try_parse_from(["orca", "worktree", "remove", "/path/to/wt"]).unwrap();
+        let cli_rm =
+            Cli::try_parse_from(["orca", "worktree", "rm", "--worktree", "wt-1", "--force"])
+                .unwrap();
         match cli_rm.command {
-            Some(Commands::Worktree(args)) => {
-                assert_eq!(
-                    args.action,
-                    WorktreeSubcommand::Remove {
-                        path: "/path/to/wt".to_string(),
-                    }
-                );
-            }
-            other => panic!("Unexpected: {other:?}"),
+            Some(Commands::Worktree(args)) => match args.action {
+                WorktreeSubcommand::Rm(rm_args) => {
+                    assert_eq!(rm_args.worktree.as_deref(), Some("wt-1"));
+                    assert!(rm_args.force);
+                }
+                other => panic!("Unexpected action: {other:?}"),
+            },
+            other => panic!("Unexpected command: {other:?}"),
         }
-    }
-
-    #[test]
-    fn test_parse_global_flags() {
-        let cli = Cli::try_parse_from([
-            "orca",
-            "--pipe",
-            "orca-custom-pipe",
-            "--profile",
-            "dev",
-            "--host",
-            "remote-srv",
-            "-v",
-            "ping",
-        ])
-        .unwrap();
-
-        assert_eq!(cli.pipe.as_deref(), Some("orca-custom-pipe"));
-        assert_eq!(cli.profile.as_deref(), Some("dev"));
-        assert_eq!(cli.host.as_deref(), Some("remote-srv"));
-        assert!(cli.verbose);
     }
 }

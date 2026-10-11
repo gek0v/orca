@@ -1,3 +1,8 @@
+use orca_protocol::models::{
+    DaemonStatusResponse, MemoryDiagnosticsResponse, TerminalCloseParams, TerminalReadParams,
+    TerminalSendParams, TerminalSplitParams, TerminalWaitParams, WorktreeCreateParams,
+    WorktreeRmParams,
+};
 use orca_protocol::rpc_envelope::{RuntimeRpcEnvelope, RuntimeRpcRequest};
 use serde_json::json;
 use std::collections::HashMap;
@@ -8,13 +13,18 @@ use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
 use crate::agent_status_store::{AgentStatusStore, AgentVerdict};
+use crate::diagnostics::{get_process_memory, DaemonMetrics};
 use crate::idle_exit::IdleExitManager;
 use crate::ipc;
 use crate::terminal_manager::TerminalManager;
+use crate::worktree_manager::WorktreeManager;
 
 pub struct RpcDispatcher {
     pub status_store: Arc<AgentStatusStore>,
     pub terminal_manager: Arc<TerminalManager>,
+    pub worktree_manager: Arc<WorktreeManager>,
+    pub idle_exit: Arc<IdleExitManager>,
+    pub metrics: Arc<DaemonMetrics>,
     pub runtime_id: String,
 }
 
@@ -22,11 +32,17 @@ impl RpcDispatcher {
     pub fn new(
         status_store: Arc<AgentStatusStore>,
         terminal_manager: Arc<TerminalManager>,
+        worktree_manager: Arc<WorktreeManager>,
+        idle_exit: Arc<IdleExitManager>,
+        metrics: Arc<DaemonMetrics>,
         runtime_id: impl Into<String>,
     ) -> Self {
         Self {
             status_store,
             terminal_manager,
+            worktree_manager,
+            idle_exit,
+            metrics,
             runtime_id: runtime_id.into(),
         }
     }
@@ -41,6 +57,61 @@ impl RpcDispatcher {
                 json!({ "ok": true, "_keepalive": true }),
                 &self.runtime_id,
             ),
+
+            "status" | "daemon.status" => {
+                let mem = get_process_memory();
+                let store_rows = self.status_store.list_all().await;
+                let active_terms = self.terminal_manager.active_count().await;
+                let active_conns = self.idle_exit.active_connections();
+
+                let resp = DaemonStatusResponse {
+                    ok: true,
+                    runtime_id: self.runtime_id.clone(),
+                    daemon: orca_protocol::models::DaemonInfo {
+                        pid: std::process::id(),
+                        uptime_seconds: self.metrics.uptime_seconds(),
+                        active_terminals: active_terms,
+                        active_connections: active_conns,
+                        memory_working_set_bytes: mem.working_set_bytes,
+                    },
+                    ready: true,
+                };
+
+                let mut val = serde_json::to_value(&resp).unwrap_or_default();
+                if let Some(obj) = val.as_object_mut() {
+                    obj.insert(
+                        "connectedAgents".to_string(),
+                        serde_json::to_value(&store_rows).unwrap_or_default(),
+                    );
+                    obj.insert(
+                        "caller".to_string(),
+                        json!({ "orcaSessionId": "session-native" }),
+                    );
+                }
+
+                RuntimeRpcEnvelope::success(id, val, &self.runtime_id)
+            }
+
+            "diagnostics.memory" => {
+                let mem = get_process_memory();
+                let active_terms = self.terminal_manager.active_count().await;
+                let active_conns = self.idle_exit.active_connections();
+
+                let resp = MemoryDiagnosticsResponse {
+                    ok: true,
+                    working_set_bytes: mem.working_set_bytes,
+                    private_bytes: mem.private_bytes,
+                    terminals: active_terms,
+                    connections: active_conns,
+                };
+
+                let mut val = serde_json::to_value(&resp).unwrap_or_default();
+                if let Some(obj) = val.as_object_mut() {
+                    obj.insert("rss".to_string(), json!(mem.working_set_bytes));
+                }
+
+                RuntimeRpcEnvelope::success(id, val, &self.runtime_id)
+            }
 
             "terminal.create" => {
                 let command = params
@@ -93,10 +164,300 @@ impl RpcDispatcher {
                 }
             }
 
+            "terminal.send" => {
+                let send_params: TerminalSendParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+                let term_id = send_params
+                    .terminal_id
+                    .or_else(|| {
+                        params
+                            .get("terminal")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .or_else(|| {
+                        params
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    });
+
+                match term_id {
+                    Some(tid) => {
+                        let mut write_err = None;
+
+                        if send_params.interrupt {
+                            if let Err(e) = self.terminal_manager.write_input(&tid, b"\x03").await {
+                                write_err = Some(e);
+                            }
+                        }
+
+                        if let Some(text) = &send_params.text {
+                            if let Err(e) = self
+                                .terminal_manager
+                                .write_input(&tid, text.as_bytes())
+                                .await
+                            {
+                                write_err = Some(e);
+                            }
+                        }
+
+                        if send_params.enter {
+                            let newline: &[u8] = if cfg!(windows) { b"\r\n" } else { b"\n" };
+                            if let Err(e) = self.terminal_manager.write_input(&tid, newline).await {
+                                write_err = Some(e);
+                            }
+                        }
+
+                        match write_err {
+                            None => RuntimeRpcEnvelope::success(
+                                id,
+                                json!({
+                                    "ok": true,
+                                    "submitted": true,
+                                    "terminalId": tid,
+                                    "handle": tid,
+                                }),
+                                &self.runtime_id,
+                            ),
+                            Some(e) => RuntimeRpcEnvelope::failure(
+                                id,
+                                "terminal_send_error",
+                                e.to_string(),
+                                Some(self.runtime_id.clone()),
+                            ),
+                        }
+                    }
+                    None => RuntimeRpcEnvelope::failure(
+                        id,
+                        "invalid_params",
+                        "Missing terminalId or terminal handle",
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
+            }
+
+            "terminal.read" => {
+                let read_params: TerminalReadParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+                let term_id = read_params
+                    .terminal_id
+                    .or_else(|| {
+                        params
+                            .get("terminal")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .or_else(|| {
+                        params
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    });
+
+                match term_id {
+                    Some(tid) => {
+                        match self
+                            .terminal_manager
+                            .read_output(
+                                &tid,
+                                read_params.cursor,
+                                read_params.limit,
+                                read_params.screen,
+                            )
+                            .await
+                        {
+                            Ok(result) => {
+                                let val = serde_json::to_value(&result).unwrap_or_default();
+                                RuntimeRpcEnvelope::success(id, val, &self.runtime_id)
+                            }
+                            Err(e) => RuntimeRpcEnvelope::failure(
+                                id,
+                                "terminal_read_error",
+                                e.to_string(),
+                                Some(self.runtime_id.clone()),
+                            ),
+                        }
+                    }
+                    None => RuntimeRpcEnvelope::failure(
+                        id,
+                        "invalid_params",
+                        "Missing terminalId or terminal handle",
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
+            }
+
+            "terminal.wait" => {
+                let wait_params: TerminalWaitParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+                let term_id = wait_params
+                    .terminal_id
+                    .or_else(|| {
+                        params
+                            .get("terminal")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .or_else(|| {
+                        params
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    });
+
+                let condition = if wait_params.for_condition.is_empty() {
+                    params.get("for").and_then(|v| v.as_str()).unwrap_or("exit")
+                } else {
+                    &wait_params.for_condition
+                };
+
+                let timeout_ms = wait_params
+                    .timeout_ms
+                    .or_else(|| params.get("timeoutMs").and_then(|v| v.as_u64()));
+
+                match term_id {
+                    Some(tid) => {
+                        match self
+                            .terminal_manager
+                            .wait_for(&tid, condition, timeout_ms)
+                            .await
+                        {
+                            Ok(val) => RuntimeRpcEnvelope::success(id, val, &self.runtime_id),
+                            Err(e) => RuntimeRpcEnvelope::failure(
+                                id,
+                                "terminal_wait_error",
+                                e.to_string(),
+                                Some(self.runtime_id.clone()),
+                            ),
+                        }
+                    }
+                    None => RuntimeRpcEnvelope::failure(
+                        id,
+                        "invalid_params",
+                        "Missing terminalId or terminal handle",
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
+            }
+
+            "terminal.close" | "terminal.shutdown" | "terminal.kill" => {
+                let close_params: TerminalCloseParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+                let is_all = close_params.all
+                    || params.get("all").and_then(|v| v.as_bool()).unwrap_or(false);
+
+                if is_all {
+                    let closed_count = self.terminal_manager.kill_all().await;
+                    RuntimeRpcEnvelope::success(
+                        id,
+                        json!({ "ok": true, "closed": closed_count }),
+                        &self.runtime_id,
+                    )
+                } else {
+                    let term_id = close_params
+                        .terminal_id
+                        .or_else(|| {
+                            params
+                                .get("terminal")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string())
+                        })
+                        .or_else(|| {
+                            params
+                                .get("handle")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string())
+                        })
+                        .or_else(|| {
+                            params
+                                .get("id")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string())
+                        });
+
+                    match term_id {
+                        Some(tid) => match self.terminal_manager.kill_terminal(&tid).await {
+                            Ok(()) => RuntimeRpcEnvelope::success(
+                                id,
+                                json!({ "ok": true, "closed": 1, "terminalId": tid }),
+                                &self.runtime_id,
+                            ),
+                            Err(e) => RuntimeRpcEnvelope::failure(
+                                id,
+                                "terminal_kill_error",
+                                e.to_string(),
+                                Some(self.runtime_id.clone()),
+                            ),
+                        },
+                        None => RuntimeRpcEnvelope::failure(
+                            id,
+                            "invalid_params",
+                            "Missing terminal handle or --all",
+                            Some(self.runtime_id.clone()),
+                        ),
+                    }
+                }
+            }
+
+            "terminal.split" => {
+                let split_params: TerminalSplitParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+                let term_id = split_params
+                    .terminal_id
+                    .or_else(|| {
+                        params
+                            .get("terminal")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .or_else(|| {
+                        params
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    });
+
+                match term_id {
+                    Some(tid) => {
+                        match self
+                            .terminal_manager
+                            .split_terminal(&tid, split_params.direction, split_params.command)
+                            .await
+                        {
+                            Ok((new_tid, pid)) => RuntimeRpcEnvelope::success(
+                                id,
+                                json!({
+                                    "ok": true,
+                                    "handle": new_tid,
+                                    "terminalId": new_tid,
+                                    "parentHandle": tid,
+                                    "pid": pid,
+                                }),
+                                &self.runtime_id,
+                            ),
+                            Err(e) => RuntimeRpcEnvelope::failure(
+                                id,
+                                "terminal_split_error",
+                                e.to_string(),
+                                Some(self.runtime_id.clone()),
+                            ),
+                        }
+                    }
+                    None => RuntimeRpcEnvelope::failure(
+                        id,
+                        "invalid_params",
+                        "Missing parent terminalId",
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
+            }
+
             "terminal.input" | "terminal.write" => {
                 let term_id = params
                     .get("terminalId")
                     .or_else(|| params.get("id"))
+                    .or_else(|| params.get("terminal"))
                     .and_then(|v| v.as_str());
 
                 let data_bytes = params
@@ -141,6 +502,7 @@ impl RpcDispatcher {
                 let term_id = params
                     .get("terminalId")
                     .or_else(|| params.get("id"))
+                    .or_else(|| params.get("terminal"))
                     .and_then(|v| v.as_str());
                 let cols = params
                     .get("cols")
@@ -174,53 +536,125 @@ impl RpcDispatcher {
                 }
             }
 
-            "terminal.kill" | "terminal.shutdown" => {
+            "terminal.list" => {
+                let list = self.terminal_manager.list_terminals_detailed().await;
+                RuntimeRpcEnvelope::success(
+                    id,
+                    json!({ "ok": true, "terminals": list }),
+                    &self.runtime_id,
+                )
+            }
+
+            "terminal.show" => {
                 let term_id = params
-                    .get("terminalId")
+                    .get("terminal")
+                    .or_else(|| params.get("terminalId"))
                     .or_else(|| params.get("id"))
+                    .or_else(|| params.get("handle"))
                     .and_then(|v| v.as_str());
 
                 match term_id {
-                    Some(tid) => match self.terminal_manager.kill_terminal(tid).await {
-                        Ok(()) => {
-                            RuntimeRpcEnvelope::success(id, json!({ "ok": true }), &self.runtime_id)
+                    Some(tid) => {
+                        let list = self.terminal_manager.list_terminals_detailed().await;
+                        if let Some(t) = list
+                            .into_iter()
+                            .find(|item| item.get("handle").and_then(|h| h.as_str()) == Some(tid))
+                        {
+                            RuntimeRpcEnvelope::success(
+                                id,
+                                json!({ "ok": true, "terminal": t }),
+                                &self.runtime_id,
+                            )
+                        } else {
+                            RuntimeRpcEnvelope::failure(
+                                id,
+                                "terminal_not_found",
+                                format!("Terminal not found: {tid}"),
+                                Some(self.runtime_id.clone()),
+                            )
                         }
-                        Err(e) => RuntimeRpcEnvelope::failure(
-                            id,
-                            "terminal_kill_error",
-                            e.to_string(),
-                            Some(self.runtime_id.clone()),
-                        ),
-                    },
+                    }
                     None => RuntimeRpcEnvelope::failure(
                         id,
                         "invalid_params",
-                        "Missing terminalId",
+                        "Missing terminal handle",
                         Some(self.runtime_id.clone()),
                     ),
                 }
             }
 
-            "terminal.list" => {
-                let list = self.terminal_manager.list_terminals().await;
-                RuntimeRpcEnvelope::success(id, json!(list), &self.runtime_id)
+            "worktree.list" => {
+                let repo = params.get("repo").and_then(|v| v.as_str());
+                let limit = params
+                    .get("limit")
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n as usize);
+
+                let list = self.worktree_manager.list_worktrees(repo, limit).await;
+                RuntimeRpcEnvelope::success(
+                    id,
+                    json!({ "ok": true, "worktrees": list }),
+                    &self.runtime_id,
+                )
             }
 
-            "status.get" => {
-                let session_id = params
-                    .get("sessionId")
-                    .or_else(|| params.get("session_id"))
-                    .and_then(|v| v.as_str());
+            "worktree.show" => {
+                let selector = params
+                    .get("worktree")
+                    .or_else(|| params.get("path"))
+                    .or_else(|| params.get("id"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("active");
 
-                match session_id {
-                    Some(sid) => {
-                        let row = self.status_store.get_status(sid).await;
-                        RuntimeRpcEnvelope::success(id, json!(row), &self.runtime_id)
-                    }
-                    None => RuntimeRpcEnvelope::failure(
+                if let Some(wt) = self.worktree_manager.show_worktree(selector).await {
+                    RuntimeRpcEnvelope::success(
                         id,
-                        "invalid_params",
-                        "Missing sessionId",
+                        json!({ "ok": true, "worktree": wt }),
+                        &self.runtime_id,
+                    )
+                } else {
+                    RuntimeRpcEnvelope::failure(
+                        id,
+                        "worktree_not_found",
+                        format!("Worktree not found: {selector}"),
+                        Some(self.runtime_id.clone()),
+                    )
+                }
+            }
+
+            "worktree.create" => {
+                let create_params: WorktreeCreateParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+
+                match self.worktree_manager.create_worktree(create_params).await {
+                    Ok(wt) => RuntimeRpcEnvelope::success(
+                        id,
+                        json!({ "ok": true, "worktree": wt }),
+                        &self.runtime_id,
+                    ),
+                    Err(e) => RuntimeRpcEnvelope::failure(
+                        id,
+                        "worktree_create_error",
+                        e,
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
+            }
+
+            "worktree.rm" | "worktree.remove" | "worktree.delete" => {
+                let rm_params: WorktreeRmParams =
+                    serde_json::from_value(params.clone()).unwrap_or_default();
+
+                match self.worktree_manager.remove_worktree(rm_params).await {
+                    Ok(removed) => RuntimeRpcEnvelope::success(
+                        id,
+                        json!({ "ok": true, "removed": removed }),
+                        &self.runtime_id,
+                    ),
+                    Err(e) => RuntimeRpcEnvelope::failure(
+                        id,
+                        "worktree_remove_error",
+                        e,
                         Some(self.runtime_id.clone()),
                     ),
                 }
@@ -245,6 +679,26 @@ impl RpcDispatcher {
                     })
                     .collect();
                 RuntimeRpcEnvelope::success(id, json!({ "worktrees": worktrees }), &self.runtime_id)
+            }
+
+            "status.get" => {
+                let session_id = params
+                    .get("sessionId")
+                    .or_else(|| params.get("session_id"))
+                    .and_then(|v| v.as_str());
+
+                match session_id {
+                    Some(sid) => {
+                        let row = self.status_store.get_status(sid).await;
+                        RuntimeRpcEnvelope::success(id, json!(row), &self.runtime_id)
+                    }
+                    None => RuntimeRpcEnvelope::failure(
+                        id,
+                        "invalid_params",
+                        "Missing sessionId",
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
             }
 
             "status.list" => {
@@ -337,7 +791,9 @@ pub struct Server {
     pub endpoint: String,
     status_store: Arc<AgentStatusStore>,
     terminal_manager: Arc<TerminalManager>,
+    worktree_manager: Arc<WorktreeManager>,
     idle_exit: Arc<IdleExitManager>,
+    metrics: Arc<DaemonMetrics>,
     runtime_id: String,
     shutdown_tx: broadcast::Sender<()>,
     _server_task: JoinHandle<()>,
@@ -357,9 +813,15 @@ impl Server {
         let idle_exit = IdleExitManager::new(config.idle_timeout, shutdown_tx.clone());
         let terminal_manager = TerminalManager::new(Arc::clone(&idle_exit));
         let status_store = Arc::new(AgentStatusStore::new(&config.status_path));
+        let worktree_manager = Arc::new(WorktreeManager::new(Arc::clone(&status_store)));
+        let metrics = Arc::new(DaemonMetrics::new());
+
         let dispatcher = Arc::new(RpcDispatcher::new(
             Arc::clone(&status_store),
             Arc::clone(&terminal_manager),
+            Arc::clone(&worktree_manager),
+            Arc::clone(&idle_exit),
+            Arc::clone(&metrics),
             config.runtime_id.clone(),
         ));
 
@@ -395,14 +857,16 @@ impl Server {
             }
         });
 
-        // Give the listener a brief moment to bind
+        // Give listener a brief moment to bind
         tokio::time::sleep(Duration::from_millis(15)).await;
 
         Ok(Self {
             endpoint: config.endpoint,
             status_store,
             terminal_manager,
+            worktree_manager,
             idle_exit,
+            metrics,
             runtime_id: config.runtime_id,
             shutdown_tx,
             _server_task: server_task,
@@ -411,7 +875,7 @@ impl Server {
 
     pub async fn shutdown(&self) -> Result<(), std::io::Error> {
         let _ = self.shutdown_tx.send(());
-        self.terminal_manager.kill_all().await;
+        let _ = self.terminal_manager.kill_all().await;
         let _ = self.status_store.flush_atomic().await;
         Ok(())
     }
@@ -424,8 +888,16 @@ impl Server {
         &self.terminal_manager
     }
 
+    pub fn worktree_manager(&self) -> &WorktreeManager {
+        &self.worktree_manager
+    }
+
     pub fn idle_exit(&self) -> &IdleExitManager {
         &self.idle_exit
+    }
+
+    pub fn metrics(&self) -> &DaemonMetrics {
+        &self.metrics
     }
 
     pub fn runtime_id(&self) -> &str {

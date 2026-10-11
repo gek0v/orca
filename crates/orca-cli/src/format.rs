@@ -98,6 +98,137 @@ pub fn format_json<T: Serialize>(value: &T) -> Result<String, serde_json::Error>
     serde_json::to_string_pretty(value)
 }
 
+pub fn format_status(res: &serde_json::Value) -> String {
+    let mut out = String::new();
+    let runtime_id = res
+        .get("runtimeId")
+        .and_then(|v| v.as_str())
+        .unwrap_or("orcad-native");
+    let ready = res.get("ready").and_then(|v| v.as_bool()).unwrap_or(true);
+    let daemon = res.get("daemon");
+
+    out.push_str(&format!("Runtime: {}\n", runtime_id));
+    out.push_str(&format!("Ready:   {}\n", if ready { "YES" } else { "NO" }));
+
+    if let Some(d) = daemon {
+        let pid = d.get("pid").and_then(|v| v.as_u64()).unwrap_or(0);
+        let uptime = d.get("uptimeSeconds").and_then(|v| v.as_u64()).unwrap_or(0);
+        let active_terms = d
+            .get("activeTerminals")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let active_conns = d
+            .get("activeConnections")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let working_set = d
+            .get("memoryWorkingSetBytes")
+            .or_else(|| d.get("memory").and_then(|m| m.get("workingSetBytes")))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let mb = working_set as f64 / (1024.0 * 1024.0);
+
+        out.push_str(&format!("Daemon:  PID {} | Uptime {}s\n", pid, uptime));
+        out.push_str(&format!(
+            "Metrics: {} active terminals | {} connections | {:.2} MB working set\n",
+            active_terms, active_conns, mb
+        ));
+    }
+
+    if let Some(agents) = res.get("connectedAgents").and_then(|a| a.as_array()) {
+        if !agents.is_empty() {
+            out.push_str("\nConnected Agents:\n");
+            for a in agents {
+                let sid = a
+                    .get("sessionId")
+                    .or_else(|| a.get("session_id"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let verdict = a.get("verdict").and_then(|v| v.as_str()).unwrap_or("-");
+                let desc = a.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                out.push_str(&format!("  {} [{}] {}\n", sid, verdict, desc));
+            }
+        }
+    }
+
+    out
+}
+
+pub fn format_diagnostics_memory(res: &serde_json::Value) -> String {
+    let mut out = String::new();
+    let working_set = res
+        .get("workingSetBytes")
+        .or_else(|| res.get("rss"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let private_bytes = res
+        .get("privateBytes")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let terminals = res.get("terminals").and_then(|v| v.as_u64()).unwrap_or(0);
+    let connections = res.get("connections").and_then(|v| v.as_u64()).unwrap_or(0);
+
+    let ws_mb = working_set as f64 / (1024.0 * 1024.0);
+    let priv_mb = private_bytes as f64 / (1024.0 * 1024.0);
+
+    out.push_str(&format!(
+        "Working Set:      {:.2} MB ({} bytes)\n",
+        ws_mb, working_set
+    ));
+    out.push_str(&format!(
+        "Private Memory:   {:.2} MB ({} bytes)\n",
+        priv_mb, private_bytes
+    ));
+    out.push_str(&format!("Active Terminals: {}\n", terminals));
+    out.push_str(&format!("Active Conns:     {}\n", connections));
+    out
+}
+
+pub fn format_worktree_table(worktrees: &[serde_json::Value]) -> String {
+    if worktrees.is_empty() {
+        return "No worktrees found.\n".to_string();
+    }
+
+    let mut out = format!("{:<20}  {:<12}  {}\n", "BRANCH/ID", "STATUS", "PATH");
+    for w in worktrees {
+        let branch = w
+            .get("branch")
+            .or_else(|| w.get("id"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let status = w.get("status").and_then(|v| v.as_str()).unwrap_or("-");
+        let path = w.get("path").and_then(|v| v.as_str()).unwrap_or("-");
+        out.push_str(&format!("{:<20}  {:<12}  {}\n", branch, status, path));
+    }
+    out
+}
+
+pub fn format_terminal_table(terminals: &[serde_json::Value]) -> String {
+    if terminals.is_empty() {
+        return "No active terminals.\n".to_string();
+    }
+
+    let mut out = format!("{:<16}  {:<8}  {}\n", "HANDLE", "PID", "COMMAND");
+    for t in terminals {
+        let handle = t
+            .get("handle")
+            .or_else(|| t.get("id"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("-");
+        let pid = t
+            .get("pid")
+            .and_then(|v| v.as_u64())
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| "-".to_string());
+        let cmd = t
+            .get("command")
+            .and_then(|v| v.as_str())
+            .unwrap_or("(default)");
+        out.push_str(&format!("{:<16}  {:<8}  {}\n", handle, pid, cmd));
+    }
+    out
+}
+
 /// Converts a millisecond UNIX timestamp to an ISO-8601 UTC string.
 pub fn format_timestamp_ms(ms: u64) -> String {
     let total_secs = ms / 1000;
