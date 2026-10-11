@@ -155,6 +155,8 @@ docs/**
 !docs/reference/wsl-command-execution.md
 !docs/reference/wsl-probe-failure-semantics.md
 !docs/reference/xterm-patch-regeneration.md
+!docs/reference/rust-daemon-architecture.md
+!docs/PULL_REQUEST_PHASE_1.md
 
 # Stably CLI (only docs/ are tracked)
 .stably/*
