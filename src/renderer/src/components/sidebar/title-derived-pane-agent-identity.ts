@@ -1,4 +1,4 @@
-import { titleShowsNoAgent } from '../../../../shared/agent-detection'
+import { isShellProcess, titleShowsNoAgent } from '../../../../shared/agent-detection'
 import type { AgentType } from '../../../../shared/agent-status-types'
 import { resolveCompatibleAgentTypeForOwner } from '../../../../shared/agent-title-owner'
 import { isClaudeIdentityFrameTitle } from '../../../../shared/terminal-title-agent-type'
@@ -56,9 +56,19 @@ export type TitleDerivedPaneForeground = Pick<
   'agent' | 'agentEvidence' | 'shellForeground'
 >
 
-// Why: Codex clears its title on exit (OSC 0 with no text) and the tab then shows its default title.
-function titleRetiresProcessRead(args: { title: string; defaultTitle?: string }): boolean {
-  return args.title.trim().length === 0 || titleShowsNoAgent(args.title, args.defaultTitle)
+// Why: Codex clears its title on exit to defaultTitle; Antigravity emits no OSC titles so defaultTitle is normal.
+function titleRetiresProcessRead(args: {
+  title: string
+  defaultTitle?: string
+  agent?: AgentType | null
+}): boolean {
+  if (args.title.trim().length === 0) {
+    return true
+  }
+  if (args.agent === 'antigravity') {
+    return isShellProcess(args.title.trim())
+  }
+  return titleShowsNoAgent(args.title, args.defaultTitle)
 }
 
 /**
@@ -83,16 +93,26 @@ export function resolveTitleDerivedPaneAgent(args: {
   // Why: a shell/default title is exit evidence the process read may not have caught up with; a
   // reattach's launch record is not a read at all and can name an agent that already exited.
   const processAgent =
-    args.foreground?.agentEvidence !== 'process-read' || titleRetiresProcessRead(args)
+    args.foreground?.agentEvidence !== 'process-read' ||
+    args.foreground?.shellForeground === true ||
+    titleRetiresProcessRead({
+      title: args.title,
+      defaultTitle: args.defaultTitle,
+      agent: args.foreground?.agent
+    })
       ? null
       : args.foreground.agent
   // Why: OMP's nested pi process must not take an OMP-launched pane from its owner.
   const ownedProcessAgent = processAgent
     ? (resolveCompatibleAgentTypeForOwner(processAgent, args.launchAgentType) ?? processAgent)
     : null
-  return (
-    ownedProcessAgent ??
-    args.titleAgentType ??
-    (args.titleShowsActivity ? args.launchAgentType : null)
-  )
+  // Why: Antigravity never emits OSC titles, so keep its launch identity until proven back at a shell.
+  const fallbackLaunchAgent =
+    args.titleShowsActivity ||
+    (args.launchAgentType === 'antigravity' &&
+      args.foreground?.shellForeground !== true &&
+      !isShellProcess(args.title.trim()))
+      ? args.launchAgentType
+      : null
+  return ownedProcessAgent ?? args.titleAgentType ?? fallbackLaunchAgent
 }
