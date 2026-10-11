@@ -29,6 +29,7 @@ type ActivePtyRecord = {
 }
 
 export class OrcadNativePtyProvider implements IPtyProvider {
+  readonly isOrcadNative = true
   private client: OrcadNativePtyClient
   private activePtys = new Map<string, ActivePtyRecord>()
   private dataListeners = new Set<(payload: PtyDataEvent) => void>()
@@ -138,13 +139,15 @@ export class OrcadNativePtyProvider implements IPtyProvider {
   }
 
   write(id: string, data: string): boolean {
-    void this.client.callRpc('terminal.write', { id: Number(id) || id, data }).catch(() => {})
+    void this.client
+      .callRpc('terminal.write', { id: String(id), terminalId: String(id), data })
+      .catch(() => {})
     return true
   }
 
   writeWithSettlement(id: string, data: string): Promise<WriteSettlement> {
     return this.client
-      .callRpc('terminal.write', { id: Number(id) || id, data })
+      .callRpc('terminal.write', { id: String(id), terminalId: String(id), data })
       .then(() => WRITE_ACCEPTED)
       .catch((err: Error) => ({
         outcome: 'refused',
@@ -160,14 +163,14 @@ export class OrcadNativePtyProvider implements IPtyProvider {
       pty.rows = rows
     }
     void this.client
-      .callRpc('terminal.resize', { id: Number(id) || id, cols, rows })
+      .callRpc('terminal.resize', { id: String(id), terminalId: String(id), cols, rows })
       .catch(() => {})
   }
 
   async shutdown(id: string): Promise<void> {
     this.activePtys.delete(id)
     try {
-      await this.client.callRpc('terminal.shutdown', { id: Number(id) || id })
+      await this.client.callRpc('terminal.shutdown', { id: String(id), terminalId: String(id) })
     } catch {
       /* Best-effort shutdown */
     }
@@ -223,6 +226,10 @@ export class OrcadNativePtyProvider implements IPtyProvider {
 
   getProfiles(): Promise<{ name: string; path: string }[]> {
     return Promise.resolve([])
+  }
+
+  hasPty(id: string): boolean {
+    return this.activePtys.has(id)
   }
 
   probePtyLiveness(id: string): Promise<boolean | null> {

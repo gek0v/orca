@@ -8,7 +8,12 @@ import { colorQueryReplyColorsEqual } from '../../../../shared/pty-owner-color-q
 // ─── Provider Registry ──────────────────────────────────────────────
 // Routes PTY operations by connectionId (null = local provider).
 
+declare global {
+  var __localPtyProvider: IPtyProvider | undefined
+}
+
 export let localProvider: IPtyProvider = new LocalPtyProvider()
+globalThis.__localPtyProvider = localProvider
 export const sshProviders = new Map<string, IPtyProvider>()
 export const sshProvidersByGeneration = new Map<number, IPtyProvider>()
 let colorQueryReplyColors: TerminalOscColorQueryReplyColors | null = null
@@ -166,5 +171,6 @@ export function getLocalPtyProvider(): IPtyProvider {
  *  Call before registerPtyHandlers so the IPC layer routes through the daemon. */
 export function setLocalPtyProvider(provider: IPtyProvider): void {
   localProvider = provider
+  globalThis.__localPtyProvider = provider
   pushColorQueryReplyColors(provider)
 }
