@@ -100,7 +100,11 @@ pub async fn spawn_windows_pty(config: PtySessionConfig) -> Result<WindowsPtySes
         startup_info.StartupInfo.dwFlags |= windows::Win32::System::Threading::STARTF_USESTDHANDLES;
         startup_info.lpAttributeList = attr_list;
 
-        let mut cmd_line_str = format!("\"{}\"", config.command);
+        let mut cmd_line_str = if config.command.contains(' ') && !config.command.starts_with('"') {
+            format!("\"{}\"", config.command)
+        } else {
+            config.command.clone()
+        };
         for arg in &config.args {
             cmd_line_str.push(' ');
             cmd_line_str.push_str(arg);

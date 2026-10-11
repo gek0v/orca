@@ -114,15 +114,33 @@ impl RpcDispatcher {
             }
 
             "terminal.create" => {
+                let shell = params
+                    .get("shell")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
                 let command = params
                     .get("command")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
-                let args = params.get("args").and_then(|v| v.as_array()).map(|arr| {
+                let mut args = params.get("args").and_then(|v| v.as_array()).map(|arr| {
                     arr.iter()
                         .filter_map(|item| item.as_str().map(|s| s.to_string()))
                         .collect()
                 });
+                let (exec, startup_cmd) = if let Some(sh) = shell {
+                    (Some(sh), command)
+                } else if let Some(cmd) = command {
+                    if args.is_none() && cmd.contains(' ') {
+                        let parts: Vec<&str> = cmd.split_whitespace().collect();
+                        let first = parts[0].to_string();
+                        args = Some(parts[1..].iter().map(|s| s.to_string()).collect());
+                        (Some(first), None)
+                    } else {
+                        (Some(cmd), None)
+                    }
+                } else {
+                    (None, None)
+                };
                 let cols = params
                     .get("cols")
                     .and_then(|v| v.as_u64())
@@ -147,14 +165,22 @@ impl RpcDispatcher {
 
                 match self
                     .terminal_manager
-                    .create_terminal(command, args, cols, rows, cwd, env)
+                    .create_terminal(exec, args, cols, rows, cwd, env)
                     .await
                 {
-                    Ok((term_id, pid)) => RuntimeRpcEnvelope::success(
-                        id,
-                        json!({ "handle": term_id, "terminalId": term_id, "id": term_id, "pid": pid, "ok": true }),
-                        &self.runtime_id,
-                    ),
+                    Ok((term_id, pid)) => {
+                        if let Some(cmd_text) = startup_cmd {
+                            let _ = self
+                                .terminal_manager
+                                .write_input(&term_id, format!("{}\r\n", cmd_text).as_bytes())
+                                .await;
+                        }
+                        RuntimeRpcEnvelope::success(
+                            id,
+                            json!({ "handle": term_id, "terminalId": term_id, "id": term_id, "pid": pid, "ok": true }),
+                            &self.runtime_id,
+                        )
+                    }
                     Err(e) => RuntimeRpcEnvelope::failure(
                         id,
                         "terminal_create_error",
