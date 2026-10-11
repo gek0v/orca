@@ -219,6 +219,7 @@ impl DaemonClient {
         let req = RuntimeRpcRequest {
             id: request_id.clone(),
             method: method.into(),
+            auth_token: self.auth_token.clone(),
             params,
         };
 
@@ -277,14 +278,36 @@ async fn try_connect(
 ) -> std::io::Result<IpcStream> {
     #[cfg(windows)]
     if let Some(pipe) = pipe_name {
-        let client = tokio::net::windows::named_pipe::ClientOptions::new().open(pipe)?;
-        return Ok(IpcStream::NamedPipe(client));
+        let mut last_err = None;
+        for _ in 0..15 {
+            match tokio::net::windows::named_pipe::ClientOptions::new().open(pipe) {
+                Ok(client) => return Ok(IpcStream::NamedPipe(client)),
+                Err(e) => {
+                    last_err = Some(e);
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+                }
+            }
+        }
+        return Err(last_err.unwrap_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "Named pipe not found")
+        }));
     }
 
     #[cfg(unix)]
     if let Some(sock) = socket_path {
-        let client = tokio::net::UnixStream::connect(sock).await?;
-        return Ok(IpcStream::Unix(client));
+        let mut last_err = None;
+        for _ in 0..15 {
+            match tokio::net::UnixStream::connect(sock).await {
+                Ok(client) => return Ok(IpcStream::Unix(client)),
+                Err(e) => {
+                    last_err = Some(e);
+                    tokio::time::sleep(Duration::from_millis(25)).await;
+                }
+            }
+        }
+        return Err(last_err.unwrap_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "Unix socket not found")
+        }));
     }
 
     Err(std::io::Error::new(

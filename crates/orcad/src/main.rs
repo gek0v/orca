@@ -35,8 +35,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let endpoint = if cfg!(windows) {
-        cli.pipe
-            .unwrap_or_else(|| format!(r"\\.\pipe\orcad-default-{}", std::process::id()))
+        let p = cli
+            .pipe
+            .unwrap_or_else(|| format!(r"\\.\pipe\orcad-default-{}", std::process::id()));
+        if p.starts_with(r"\\.\pipe\") {
+            p
+        } else {
+            format!(r"\\.\pipe\{}", p)
+        }
     } else {
         cli.socket
             .unwrap_or_else(|| format!("/tmp/orcad-default-{}.sock", std::process::id()))

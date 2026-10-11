@@ -148,6 +148,8 @@ pub async fn run(cli: commands::Cli) -> Result<(), Box<dyn std::error::Error>> {
                     } else {
                         let handle = res
                             .get("handle")
+                            .or_else(|| res.get("terminalId"))
+                            .or_else(|| res.get("id"))
                             .and_then(|h| h.as_str())
                             .unwrap_or("unknown");
                         println!("Created terminal {handle}");

@@ -36,7 +36,7 @@ impl RpcDispatcher {
         let params = req.params.unwrap_or(serde_json::Value::Null);
 
         match req.method.as_str() {
-            "ping" => RuntimeRpcEnvelope::success(
+            "ping" | "daemon.ping" => RuntimeRpcEnvelope::success(
                 id,
                 json!({ "ok": true, "_keepalive": true }),
                 &self.runtime_id,
@@ -81,7 +81,7 @@ impl RpcDispatcher {
                 {
                     Ok(term_id) => RuntimeRpcEnvelope::success(
                         id,
-                        json!({ "terminalId": term_id, "id": term_id, "ok": true }),
+                        json!({ "handle": term_id, "terminalId": term_id, "id": term_id, "ok": true }),
                         &self.runtime_id,
                     ),
                     Err(e) => RuntimeRpcEnvelope::failure(
@@ -224,6 +224,27 @@ impl RpcDispatcher {
                         Some(self.runtime_id.clone()),
                     ),
                 }
+            }
+
+            "worktree.ps" => {
+                let rows = self.status_store.list_all().await;
+                let worktrees: Vec<serde_json::Value> = rows
+                    .into_iter()
+                    .map(|r| {
+                        json!({
+                            "id": r.session_id,
+                            "branch": r.session_id,
+                            "status": match r.verdict {
+                                AgentVerdict::Live => "live",
+                                AgentVerdict::Unverifiable => "unverifiable",
+                                AgentVerdict::Exited => "exited",
+                            },
+                            "path": r.description,
+                            "updatedAtMs": r.updated_at_ms,
+                        })
+                    })
+                    .collect();
+                RuntimeRpcEnvelope::success(id, json!({ "worktrees": worktrees }), &self.runtime_id)
             }
 
             "status.list" => {

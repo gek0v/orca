@@ -63,6 +63,8 @@ pub struct RuntimeRpcRequest {
     pub id: String,
     pub method: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<serde_json::Value>,
 }
 

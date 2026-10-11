@@ -110,6 +110,7 @@ impl TestClient {
         let request = RuntimeRpcRequest {
             id: req_id,
             method: method.to_string(),
+            auth_token: None,
             params,
         };
 
