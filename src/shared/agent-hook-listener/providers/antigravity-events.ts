@@ -7,7 +7,9 @@ import type { HookListenerState } from '../listener-state'
 import { resolvePrompt, resolveToolState } from '../prompt-fields'
 import { extractToolFields, isNewTurnEvent } from '../provider-event-routing'
 import { readLastUserPromptFromTranscript } from '../transcript-lines'
+import { foldAgentLeadStatus } from '../../agent-lead-status-fold'
 import {
+  antigravityRosterChildWorkLiveness,
   antigravityRosterToSnapshots,
   type AntigravitySubagentRoster
 } from '../../antigravity-subagent-roster'
@@ -106,29 +108,35 @@ export function normalizeAntigravityEvent(
     { resetOnNewTurn: resetsTurn }
   )
 
-  if (resetsTurn) {
-    state.antigravitySubagentRosterByPaneKey.delete(paneKey)
-    state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
-  }
+  const effectiveTranscriptPath =
+    transcriptPath ?? state.antigravitySubagentTranscriptByPaneKey.get(paneKey)?.parent.filePath
 
-  if (transcriptPath) {
+  if (effectiveTranscriptPath) {
     const roster = getOrCreateAntigravitySubagentRoster(state, paneKey)
     const transcriptState = getOrCreateAntigravitySubagentTranscriptState(state, paneKey)
-    reconcileAntigravitySubagentTranscript(transcriptState, roster, transcriptPath)
+    reconcileAntigravitySubagentTranscript(transcriptState, roster, effectiveTranscriptPath)
   }
 
-  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop is terminal.
+  const roster = state.antigravitySubagentRosterByPaneKey.get(paneKey)
+  const childWorkLiveness = antigravityRosterChildWorkLiveness(roster)
+  const resolution = foldAgentLeadStatus({
+    leadState: stateName,
+    childWorkLiveness
+  })
+
+  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop without subagents is terminal.
   const hasRunningSubagents = hasAntigravityTranscriptSubagents(state, paneKey)
-  if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
+  if (eventName === 'Stop' && !stopStillBusy && effectiveTranscriptPath) {
     if (!hasRunningSubagents) {
-      state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
+      state.antigravityCompletedTranscriptByPaneKey.set(paneKey, effectiveTranscriptPath)
       state.antigravitySubagentRosterByPaneKey.delete(paneKey)
       state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
     }
   }
 
   const payload = normalizeAgentStatusPayload({
-    state: stateName,
+    state: resolution.stateName,
+    workingMode: resolution.workingMode,
     prompt: resolvePrompt(state, paneKey, effectivePrompt, {
       resetOnNewTurn: resetsTurn
     }),
@@ -138,7 +146,11 @@ export function normalizeAntigravityEvent(
     interactivePrompt: snapshot.interactivePrompt,
     lastAssistantMessage: snapshot.lastAssistantMessage,
     lastAssistantMessageIsToolOutput: snapshot.lastAssistantMessageIsToolOutput,
-    subagents: antigravityRosterToSnapshots(state.antigravitySubagentRosterByPaneKey.get(paneKey))
+    subagents: antigravityRosterToSnapshots(roster),
+    mainAgent: {
+      state: stateName,
+      stateStartedAt: Date.now()
+    }
   })
   return payload
 }
