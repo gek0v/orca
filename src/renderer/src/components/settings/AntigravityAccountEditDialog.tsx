@@ -16,6 +16,7 @@ import { translate } from '@/i18n/i18n'
 import { useAppStore } from '../../store'
 import { useSystemPrefersDark } from '@/components/terminal-pane/use-system-prefers-dark'
 import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 
 export const ANTIGRAVITY_ACCOUNT_PALETTE = [
   { id: 'blue', value: '#3b82f6', label: 'Blue' },
@@ -85,6 +86,15 @@ export function AntigravityAccountEditDialog({
     }
   }
 
+  const previewAccount: AntigravityAccountSummary | null = account
+    ? {
+        ...account,
+        alias: alias.trim() || null,
+        emoji: selectedEmoji?.trim() || null,
+        color: selectedColor
+      }
+    : null
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -100,9 +110,32 @@ export function AntigravityAccountEditDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          <div className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/20 p-2.5">
+            <AntigravityAccountGlyph
+              account={previewAccount}
+              fallbackText={alias || account?.email || 'A'}
+              size="md"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground truncate">
+                {alias.trim() ||
+                  account?.email ||
+                  translate('accounts.antigravity.saved', 'Saved Google account')}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {selectedEmoji?.trim()
+                  ? translate('accounts.antigravity.customGlyphActive', 'Custom emoji/character')
+                  : translate(
+                      'accounts.antigravity.initialFallbackActive',
+                      'Initial letter fallback'
+                    )}
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-medium text-foreground">
-              {translate('accounts.antigravity.aliasLabel', 'Account alias')}
+              {translate('accounts.antigravity.iconLabel', 'Account icon or emoji')}
             </label>
             <div className="flex items-center gap-2">
               <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
@@ -113,13 +146,13 @@ export function AntigravityAccountEditDialog({
                     size="icon"
                     data-testid="selected-account-emoji"
                     aria-label="Account icon emoji"
-                    className="shrink-0"
+                    className="shrink-0 size-9"
                     disabled={saving}
                   >
                     {selectedEmoji ? (
                       <span className="text-base select-none leading-none">{selectedEmoji}</span>
                     ) : (
-                      <Smile />
+                      <Smile className="size-4 text-muted-foreground" />
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -135,6 +168,16 @@ export function AntigravityAccountEditDialog({
                   />
                 </PopoverContent>
               </Popover>
+              <Input
+                placeholder={translate(
+                  'accounts.antigravity.emojiPlaceholder',
+                  'Emoji or 1-2 characters (e.g. 🚀, 1, DEV)'
+                )}
+                value={selectedEmoji ?? ''}
+                onChange={(e) => setSelectedEmoji(e.target.value || null)}
+                disabled={saving}
+                maxLength={16}
+              />
               {selectedEmoji ? (
                 <Button
                   type="button"
@@ -144,18 +187,31 @@ export function AntigravityAccountEditDialog({
                   aria-label="Clear emoji"
                   onClick={() => setSelectedEmoji(null)}
                   className="shrink-0"
+                  disabled={saving}
                 >
-                  <X />
+                  <X className="size-3.5 text-muted-foreground" />
                 </Button>
               ) : null}
-              <Input
-                placeholder={translate('accounts.antigravity.aliasPlaceholder', 'Account alias')}
-                value={alias}
-                onChange={(e) => setAlias(e.target.value)}
-                disabled={saving}
-                maxLength={32}
-              />
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              {translate(
+                'accounts.antigravity.glyphHint',
+                'Leave empty to automatically use the first letter of the alias or email.'
+              )}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-foreground">
+              {translate('accounts.antigravity.aliasLabel', 'Account alias')}
+            </label>
+            <Input
+              placeholder={translate('accounts.antigravity.aliasPlaceholder', 'Account alias')}
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              disabled={saving}
+              maxLength={32}
+            />
           </div>
 
           <div className="space-y-2">

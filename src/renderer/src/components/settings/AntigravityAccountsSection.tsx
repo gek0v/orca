@@ -13,6 +13,7 @@ import type { ProviderRateLimits, RateLimitState } from '../../../../shared/rate
 import { Button } from '../ui/button'
 import { AntigravityAccountEditDialog } from './AntigravityAccountEditDialog'
 import { AntigravityAccountRow } from './AntigravityAccountRow'
+import { AntigravityAccountSearchInput } from './AntigravityAccountSearchInput'
 import { refreshAllAntigravityAccountsUsage } from './antigravity-accounts-usage-refresh'
 import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
@@ -34,6 +35,7 @@ export function AntigravityAccountsSection({
   } | null>(null)
   const [accountUsageMap, setAccountUsageMap] = useState<Record<string, ProviderRateLimits>>({})
   const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const current = state?.currentAccount
   const usage =
     current?.subject === usageSnapshot?.subject && current?.authMethod === usageSnapshot?.authMethod
@@ -66,6 +68,21 @@ export function AntigravityAccountsSection({
     return times
   }, [state?.accounts, state?.activeAccountId, usage, accountUsageMap])
   const now = useResetCountdownClock(resetTimes)
+
+  const filteredAccounts = useMemo(() => {
+    if (!state?.accounts) {
+      return []
+    }
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) {
+      return state.accounts
+    }
+    return state.accounts.filter((acc) => {
+      const alias = acc.alias?.toLowerCase() ?? ''
+      const email = acc.email?.toLowerCase() ?? ''
+      return alias.includes(query) || email.includes(query)
+    })
+  }, [state?.accounts, searchQuery])
 
   useEffect(() => {
     mounted.current = true
@@ -194,17 +211,19 @@ export function AntigravityAccountsSection({
 
   async function handleUpdateMetadata(
     accountId: string,
-    metadata: { alias?: string | null; color?: string | null }
+    metadata: { alias?: string | null; color?: string | null; emoji?: string | null }
   ) {
     setError(null)
     try {
       const next = await callAntigravityAccounts(owner, target, 'Update', {
         accountId,
         alias: metadata.alias,
-        color: metadata.color
+        color: metadata.color,
+        emoji: metadata.emoji
       })
       if (mounted.current) {
         setState(next)
+        setCachedAntigravityAccountsState(next)
       }
     } catch (cause) {
       if (mounted.current) {
@@ -313,31 +332,44 @@ export function AntigravityAccountsSection({
                 )}
             </p>
           )}
-          {state.accounts.map((account) => {
-            const accountUsage =
-              state.activeAccountId === account.id && usage
-                ? usage
-                : (accountUsageMap[account.id] ?? account.lastUsage ?? null)
-            const isAccountRefreshing = refreshingAccountId === account.id
-            const lastUpdated = accountUsage?.updatedAt ?? account.lastUsageAt ?? null
+          {state.accounts.length >= 2 && (
+            <AntigravityAccountSearchInput query={searchQuery} onQueryChange={setSearchQuery} />
+          )}
+          {filteredAccounts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredAccounts.map((account) => {
+                const accountUsage =
+                  state.activeAccountId === account.id && usage
+                    ? usage
+                    : (accountUsageMap[account.id] ?? account.lastUsage ?? null)
+                const isAccountRefreshing = refreshingAccountId === account.id
+                const lastUpdated = accountUsage?.updatedAt ?? account.lastUsageAt ?? null
 
-            return (
-              <AntigravityAccountRow
-                key={account.id}
-                account={account}
-                isActive={state.activeAccountId === account.id}
-                isSelected={state.selectedAccountId === account.id}
-                accountUsage={accountUsage}
-                isAccountRefreshing={isAccountRefreshing}
-                lastUpdated={lastUpdated}
-                now={now}
-                busy={busy}
-                onEdit={() => setEditingAccount(account)}
-                onSelect={() => void run('Select', account.id)}
-                onRemove={() => void run('Remove', account.id)}
-              />
-            )
-          })}
+                return (
+                  <AntigravityAccountRow
+                    key={account.id}
+                    account={account}
+                    isActive={state.activeAccountId === account.id}
+                    isSelected={state.selectedAccountId === account.id}
+                    accountUsage={accountUsage}
+                    isAccountRefreshing={isAccountRefreshing}
+                    lastUpdated={lastUpdated}
+                    now={now}
+                    busy={busy}
+                    onEdit={() => setEditingAccount(account)}
+                    onSelect={() => void run('Select', account.id)}
+                    onRemove={() => void run('Remove', account.id)}
+                  />
+                )
+              })}
+            </div>
+          ) : (
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              {translate('accounts.antigravity.noMatches', 'No accounts match "{{query}}".', {
+                query: searchQuery
+              })}
+            </p>
+          )}
         </div>
       )}
       <p className="text-xs text-muted-foreground">

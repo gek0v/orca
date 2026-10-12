@@ -28,6 +28,7 @@ import { formatShortcutLabel, useOptionalShortcutLabel } from '@/hooks/useShortc
 import { translate } from '@/i18n/i18n'
 import { TerminalTabSplitMenuSection } from './TerminalTabSplitMenuSection'
 import { TAB_CONTEXT_MENU_CONTENT_CLASS } from './tab-context-menu-sizing'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
 
 const TAB_COLORS = [
@@ -251,7 +252,6 @@ export function SortableTabContextMenu({
                 {antigravityAccounts.length > 0 ? (
                   antigravityAccounts.map((acc) => {
                     const isSelected = acc.id === currentAccountId
-                    const dotColor = acc.color?.trim() || '#3b82f6'
                     const displayLabel = acc.alias?.trim()
                       ? `${acc.alias.trim()} (${acc.email ?? acc.subject ?? ''})`
                       : (acc.email ??
@@ -264,20 +264,7 @@ export function SortableTabContextMenu({
                         className="justify-between"
                       >
                         <span className="flex items-center gap-2 truncate">
-                          {acc.emoji ? (
-                            <span
-                              className="text-[12px] leading-none select-none"
-                              data-account-emoji={acc.emoji}
-                            >
-                              {acc.emoji}
-                            </span>
-                          ) : (
-                            <span
-                              className="size-2 rounded-full shrink-0"
-                              style={{ backgroundColor: dotColor }}
-                              data-account-color={dotColor}
-                            />
-                          )}
+                          <AntigravityAccountGlyph account={acc} size="sm" />
                           <span className="truncate">{displayLabel}</span>
                         </span>
                         {isSelected ? (

@@ -10,6 +10,7 @@ import {
 import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
 import { translate } from '@/i18n/i18n'
 import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
+import { AntigravityAccountGlyph } from './AntigravityAccountGlyph'
 
 export const CURRENT_ACTIVE_ANTIGRAVITY_ACCOUNT_SENTINEL = '__current__'
 
@@ -22,33 +23,15 @@ export type AntigravityAccountSelectorProps = {
   'aria-label'?: string
 }
 
-const DEFAULT_ACCOUNT_COLOR = '#3b82f6'
-
 export function AntigravityAccountBadgeIcon({
   account,
-  defaultColor = DEFAULT_ACCOUNT_COLOR
+  fallbackText
 }: {
   account?: AntigravityAccountSummary | null
   defaultColor?: string
+  fallbackText?: string | null
 }): React.JSX.Element {
-  if (account?.emoji) {
-    return (
-      <span
-        className="text-[12px] leading-none select-none shrink-0"
-        data-account-emoji={account.emoji}
-      >
-        {account.emoji}
-      </span>
-    )
-  }
-  const color = account?.color?.trim() || defaultColor
-  return (
-    <span
-      className="size-2 rounded-full shrink-0"
-      style={{ backgroundColor: color }}
-      data-account-color={color}
-    />
-  )
+  return <AntigravityAccountGlyph account={account} fallbackText={fallbackText} size="sm" />
 }
 
 function getActiveAccountDetail(activeAccount: AntigravityAccountSummary | null): string {
@@ -140,11 +123,7 @@ export function AntigravityAccountSelector({
         {!isKnownAccount ? (
           <SelectItem value={currentValue}>
             <span className="flex items-center gap-2 truncate">
-              <span
-                className="size-2 rounded-full shrink-0"
-                style={{ backgroundColor: '#64748b' }}
-                data-account-color="#64748b"
-              />
+              <AntigravityAccountGlyph fallbackText={currentValue} size="sm" />
               <span className="truncate">{currentValue}</span>
             </span>
           </SelectItem>

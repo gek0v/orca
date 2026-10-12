@@ -26,6 +26,7 @@ import { AccountRuntimeToggle } from './StatusBarAccountControls'
 import { getRepoIdFromWorktreeId } from '../../../../shared/worktree/id'
 import { InlineUsageBars } from './InlineProviderUsage'
 import { ProviderDetailsMenu } from './ProviderDetailsMenu'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 
 export function AntigravitySwitcherMenu({
   antigravity,
@@ -209,14 +210,7 @@ export function AntigravitySwitcherMenu({
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 truncate text-[11px] font-medium text-foreground">
-                  {projectDefaultAccount?.emoji ? (
-                    <span className="shrink-0 text-xs">{projectDefaultAccount.emoji}</span>
-                  ) : projectDefaultAccount?.color ? (
-                    <span
-                      className="size-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: projectDefaultAccount.color }}
-                    />
-                  ) : null}
+                  <AntigravityAccountGlyph account={projectDefaultAccount} size="sm" />
                   <span className="truncate">{projectDefaultLabel}</span>
                 </div>
               </div>
@@ -244,14 +238,7 @@ export function AntigravitySwitcherMenu({
           }}
         >
           <span className="flex min-w-0 max-w-[180px] items-center gap-1.5 truncate text-[12px] text-foreground">
-            {activeAccount?.emoji ? (
-              <span className="shrink-0 text-xs">{activeAccount.emoji}</span>
-            ) : activeAccount?.color ? (
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: activeAccount.color }}
-              />
-            ) : null}
+            <AntigravityAccountGlyph account={activeAccount} size="sm" />
             <span className="truncate">{activeLabel}</span>
           </span>
           {accountsExpanded ? (
@@ -301,14 +288,7 @@ export function AntigravitySwitcherMenu({
                   >
                     <div className="flex w-full flex-col gap-0.5">
                       <div className="flex min-w-0 items-center gap-1.5">
-                        {account.emoji ? (
-                          <span className="shrink-0 text-xs">{account.emoji}</span>
-                        ) : account.color ? (
-                          <span
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: account.color }}
-                          />
-                        ) : null}
+                        <AntigravityAccountGlyph account={account} size="sm" />
                         <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
                         {isCurrentAccount ? (
                           <span className="shrink-0 text-[10px] font-medium text-muted-foreground">

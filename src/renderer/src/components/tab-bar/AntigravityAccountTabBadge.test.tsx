@@ -10,7 +10,7 @@ vi.mock('@/components/ui/tooltip', () => ({
 }))
 
 describe('AntigravityAccountTabBadge', () => {
-  it('renders color dot and alias label when account exists', () => {
+  it('renders initial character badge and alias label when account exists without emoji', () => {
     const account = {
       id: 'acc-1',
       email: 'work@company.com',
@@ -23,10 +23,11 @@ describe('AntigravityAccountTabBadge', () => {
     }
     const html = renderToStaticMarkup(<AntigravityAccountTabBadge account={account} />)
     expect(html).toContain('Trabajo')
-    expect(html).toContain('data-account-color="#3b82f6"')
+    expect(html).toContain('data-account-character="T"')
+    expect(html).not.toContain('data-account-color')
   })
 
-  it('falls back to email prefix and default color if alias/color are absent', () => {
+  it('falls back to email prefix initial when alias and emoji are absent', () => {
     const account = {
       id: 'acc-2',
       email: 'personal@gmail.com',
@@ -37,10 +38,11 @@ describe('AntigravityAccountTabBadge', () => {
     }
     const html = renderToStaticMarkup(<AntigravityAccountTabBadge account={account} />)
     expect(html).toContain('personal')
-    expect(html).toContain('data-account-color="#3b82f6"')
+    expect(html).toContain('data-account-character="P"')
+    expect(html).not.toContain('data-account-color')
   })
 
-  it('renders emoji instead of color dot when emoji is present', () => {
+  it('renders emoji instead of character badge when emoji is present', () => {
     const account = {
       id: 'acc-3',
       email: 'work@company.com',
@@ -54,6 +56,7 @@ describe('AntigravityAccountTabBadge', () => {
     const html = renderToStaticMarkup(<AntigravityAccountTabBadge account={account} />)
     expect(html).toContain('Trabajo')
     expect(html).toContain('data-account-emoji="💼"')
+    expect(html).not.toContain('data-account-character')
     expect(html).not.toContain('data-account-color')
   })
 
@@ -69,7 +72,7 @@ describe('AntigravityAccountTabBadge', () => {
       updatedAt: 0
     }
     const html = renderToStaticMarkup(<AntigravityAccountTabBadge account={account} compact />)
-    expect(html).toContain('data-account-color="#3b82f6"')
+    expect(html).toContain('data-account-character="T"')
     expect(html).not.toContain('max-w-[54px]')
     // Tooltip content still has the alias
     expect(html).toContain('Trabajo')

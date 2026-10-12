@@ -26,6 +26,7 @@ import { translate } from '@/i18n/i18n'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
 import type { AntigravityAccountState } from '../../../../shared/antigravity-account-types'
 import { newAgentPromptOutcome } from '@/lib/new-agent-prompt-outcome'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 
 export type QuickLaunchAgentMenuItemsProps = {
   worktreeId: string
@@ -310,7 +311,6 @@ function QuickLaunchAgentMenuItemsInner({
                 {accounts.length > 0 ? (
                   accounts.map((acc) => {
                     const isActive = acc.id === activeId
-                    const dotColor = acc.color?.trim() || '#3b82f6'
                     const displayLabel = acc.alias?.trim()
                       ? `${acc.alias.trim()} (${acc.email ?? acc.subject ?? ''})`
                       : (acc.email ??
@@ -323,20 +323,7 @@ function QuickLaunchAgentMenuItemsInner({
                         className="justify-between"
                       >
                         <span className="flex items-center gap-2 truncate">
-                          {acc.emoji ? (
-                            <span
-                              className="text-[12px] leading-none select-none"
-                              data-account-emoji={acc.emoji}
-                            >
-                              {acc.emoji}
-                            </span>
-                          ) : (
-                            <span
-                              className="size-2 rounded-full shrink-0"
-                              style={{ backgroundColor: dotColor }}
-                              data-account-color={dotColor}
-                            />
-                          )}
+                          <AntigravityAccountGlyph account={acc} size="sm" />
                           <span className="truncate">{displayLabel}</span>
                         </span>
                         {isActive ? (
@@ -351,19 +338,7 @@ function QuickLaunchAgentMenuItemsInner({
                     className="justify-between"
                   >
                     <span className="flex items-center gap-2 truncate">
-                      {activeSummary?.emoji ? (
-                        <span
-                          className="text-[12px] leading-none select-none"
-                          data-account-emoji={activeSummary.emoji}
-                        >
-                          {activeSummary.emoji}
-                        </span>
-                      ) : (
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: activeSummary?.color?.trim() || '#3b82f6' }}
-                        />
-                      )}
+                      <AntigravityAccountGlyph account={activeSummary} size="sm" />
                       <span className="truncate">
                         {activeSummary?.alias?.trim()
                           ? `${activeSummary.alias.trim()} (${activeAccount?.email ?? ''})`

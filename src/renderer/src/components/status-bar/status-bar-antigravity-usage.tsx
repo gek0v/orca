@@ -9,6 +9,7 @@ import {
   getAntigravityStatusTightestSection
 } from './status-bar-provider-buckets'
 import { WindowLabel } from './status-bar-window-label'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 
 export function AntigravityStatusAccountBadge({
   compact,
@@ -32,14 +33,7 @@ export function AntigravityStatusAccountBadge({
       className={`inline-flex items-center gap-1 font-medium text-foreground ${compact ? 'max-w-[70px]' : 'max-w-[120px]'} truncate text-[11px]`}
       title={resolvedAccount.email ?? undefined}
     >
-      {resolvedAccount.emoji ? (
-        <span
-          className="select-none leading-none text-[12px]"
-          data-account-emoji={resolvedAccount.emoji}
-        >
-          {resolvedAccount.emoji}
-        </span>
-      ) : null}
+      <AntigravityAccountGlyph account={resolvedAccount} size="xs" />
       {label ? <span className="truncate">{label}</span> : null}
     </span>
   )
