@@ -323,7 +323,7 @@ describe('native Antigravity Accounts', () => {
     expect(screen.getByText('No accounts match "nonexistent".')).toBeInTheDocument()
 
     // Clear filter
-    await userEvent.click(screen.getByRole('button', { name: 'Clear filter' }))
+    await userEvent.click(screen.getByRole('button', { name: /clear (search|filter)/i }))
     expect(screen.getByText('Work Team')).toBeInTheDocument()
     expect(screen.getByText('Personal Projects')).toBeInTheDocument()
   })
