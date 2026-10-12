@@ -80,11 +80,54 @@ describe('antigravity-events', () => {
       transcriptPath
     })
 
-    expect(payload?.state).toBe('done')
+    expect(payload?.state).toBe('working')
+    expect(payload?.mainAgent?.state).toBe('done')
     expect(payload?.subagents).toHaveLength(1)
     // Completed transcript marker must not be set while subagents are running
     expect(state.antigravityCompletedTranscriptByPaneKey.has('pane-1')).toBe(false)
     expect(state.antigravitySubagentRosterByPaneKey.has('pane-1')).toBe(true)
+
+    rmSync(testDir, { recursive: true, force: true })
+  })
+
+  it('preserves subagent roster across multiple turn PreInvocation events without transcriptPath', () => {
+    const testDir = join(tmpdir(), `orca-agy-events-turns-${Date.now()}`)
+    const brainDir = join(testDir, 'brain', 'parent-turns')
+    const subagentsDir = join(brainDir, '.system_generated', 'subagents')
+    const logsDir = join(brainDir, '.system_generated', 'logs')
+    mkdirSync(subagentsDir, { recursive: true })
+    mkdirSync(logsDir, { recursive: true })
+
+    const transcriptPath = join(logsDir, 'transcript.jsonl')
+    writeFileSync(transcriptPath, '')
+
+    writeFileSync(
+      join(subagentsDir, 'subagent-worker.json'),
+      JSON.stringify({
+        conversationId: 'subagent-worker',
+        subagentDescriptor: { typeName: 'worker', role: 'Worker Agent' },
+        state: 'SUBAGENT_STATE_ALIVE'
+      })
+    )
+
+    const state = createHookListenerState()
+
+    // 1. First event with transcriptPath initializes subagent
+    const firstTurn = normalizeAntigravityEvent(state, 'PreToolUse', 'Run first task', 'pane-1', {
+      transcriptPath,
+      tool_call: { name: 'run_command', args: { CommandLine: 'ls' } }
+    })
+    expect(firstTurn?.subagents).toHaveLength(1)
+    expect(firstTurn?.subagents?.[0]?.id).toBe('subagent-worker')
+
+    // 2. PreInvocation (which resets turn) without transcriptPath arrives
+    const nextTurn = normalizeAntigravityEvent(state, 'PreInvocation', 'Run next task', 'pane-1', {
+      prompt: 'next task'
+    })
+    // Subagent must survive without flickering or being dropped
+    expect(nextTurn?.subagents).toHaveLength(1)
+    expect(nextTurn?.subagents?.[0]?.id).toBe('subagent-worker')
+    expect(nextTurn?.state).toBe('working')
 
     rmSync(testDir, { recursive: true, force: true })
   })
