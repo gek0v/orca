@@ -1,7 +1,8 @@
 import type React from 'react'
 import { Check } from 'lucide-react'
 import type { AppThemePresetId } from '../../../../shared/global-settings-types'
-import { APP_THEME_PRESETS } from '@/lib/app-theme-presets'
+import { APP_THEME_PRESETS, resolveEffectiveThemePreset } from '@/lib/app-theme-presets'
+import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 
 type ThemePresetSelectorProps = {
@@ -10,6 +11,9 @@ type ThemePresetSelectorProps = {
   effectiveMode: 'dark' | 'light'
 }
 
+/**
+ * Grid selector allowing users to choose an interface color preset with visual palette swatches.
+ */
 export function ThemePresetSelector({
   value = 'default',
   onChange,
@@ -19,14 +23,20 @@ export function ThemePresetSelector({
     (preset) => preset.id === 'default' || preset.mode === effectiveMode
   )
 
+  const effectiveSelectedPresetId = resolveEffectiveThemePreset(
+    effectiveMode,
+    value,
+    effectiveMode === 'dark'
+  )
+
   return (
     <div
       role="radiogroup"
-      aria-label="Theme Presets"
+      aria-label={translate('settings.appearance.themePresets.groupLabel', 'Theme Presets')}
       className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3"
     >
       {visiblePresets.map((preset) => {
-        const isSelected = value === preset.id
+        const isSelected = effectiveSelectedPresetId === preset.id
 
         return (
           <button
@@ -48,7 +58,10 @@ export function ThemePresetSelector({
                 </span>
                 {preset.description ? (
                   <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                    {preset.description}
+                    {translate(
+                      `settings.appearance.themePresets.${preset.id}.description`,
+                      preset.description
+                    )}
                   </span>
                 ) : null}
               </div>
@@ -69,22 +82,25 @@ export function ThemePresetSelector({
               <span
                 className="size-4 shrink-0 rounded-full border border-black/10 dark:border-white/10"
                 style={{ backgroundColor: preset.swatches.background }}
-                title="Background"
+                title={translate(
+                  'settings.appearance.themePresets.swatch.background',
+                  'Background'
+                )}
               />
               <span
                 className="size-4 shrink-0 rounded-full border border-black/10 dark:border-white/10"
                 style={{ backgroundColor: preset.swatches.card }}
-                title="Card"
+                title={translate('settings.appearance.themePresets.swatch.card', 'Card')}
               />
               <span
                 className="size-4 shrink-0 rounded-full border border-black/10 dark:border-white/10"
                 style={{ backgroundColor: preset.swatches.primary }}
-                title="Primary"
+                title={translate('settings.appearance.themePresets.swatch.primary', 'Primary')}
               />
               <span
                 className="size-4 shrink-0 rounded-full border border-black/10 dark:border-white/10"
                 style={{ backgroundColor: preset.swatches.accent }}
-                title="Accent"
+                title={translate('settings.appearance.themePresets.swatch.accent', 'Accent')}
               />
             </div>
           </button>

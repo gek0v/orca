@@ -52,6 +52,9 @@ function systemPrefersDark(matchMedia?: ThemeMediaMatcher): boolean {
   return false
 }
 
+/**
+ * Determines whether dark mode should be applied based on theme setting and system query.
+ */
 export function resolveDocumentTheme(
   theme: DocumentThemePreference,
   matchMedia?: ThemeMediaMatcher
@@ -65,6 +68,9 @@ export function resolveDocumentTheme(
   return systemPrefersDark(matchMedia)
 }
 
+/**
+ * Applies the resolved theme mode and theme preset dataset attribute to the document root element.
+ */
 export function applyDocumentTheme(
   theme: DocumentThemePreference,
   options: ApplyDocumentThemeOptions = {}

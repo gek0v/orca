@@ -63,6 +63,7 @@ const {
   registerSpeechHandlersMock,
   registerSkillsHandlersMock,
   registerSkillDeleteIpcHandlersMock,
+  registerGoalsHandlersMock,
   registerWorkspaceSpaceHandlersMock,
   registerWorkspacePortHandlersMock,
   registerLocalhostWorktreeLabelHandlersMock,
@@ -132,6 +133,7 @@ const {
   registerSpeechHandlersMock: vi.fn(),
   registerSkillsHandlersMock: vi.fn(),
   registerSkillDeleteIpcHandlersMock: vi.fn(),
+  registerGoalsHandlersMock: vi.fn(),
   registerWorkspaceSpaceHandlersMock: vi.fn(),
   registerWorkspacePortHandlersMock: vi.fn(),
   registerLocalhostWorktreeLabelHandlersMock: vi.fn(),
@@ -237,6 +239,10 @@ vi.mock('../skills', () => ({
 
 vi.mock('../skill-delete/handlers', () => ({
   registerSkillDeleteIpcHandlers: registerSkillDeleteIpcHandlersMock
+}))
+
+vi.mock('../goals', () => ({
+  registerGoalsHandlers: registerGoalsHandlersMock
 }))
 
 vi.mock('../workspace-space', () => ({
@@ -475,6 +481,7 @@ describe('registerCoreHandlers', () => {
     registerSpeechHandlersMock.mockReset()
     registerSkillsHandlersMock.mockReset()
     registerSkillDeleteIpcHandlersMock.mockReset()
+    registerGoalsHandlersMock.mockReset()
     registerWorkspaceSpaceHandlersMock.mockReset()
     registerWorkspacePortHandlersMock.mockReset()
     registerLocalhostWorktreeLabelHandlersMock.mockReset()
@@ -580,6 +587,7 @@ describe('registerCoreHandlers', () => {
     expect(registerSettingsHandlersMock).toHaveBeenCalledWith(store, agentAwakeService)
     expect(registerSkillsHandlersMock).toHaveBeenCalledWith(store, runtime)
     expect(registerSkillDeleteIpcHandlersMock).toHaveBeenCalledWith(store, runtime)
+    expect(registerGoalsHandlersMock).toHaveBeenCalled()
     expect(registerWorkspaceSpaceHandlersMock).toHaveBeenCalledWith(store)
     expect(registerWorkspacePortHandlersMock).toHaveBeenCalledWith(store)
     expect(registerLocalhostWorktreeLabelHandlersMock).toHaveBeenCalledWith(store)
