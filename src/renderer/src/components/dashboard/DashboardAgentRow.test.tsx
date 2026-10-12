@@ -565,7 +565,8 @@ describe('DashboardAgentRow', () => {
 
     const markup = renderRow(agent)
     expect(markup).toContain('Work Account')
-    expect(markup).toContain('data-account-color="#10b981"')
+    expect(markup).toContain('data-account-character="W"')
+    expect(markup).not.toContain('data-account-color')
   })
 
   it('does not render Antigravity account badge when launchAccountId is absent', () => {

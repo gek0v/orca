@@ -5,11 +5,15 @@ import {
   type AntigravitySubagentRoster
 } from './antigravity-subagent-roster'
 import {
+  isSubagentCompletionMessage,
   reconcileFromDiskSubagentsDir,
   SAFE_ANTIGRAVITY_ID_PATTERN
 } from './antigravity-subagent-disk'
 
-export { isAntigravitySubagentTranscriptDone } from './antigravity-subagent-disk'
+export {
+  isAntigravitySubagentTranscriptDone,
+  isSubagentCompletionMessage
+} from './antigravity-subagent-disk'
 
 export type AntigravitySubagentTranscriptState = {
   parent: JsonlCursor
@@ -252,7 +256,11 @@ export function reconcileAntigravitySubagentTranscript(
       if (content.includes('[Message] timestamp=') && content.includes('sender=')) {
         const senderMatch = content.match(/sender=([A-Za-z0-9-]+)/)
         const senderId = senderMatch?.[1]
-        if (senderId && SAFE_ANTIGRAVITY_ID_PATTERN.test(senderId)) {
+        if (
+          senderId &&
+          SAFE_ANTIGRAVITY_ID_PATTERN.test(senderId) &&
+          isSubagentCompletionMessage(content)
+        ) {
           state.completedSubagents.add(senderId)
           state.subagents.delete(senderId)
           if (roster.has(senderId)) {

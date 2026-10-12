@@ -161,8 +161,9 @@ describe('CompactAgentRow stable assistant message', () => {
     })
 
     const container = renderRow(agent)
-    const dot = container.querySelector('[data-account-color="#10b981"]')
-    expect(dot).not.toBeNull()
+    const glyph = container.querySelector('[data-account-character="W"]')
+    expect(glyph).not.toBeNull()
+    expect(container.querySelector('[data-account-color]')).toBeNull()
   })
 
   it('does not render account badge when launchAccountId is absent', () => {

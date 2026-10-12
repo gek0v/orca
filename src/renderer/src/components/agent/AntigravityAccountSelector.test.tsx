@@ -88,7 +88,7 @@ describe('AntigravityAccountSelector', () => {
     expect(emojiElement?.textContent).toBe('🚀')
   })
 
-  it('renders active account with color dot when emoji is not present', async () => {
+  it('renders active account with initial character when emoji is not present', async () => {
     setCachedAntigravityAccountsState({
       accounts: [
         {
@@ -111,8 +111,9 @@ describe('AntigravityAccountSelector', () => {
       root.render(<AntigravityAccountSelector value={null} onValueChange={vi.fn()} />)
     })
 
-    const dotElement = container.querySelector('[data-account-color="#10b981"]')
-    expect(dotElement).not.toBeNull()
+    const charElement = container.querySelector('[data-account-character="P"]')
+    expect(charElement).not.toBeNull()
+    expect(container.querySelector('[data-account-color]')).toBeNull()
   })
 
   it('renders specific saved account with alias and email when value matches', async () => {
@@ -139,8 +140,9 @@ describe('AntigravityAccountSelector', () => {
     })
 
     expect(container.textContent).toContain('Work Account (work@example.com)')
-    const dotElement = container.querySelector('[data-account-color="#10b981"]')
-    expect(dotElement).not.toBeNull()
+    const charElement = container.querySelector('[data-account-character="W"]')
+    expect(charElement).not.toBeNull()
+    expect(container.querySelector('[data-account-color]')).toBeNull()
   })
 
   it('renders saved account with emoji when specified', async () => {

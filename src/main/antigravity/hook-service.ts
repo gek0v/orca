@@ -138,19 +138,21 @@ export class AntigravityHookService {
       }
     }
 
+    const isExplicitlyDisabled = bundle.enabled === false
     const managedHooksPresent = presentCount > 0 || staleManagedPresent
     let state: AgentHookInstallState
     let detail: string | null
-    if (missing.length === 0 && !staleManagedPresent) {
+    if (missing.length === 0 && !staleManagedPresent && !isExplicitlyDisabled) {
       state = 'installed'
       detail = null
-    } else if (presentCount === 0 && !staleManagedPresent) {
+    } else if (presentCount === 0 && !staleManagedPresent && !isExplicitlyDisabled) {
       state = 'not_installed'
       detail = null
     } else {
       state = 'partial'
-      detail =
-        missing.length > 0
+      detail = isExplicitlyDisabled
+        ? 'Antigravity hook bundle is disabled in hooks.json'
+        : missing.length > 0
           ? `Managed hook missing for events: ${missing.join(', ')}`
           : 'Stale managed hook entries need cleanup'
     }
