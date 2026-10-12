@@ -2,14 +2,13 @@ import React from 'react'
 import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 
 export type AntigravityAccountTabBadgeProps = {
   account?: AntigravityAccountSummary | null
   compact?: boolean
   className?: string
 }
-
-const DEFAULT_ACCOUNT_COLOR = '#3b82f6'
 
 export function AntigravityAccountTabBadge({
   account,
@@ -21,7 +20,6 @@ export function AntigravityAccountTabBadge({
   }
 
   const label = account.alias?.trim() || account.email?.split('@')[0] || 'Antigravity'
-  const color = account.color?.trim() || DEFAULT_ACCOUNT_COLOR
 
   return (
     <Tooltip>
@@ -33,20 +31,7 @@ export function AntigravityAccountTabBadge({
             className
           )}
         >
-          {account.emoji ? (
-            <span
-              className="text-[11px] leading-none select-none"
-              data-account-emoji={account.emoji}
-            >
-              {account.emoji}
-            </span>
-          ) : (
-            <span
-              className="size-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: color }}
-              data-account-color={color}
-            />
-          )}
+          <AntigravityAccountGlyph account={account} size={compact ? 'xs' : 'sm'} />
           {!compact ? (
             <span className="max-w-[54px] truncate text-[10px] font-medium text-muted-foreground">
               {label}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
@@ -8,6 +8,7 @@ import { Badge } from '../ui/badge'
 import { getQuotaBarColorClass, getQuotaTextColorClass } from '../status-bar/status-bar-quota-tones'
 import { formatResetCountdown } from '../../../../shared/rate-limit-reset-format'
 import { formatAccountTimestamp } from './accounts-pane-runtime'
+import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 
 export function AntigravityAccountRow({
   account,
@@ -35,55 +36,63 @@ export function AntigravityAccountRow({
   onRemove: () => void
 }): React.JSX.Element {
   return (
-    <div className="flex flex-col gap-2 rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            {account.emoji ? (
-              <span className="text-sm select-none leading-none" data-account-emoji={account.emoji}>
-                {account.emoji}
-              </span>
-            ) : account.color ? (
-              <span
-                className="size-2 rounded-full shrink-0"
-                style={{ backgroundColor: account.color }}
-                data-account-color={account.color}
-              />
-            ) : null}
-            <p className="text-xs font-medium">
-              {account.alias
-                ? `${account.alias} (${account.email ?? ''})`
-                : (account.email ??
-                  translate('accounts.antigravity.saved', 'Saved Google account'))}
+    <div
+      className={`flex flex-col justify-between gap-2.5 rounded-lg border p-3 transition-colors ${
+        isActive
+          ? 'border-primary/40 bg-accent/15 ring-1 ring-primary/20'
+          : 'border-border/70 bg-card/40 hover:border-border hover:bg-card/70'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <AntigravityAccountGlyph account={account} size="md" />
+          <div className="min-w-0 flex-1">
+            <p
+              className="truncate text-xs font-medium text-foreground"
+              title={account.alias ?? account.email ?? ''}
+            >
+              {account.alias ||
+                account.email ||
+                translate('accounts.antigravity.saved', 'Saved Google account')}
             </p>
+            {account.alias && account.email ? (
+              <p className="truncate text-[10px] text-muted-foreground" title={account.email}>
+                {account.email}
+              </p>
+            ) : null}
           </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
           {isActive && (
             <Badge variant="secondary">
               {translate('accounts.antigravity.nativeActive', 'Native account')}
             </Badge>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="xs" variant="outline" disabled={busy} onClick={onEdit}>
-            {translate('accounts.antigravity.edit', 'Edit')}
-          </Button>
-          <Button size="xs" variant="outline" disabled={busy} onClick={onSelect}>
-            {isSelected && isActive
-              ? translate('accounts.antigravity.selected', 'Selected')
-              : translate('accounts.antigravity.select', 'Select')}
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            disabled={busy}
+            onClick={onEdit}
+            aria-label={translate('accounts.antigravity.edit', 'Edit')}
+            title={translate('accounts.antigravity.edit', 'Edit')}
+          >
+            <Pencil className="size-3" />
           </Button>
           <Button
-            size="xs"
+            size="icon-xs"
             variant="ghost"
             disabled={busy || isActive || isSelected}
             onClick={onRemove}
+            aria-label={translate('accounts.antigravity.remove', 'Remove')}
+            title={translate('accounts.antigravity.remove', 'Remove')}
           >
-            {translate('accounts.antigravity.remove', 'Remove')}
+            <Trash2 className="size-3" />
           </Button>
         </div>
       </div>
 
-      <div className="mt-1 pt-2 border-t border-border/40 space-y-2">
+      <div className="mt-0.5 space-y-2 border-t border-border/40 pt-2">
         <div className="flex items-center justify-between text-[11px]">
           <span className="font-medium text-muted-foreground">
             {translate('accounts.antigravity.usageTitle', 'Usage')}
@@ -97,7 +106,7 @@ export function AntigravityAccountRow({
           ) : null}
         </div>
         {isAccountRefreshing ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+          <div className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" />
             <span>{translate('accounts.antigravity.refreshingUsage', 'Updating usage…')}</span>
           </div>
@@ -105,7 +114,7 @@ export function AntigravityAccountRow({
           accountUsage.error ? (
             <p className="text-xs text-destructive">{accountUsage.error}</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="space-y-2 text-xs">
               {accountUsage.session && (
                 <div className="space-y-1 rounded bg-muted/30 p-2 border border-border/30">
                   <div className="flex items-center justify-between text-[11px]">
@@ -207,6 +216,20 @@ export function AntigravityAccountRow({
             {translate('accounts.antigravity.noUsageData', 'No usage data yet')}
           </p>
         )}
+      </div>
+
+      <div className="mt-1 flex items-center justify-end border-t border-border/40 pt-2">
+        <Button
+          size="xs"
+          variant={isSelected && isActive ? 'secondary' : 'outline'}
+          disabled={busy}
+          onClick={onSelect}
+          className="w-full justify-center"
+        >
+          {isSelected && isActive
+            ? translate('accounts.antigravity.selected', 'Selected')
+            : translate('accounts.antigravity.select', 'Select')}
+        </Button>
       </div>
     </div>
   )

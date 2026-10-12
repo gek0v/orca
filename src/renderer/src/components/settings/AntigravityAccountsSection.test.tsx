@@ -184,6 +184,23 @@ describe('native Antigravity Accounts', () => {
     )
   })
 
+  it('allows editing an account emoji or character, forwarding it to Update RPC', async () => {
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+    await screen.findByText('Native account')
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const emojiInput = await screen.findByPlaceholderText(/Emoji or 1-2 characters/)
+    await userEvent.clear(emojiInput)
+    await userEvent.type(emojiInput, '🚀')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(callAntigravityAccounts).toHaveBeenCalledWith(
+      owner,
+      target,
+      'Update',
+      expect.objectContaining({ accountId: 'a', emoji: '🚀' })
+    )
+  })
+
   it('renders "No usage data yet" when account has no recorded usage', async () => {
     render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
     await screen.findByText('Native account')
@@ -254,5 +271,100 @@ describe('native Antigravity Accounts', () => {
     // Both accounts show usage percentages
     expect(screen.getAllByText('45%')).toHaveLength(2)
     expect(screen.getAllByText('15%')).toHaveLength(2)
+  })
+
+  it('filters accounts by email or alias and displays empty state when no matches found', async () => {
+    const multiAccountState: AntigravityAccountState = {
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'alpha@example.com',
+          alias: 'Work Team',
+          subject: 'sub-1',
+          authMethod: 'consumer',
+          createdAt: 1,
+          updatedAt: 2
+        },
+        {
+          id: 'acc-2',
+          email: 'beta@example.com',
+          alias: 'Personal Projects',
+          subject: 'sub-2',
+          authMethod: 'consumer',
+          createdAt: 3,
+          updatedAt: 4
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1',
+      currentAccount: {
+        email: 'alpha@example.com',
+        subject: 'sub-1',
+        authMethod: 'consumer',
+        identityKnown: true
+      }
+    }
+
+    vi.mocked(callAntigravityAccounts).mockResolvedValue(multiAccountState)
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+
+    const filterInput = await screen.findByPlaceholderText('Filter accounts...')
+    expect(screen.getByText('Work Team')).toBeInTheDocument()
+    expect(screen.getByText('Personal Projects')).toBeInTheDocument()
+
+    // Filter by alias
+    await userEvent.type(filterInput, 'personal')
+    expect(screen.getByText('Personal Projects')).toBeInTheDocument()
+    expect(screen.queryByText('Work Team')).toBeNull()
+
+    // Filter by non-existent term
+    await userEvent.clear(filterInput)
+    await userEvent.type(filterInput, 'nonexistent')
+    expect(screen.getByText('No accounts match "nonexistent".')).toBeInTheDocument()
+
+    // Clear filter
+    await userEvent.click(screen.getByRole('button', { name: /clear (search|filter)/i }))
+    expect(screen.getByText('Work Team')).toBeInTheDocument()
+    expect(screen.getByText('Personal Projects')).toBeInTheDocument()
+  })
+
+  it('renders accounts in a responsive 2-3 column grid container', async () => {
+    const multiAccountState: AntigravityAccountState = {
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'first@example.com',
+          subject: 'sub-1',
+          authMethod: 'consumer',
+          createdAt: 1,
+          updatedAt: 2
+        },
+        {
+          id: 'acc-2',
+          email: 'second@example.com',
+          subject: 'sub-2',
+          authMethod: 'consumer',
+          createdAt: 3,
+          updatedAt: 4
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1',
+      currentAccount: {
+        email: 'first@example.com',
+        subject: 'sub-1',
+        authMethod: 'consumer',
+        identityKnown: true
+      }
+    }
+
+    vi.mocked(callAntigravityAccounts).mockResolvedValue(multiAccountState)
+    const { container } = render(
+      <AntigravityAccountsSection owner={owner} target={target} label="This device" />
+    )
+    await screen.findByText('second@example.com')
+
+    const grid = container.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3')
+    expect(grid).not.toBeNull()
   })
 })
