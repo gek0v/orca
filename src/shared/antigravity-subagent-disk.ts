@@ -20,11 +20,15 @@ export const SAFE_ANTIGRAVITY_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 const SUBAGENT_RECENCY_MS = 15 * 60_000
 
 export function isSubagentCompletionMessage(content: string): boolean {
-  if (/\b(?:status update|progress report|liveness|iteration|standing by)\b/i.test(content)) {
+  if (
+    /\b(?:status update|progress report|liveness|iteration|standing by|actualizaci[oó]n|reporte de progreso|informe de estado)\b/i.test(
+      content
+    )
+  ) {
     return false
   }
   return (
-    /\b(?:task(?: \w+)? (?:is )?(?:complete|completed|finished|done)|(?:mission|work|implementation|survey) (?:is )?(?:complete|completed|finished|done)|all tasks? completed?)\b/i.test(
+    /\b(?:task(?: \w+)? (?:is )?(?:complete|completed|finished|done)|(?:mission|work|implementation|survey) (?:is )?(?:complete|completed|finished|done)|all tasks? completed?|tarea(?:s)? (?:completada|terminada|finalizada)s?|trabajo (?:completado|terminado|finalizado)|misi[oó]n cumplida|todo (?:completado|terminado|finalizado))\b/i.test(
       content
     ) || /\btask 1 complete\b/i.test(content)
   )

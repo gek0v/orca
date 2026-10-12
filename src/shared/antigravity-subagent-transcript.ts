@@ -222,7 +222,7 @@ export function reconcileAntigravitySubagentTranscript(
             continue
           }
           const rawState = entry.state?.toLowerCase()
-          if (rawState === 'idle' || rawState === 'done') {
+          if (rawState === 'done' || rawState === 'cancelled' || rawState === 'errored') {
             state.completedSubagents.add(entry.conversationId)
             state.subagents.delete(entry.conversationId)
             if (roster.has(entry.conversationId)) {
@@ -231,8 +231,8 @@ export function reconcileAntigravitySubagentTranscript(
             }
             continue
           }
-          const stateName: 'working' | 'waiting' =
-            rawState === 'waiting_for_input' ? 'waiting' : 'working'
+          const stateName: 'working' | 'waiting' | 'idle' =
+            rawState === 'waiting_for_input' ? 'waiting' : rawState === 'idle' ? 'idle' : 'working'
           state.subagents.set(entry.conversationId, {
             startedAt: now,
             description: entry.role,
