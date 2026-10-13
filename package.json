@@ -10,6 +10,7 @@
   },
   "main": "./out/main/index.js",
   "scripts": {
+    "tauri": "tauri",
     "install:release": "pnpm install --frozen-lockfile --cpu=current,x64,arm64",
     "audit:perf": "oxlint --config config/oxlint-performance-audit.json --format json src",
     "test:perf:contracts": "vitest run --config config/vitest.performance.config.ts",
@@ -188,6 +189,7 @@
     "@floating-ui/dom": "1.8.0",
     "@linear/sdk": "^97.0.0",
     "@parcel/watcher": "^2.5.6",
+    "@tauri-apps/api": "^2.3.0",
     "@xterm/addon-serialize": "0.15.0-beta.300",
     "@xterm/headless": "6.1.0-beta.302",
     "agent-browser": "~0.27.0",
@@ -225,6 +227,7 @@
     "@streamparser/json": "0.0.26",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-virtual": "^3.14.13",
+    "@tauri-apps/cli": "^2.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
