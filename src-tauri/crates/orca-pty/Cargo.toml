@@ -1,0 +1,13 @@
+[package]
+name = "orca-pty"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+orca-types = { path = "../orca-types" }
+serde = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
