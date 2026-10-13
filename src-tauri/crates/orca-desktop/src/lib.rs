@@ -1,5 +1,6 @@
 use orca_core::{handle_ping, AppState};
 use orca_types::{PingResponse, SystemInfo};
+use tauri::Manager;
 
 #[tauri::command]
 fn ping() -> PingResponse {
@@ -19,6 +20,18 @@ fn get_app_version(state: tauri::State<AppState>) -> String {
 pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
         .manage(AppState::default())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             ping,
             get_system_info,
