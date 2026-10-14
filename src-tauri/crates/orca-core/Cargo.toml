@@ -13,9 +13,12 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 regex = { workspace = true }
-
+rusqlite = { workspace = true }
+notify = { workspace = true }
+keyring = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
+winreg = { workspace = true }
 windows-sys = { version = "0.60", features = [
     "Win32_Foundation",
     "Win32_Security",
