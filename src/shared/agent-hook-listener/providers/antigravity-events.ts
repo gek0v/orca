@@ -7,7 +7,9 @@ import type { HookListenerState } from '../listener-state'
 import { resolvePrompt, resolveToolState } from '../prompt-fields'
 import { extractToolFields, isNewTurnEvent } from '../provider-event-routing'
 import { readLastUserPromptFromTranscript } from '../transcript-lines'
+import { continueMainAgentStatus, foldAgentLeadStatus } from '../../agent-lead-status-fold'
 import {
+  antigravityRosterChildWorkLiveness,
   antigravityRosterToSnapshots,
   type AntigravitySubagentRoster
 } from '../../antigravity-subagent-roster'
@@ -117,8 +119,11 @@ export function normalizeAntigravityEvent(
     reconcileAntigravitySubagentTranscript(transcriptState, roster, transcriptPath)
   }
 
-  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop is terminal.
-  const hasRunningSubagents = hasAntigravityTranscriptSubagents(state, paneKey)
+  const roster = state.antigravitySubagentRosterByPaneKey.get(paneKey)
+  const liveness = antigravityRosterChildWorkLiveness(roster)
+  const hasRunningSubagents = liveness !== null
+
+  // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop without subagents is terminal.
   if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
     if (!hasRunningSubagents) {
       state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
@@ -127,8 +132,18 @@ export function normalizeAntigravityEvent(
     }
   }
 
+  const resolution = foldAgentLeadStatus({
+    leadState: stateName,
+    childWorkLiveness: liveness
+  })
+
+  const previousMainAgent = state.antigravityMainAgentStatusByPaneKey.get(paneKey)
+  const mainAgent = continueMainAgentStatus(previousMainAgent, { state: stateName }, Date.now())
+  state.antigravityMainAgentStatusByPaneKey.set(paneKey, mainAgent)
+
   const payload = normalizeAgentStatusPayload({
-    state: stateName,
+    state: resolution.stateName,
+    ...(resolution.workingMode ? { workingMode: resolution.workingMode } : {}),
     prompt: resolvePrompt(state, paneKey, effectivePrompt, {
       resetOnNewTurn: resetsTurn
     }),
@@ -138,7 +153,8 @@ export function normalizeAntigravityEvent(
     interactivePrompt: snapshot.interactivePrompt,
     lastAssistantMessage: snapshot.lastAssistantMessage,
     lastAssistantMessageIsToolOutput: snapshot.lastAssistantMessageIsToolOutput,
-    subagents: antigravityRosterToSnapshots(state.antigravitySubagentRosterByPaneKey.get(paneKey))
+    subagents: antigravityRosterToSnapshots(state.antigravitySubagentRosterByPaneKey.get(paneKey)),
+    mainAgent
   })
   return payload
 }

@@ -106,8 +106,8 @@ export abstract class AgentHookServerIngestTerminal extends AgentHookServerInges
       previous.receivedAt >= event.yieldsToHookSince
     if (
       hookOwnsCommand ||
-      (previous?.payload.agentType === 'claude' &&
-        event.payload.agentType === 'claude' &&
+      ((previous?.payload.agentType === 'claude' ||
+        previous?.payload.agentType === 'antigravity') &&
         isAgentStatusHeldOpenByChildWork(previous.payload) &&
         previous.payload.subagents?.some((subagent) => subagent.state === 'working') === true)
     ) {

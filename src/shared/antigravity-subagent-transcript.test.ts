@@ -451,4 +451,76 @@ describe('antigravity-subagent-transcript', () => {
 
     rmSync(testDir, { recursive: true, force: true })
   })
+
+  it('removes subagent when completion message is sent in Spanish', () => {
+    const testDir = join(tmpdir(), `orca-agy-spanish-complete-${Date.now()}`)
+    const brainDir = join(testDir, 'brain', 'parent-es')
+    const subagentsDir = join(brainDir, '.system_generated', 'subagents')
+    const logsDir = join(brainDir, '.system_generated', 'logs')
+    mkdirSync(subagentsDir, { recursive: true })
+    mkdirSync(logsDir, { recursive: true })
+    const transcriptPath = join(logsDir, 'transcript.jsonl')
+
+    writeFileSync(
+      join(subagentsDir, 'worker-es-1.json'),
+      JSON.stringify({
+        conversationId: 'worker-es-1',
+        subagentDescriptor: { typeName: 'self', role: 'Auditor de Código' },
+        state: 'SUBAGENT_STATE_ALIVE'
+      })
+    )
+
+    const step1 = JSON.stringify({
+      step_index: 1,
+      source: 'SYSTEM',
+      type: 'SYSTEM_MESSAGE',
+      content:
+        '<SYSTEM_MESSAGE>\n[Message] timestamp=2026-10-12T10:00:00Z sender=worker-es-1 priority=MESSAGE_PRIORITY_HIGH content=Revisión completada al 100%. Todos los tests pasan.\n</SYSTEM_MESSAGE>'
+    })
+    writeFileSync(transcriptPath, `${step1}\n`)
+
+    const state = createAntigravitySubagentTranscriptState()
+    const roster: AntigravitySubagentRoster = new Map()
+
+    const changed = reconcileAntigravitySubagentTranscript(state, roster, transcriptPath)
+    expect(changed).toBe(true)
+    expect(antigravityRosterToSnapshots(roster)).toBeUndefined()
+    expect(state.completedSubagents.has('worker-es-1')).toBe(true)
+
+    rmSync(testDir, { recursive: true, force: true })
+  })
+
+  it('recognizes SUBAGENT_STATE_KILLED from disk descriptor as completed', () => {
+    const testDir = join(tmpdir(), `orca-agy-killed-subagent-${Date.now()}`)
+    const brainDir = join(testDir, 'brain', 'parent-killed')
+    const subagentsDir = join(brainDir, '.system_generated', 'subagents')
+    const logsDir = join(brainDir, '.system_generated', 'logs')
+    mkdirSync(subagentsDir, { recursive: true })
+    mkdirSync(logsDir, { recursive: true })
+    const transcriptPath = join(logsDir, 'transcript.jsonl')
+    writeFileSync(transcriptPath, '')
+
+    writeFileSync(
+      join(subagentsDir, 'killed-worker.json'),
+      JSON.stringify({
+        conversationId: 'killed-worker',
+        subagentDescriptor: { typeName: 'worker', role: 'Killed Worker' },
+        state: 'SUBAGENT_STATE_KILLED'
+      })
+    )
+
+    const state = createAntigravitySubagentTranscriptState()
+    const roster: AntigravitySubagentRoster = new Map()
+
+    const changed = reconcileAntigravitySubagentTranscript(state, roster, transcriptPath)
+    expect(changed).toBe(true)
+    expect(antigravityRosterToSnapshots(roster)).toBeUndefined()
+    expect(state.completedSubagents.has('killed-worker')).toBe(true)
+
+    const changedAgain = reconcileAntigravitySubagentTranscript(state, roster, transcriptPath)
+    expect(changedAgain).toBe(false)
+    expect(antigravityRosterToSnapshots(roster)).toBeUndefined()
+
+    rmSync(testDir, { recursive: true, force: true })
+  })
 })

@@ -6,6 +6,7 @@ import {
   type AgentStatus
 } from '../../shared/agent-detection'
 import { recognizeAgentProcess } from '../../shared/agent-process-recognition'
+import type { AgentType } from '../../shared/agent-status-types'
 import type { RuntimeTerminalAgentStatus } from '../../shared/runtime-types'
 import type { RuntimePtyController } from './runtime-pty-controller-contract'
 import type { RuntimeLeafRecord, RuntimePtyWorktreeRecord } from './runtime-terminal-state-records'
@@ -37,7 +38,11 @@ type Dependencies = {
   getTabTitle(tabId: string): string | null
   getExplicitStatus(
     handle: string
-  ): { status: NonNullable<RuntimeTerminalAgentStatus['status']>; updatedAt: number } | null
+  ): {
+    status: NonNullable<RuntimeTerminalAgentStatus['status']>
+    updatedAt: number
+    agentType?: AgentType
+  } | null
   getLifecycleStatus(
     ptyId: string
   ): { status: AgentStatus | null; updatedAt: number } | null | undefined
@@ -106,7 +111,7 @@ export class RuntimeTerminalAgentStatusQuery {
       // Why: permission titles can linger after hooks report the agent resumed.
       // Fresh hook state is tighter, but current shell/management evidence wins.
       const isRunningAgent =
-        !terminalTitleBlocksExplicitAgentStatus(terminal.title) &&
+        !terminalTitleBlocksExplicitAgentStatus(terminal.title, explicitStatus.agentType) &&
         !(await this.terminalHasShellForegroundProcess(handle, ptyId))
       this.assertTerminalAgentStatusPtyBinding(handle, ptyId)
       return {

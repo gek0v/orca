@@ -23,6 +23,7 @@ import { DaemonPtyAdapter } from './daemon-pty-adapter'
 import type { DaemonRespawnReason } from './daemon-pty-runtime-state'
 import { DaemonPtyRouter } from './daemon-pty-router'
 import { cleanupDaemonForProtocol } from './daemon-protocol-cleanup'
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 import {
   isDaemonRestartInFlight,
   runCoalescedDaemonRestart,
@@ -51,6 +52,21 @@ async function runRestartDaemon(): Promise<RestartDaemonResult> {
   currentSpawner.resetRespawnWindow()
   const currentOnly = getCurrentDaemonAdapter(currentAdapter)
   const legacyAdapters = getLegacyDaemonAdapters(currentAdapter)
+
+  if (!currentOnly) {
+    if (currentAdapter instanceof OrcadNativePtyProvider) {
+      const killedCount = currentAdapter.getActiveSessionIds().length
+      currentAdapter.fanoutSyntheticExits(-1)
+      unbindLocalProviderListeners()
+      currentAdapter.dispose()
+      const newProvider = new OrcadNativePtyProvider()
+      await newProvider.ensureConnected()
+      replaceDaemonProvider(newProvider)
+      rebindLocalProviderListeners()
+      return { killedCount }
+    }
+    return { killedCount: 0 }
+  }
 
   // Step 1: synthesize pty:exit for every active session BEFORE teardown — the daemon's shutdown path never fans onExit to clients (session.ts:246-252), so the renderer would otherwise never see exits.
   const fallbackKilledCount =

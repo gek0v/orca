@@ -20,13 +20,17 @@ export const SAFE_ANTIGRAVITY_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 const SUBAGENT_RECENCY_MS = 15 * 60_000
 
 export function isSubagentCompletionMessage(content: string): boolean {
-  if (/\b(?:status update|progress report|liveness|iteration|standing by)\b/i.test(content)) {
+  if (
+    /\b(?:status update|progress report|liveness|iteration|standing by|en espera|esperando(?: a)?|standby)\b/i.test(
+      content
+    )
+  ) {
     return false
   }
   return (
-    /\b(?:task(?: \w+)? (?:is )?(?:complete|completed|finished|done)|(?:mission|work|implementation|survey) (?:is )?(?:complete|completed|finished|done)|all tasks? completed?)\b/i.test(
+    /\b(?:(?:task|mission|work|implementation|survey|review|audit|analysis|refactor|investigation|job|tarea|misi[oó]n|trabajo|implementaci[oó]n|revisi[oó]n|auditor[ií]a|an[aá]lisis)(?: \w+)? (?:is |est[aá] )?(?:complete|completed|finished|done|completad[oa]|finalizad[oa]|terminad[oa]|concluid[oa])|all tasks? (?:are )?(?:complete|completed|finished|done)|todas las tareas (?:est[aá]n )?completadas|completed successfully|completad[oa] con [eé]xito|100% completad[oa]|completad[oa] al 100%|acciones completadas|soluci[oó]n completa|ready to merge|listo para merge|listo para fusionar)\b/i.test(
       content
-    ) || /\btask 1 complete\b/i.test(content)
+    ) || /\btask \d+ complete\b/i.test(content)
   )
 }
 
@@ -63,8 +67,19 @@ export function isAntigravitySubagentTranscriptDone(transcriptPath: string): boo
     if (Array.isArray(rec.tool_calls) && rec.tool_calls.length > 0) {
       return false
     }
+    const type = typeof rec.type === 'string' ? rec.type.toUpperCase() : undefined
+    if (type !== 'PLANNER_RESPONSE') {
+      return false
+    }
     const content = typeof rec.content === 'string' ? rec.content : ''
-    return status === 'DONE' && isSubagentCompletionMessage(content)
+    if (
+      /\b(?:status update|progress report|liveness|iteration|standing by|en espera|esperando(?: a)?|standby)\b/i.test(
+        content
+      )
+    ) {
+      return false
+    }
+    return status === 'DONE'
   } catch {
     return false
   }
@@ -142,11 +157,17 @@ export function reconcileFromDiskSubagentsDir(
             typeof descriptor?.typeName === 'string' ? descriptor.typeName : undefined
           const role = typeof descriptor?.role === 'string' ? descriptor.role : undefined
 
+          const diskState = typeof data.state === 'string' ? data.state.toUpperCase() : undefined
+          const diskIsTerminal =
+            diskState === 'SUBAGENT_STATE_KILLED' ||
+            diskState === 'SUBAGENT_STATE_DONE' ||
+            diskState === 'SUBAGENT_STATE_COMPLETED'
+
           // Check child transcript recency if available
           const childSystemDir = join(brainDir, childId, '.system_generated')
           const childTranscript = join(childSystemDir, 'logs', 'transcript.jsonl')
           let isStale = false
-          const childIsDone = isAntigravitySubagentTranscriptDone(childTranscript)
+          const childIsDone = diskIsTerminal || isAntigravitySubagentTranscriptDone(childTranscript)
           try {
             if (existsSync(childTranscript)) {
               const st = statSync(childTranscript)

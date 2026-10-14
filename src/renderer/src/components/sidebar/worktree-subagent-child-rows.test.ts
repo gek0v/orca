@@ -53,7 +53,7 @@ describe('shared CLI and structured child freshness', () => {
     }
   )
 
-  it('drops antigravity subagent rows when parent entry state is done', () => {
+  it('keeps running antigravity subagent rows even when parent turn state is done', () => {
     const parentEntry: AgentStatusEntry = {
       paneKey: 'parent-pane',
       tabId: tab.id,
@@ -67,6 +67,8 @@ describe('shared CLI and structured child freshness', () => {
       subagents: [{ id: 'child', state: 'working', startedAt: 20 }]
     }
     const rows = buildSubagentChildRows({ parentEntry, tab, parentIsFresh: true })
-    expect(rows).toEqual([])
+    expect(rows).toHaveLength(1)
+    expect(rows[0].entry.orchestration?.taskId).toBe('subagent:child')
+    expect(rows[0].state).toBe('working')
   })
 })

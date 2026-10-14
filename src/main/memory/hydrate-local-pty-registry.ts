@@ -9,6 +9,7 @@ import { getDaemonProvider } from '../daemon/daemon-init'
 import type { DaemonPtyAdapter } from '../daemon/daemon-pty-adapter'
 import type { DaemonPtyRouter } from '../daemon/daemon-pty-router'
 import type { DegradedDaemonPtyProvider } from '../daemon/degraded-daemon-pty-provider'
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 import type { SessionInfo } from '../daemon/types'
 import { isFolderWorkspaceIdForRepo } from '../ipc/worktrees/folder-workspace-model'
 import type { Store } from '../persistence'
@@ -81,7 +82,7 @@ async function hydrateLocalPtyRegistry(
 ): Promise<boolean> {
   throwIfSignalAborted(signal)
   const provider = getDaemonProvider()
-  if (!provider) {
+  if (!provider || provider instanceof OrcadNativePtyProvider) {
     return false
   }
 

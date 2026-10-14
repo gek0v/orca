@@ -17,11 +17,8 @@ type TuiAgentConfigSource = Omit<TuiAgentConfig, 'launchCmd' | 'expectedProcess'
 }
 
 function resolveTuiAgentConfig(source: TuiAgentConfigSource): TuiAgentConfig {
-  return {
-    ...source,
-    launchCmd: source.launchCmd ?? source.detectCmd,
-    expectedProcess: source.expectedProcess ?? source.detectCmd
-  }
+  const { launchCmd = source.detectCmd, expectedProcess = source.detectCmd } = source
+  return { ...source, launchCmd, expectedProcess }
 }
 
 const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
@@ -177,6 +174,7 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
   },
   antigravity: {
     detectCmd: 'agy',
+    detectCmdAliases: ['antigravity', 'antigravity-cli'],
     promptInjectionMode: 'flag-prompt-interactive',
     // Why: agy's first-launch trust menu consumes the bracketed paste, and its trust is
     // exact-path rather than inherited, so every freshly created child worktree raises it

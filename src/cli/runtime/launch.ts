@@ -130,7 +130,7 @@ async function serveWithSelectedRuntime(
     userDataPath,
     usesMacUpdateHandoff: args.recipeJson !== true && getMacAppBundlePath(executable) !== null
   })
-  if (selection.kind === 'orcad') {
+  if (selection.kind === 'orcad' || selection.kind === 'orcad-native') {
     process.stderr.write(`[serve] running on orcad ${selection.version}\n`)
     return serveWithOrcad(selection, args, userDataPath, stripElectronRunAsNode(process.env))
   }

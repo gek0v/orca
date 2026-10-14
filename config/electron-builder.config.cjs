@@ -38,6 +38,7 @@ const {
 const { verifySkillsCliRuntime } = require('./scripts/verify-skills-cli-runtime.cjs')
 const { verifyStaticAppImagePackage } = require('./scripts/static-appimage-package-contract.cjs')
 const { signWindowsUninstallerViaSignPath } = require('./scripts/windows-uninstaller-signing.cjs')
+const { getPackagedNativeBinaryResources } = require('./scripts/packaged-native-binaries.cjs')
 
 // Why: dev-channel builds must carry the *release* identity — same bundle id,
 // Developer ID signature, and notarization ticket — or Squirrel.Mac refuses to
@@ -146,6 +147,9 @@ const winSpeechNativeResource = {
   from: 'node_modules/sherpa-onnx-win-x64',
   to: 'node_modules/sherpa-onnx-win-x64'
 }
+function nativeOrcadResource(platform) {
+  return getPackagedNativeBinaryResources(platform, { includeCli: false })
+}
 // electron-builder replaces these defaults when `depends` is configured; retain
 // Electron's loader requirements alongside Orca's headless-host dependencies.
 const debElectronRuntimeDependencies = [
@@ -218,6 +222,11 @@ module.exports = {
     '!docs{,/**/*}',
     '!mobile{,/**/*}',
     '!native{,/**/*}',
+    '!crates{,/**/*}',
+    '!target{,/**/*}',
+    '!cloud{,/**/*}',
+    '!{.orca,.agents}{,/**/*}',
+    '!{Cargo.toml,Cargo.lock,rust-toolchain.toml,PROJECT.md}',
     '!skills{,/**/*}',
     // Why: guide/stub authoring sources are compiled into runtime artifacts; shipping
     // either source tree would duplicate content without a runtime consumer.
@@ -490,6 +499,7 @@ module.exports = {
       ...commonExtraResources,
       ...windowsRuntimeResources,
       winSpeechNativeResource,
+      ...nativeOrcadResource('win32'),
       {
         from: 'resources/win32/bin/orca.cmd',
         to: 'bin/orca.cmd'

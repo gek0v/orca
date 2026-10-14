@@ -6,7 +6,7 @@ import {
   isShellProcess,
   type AgentStatus
 } from '../../shared/agent-detection'
-import type { AgentStatusEntry } from '../../shared/agent-status-types'
+import type { AgentStatusEntry, AgentType } from '../../shared/agent-status-types'
 import type { PtyIncarnationId } from '../../shared/pty-incarnation'
 import type {
   RuntimeTerminalAgentStatus,
@@ -199,11 +199,21 @@ export function classifyAgentTitle(title: string | null): 'agent' | 'management'
   return detectAgentStatusFromTitle(title) !== null ? 'agent' : 'neutral'
 }
 
-export function terminalTitleBlocksExplicitAgentStatus(title: string | null): boolean {
+export function terminalTitleBlocksExplicitAgentStatus(
+  title: string | null,
+  agentType?: AgentType | null
+): boolean {
   if (!title) {
     return false
   }
-  return isClaudeManagementTitle(title) || isShellProcess(title)
+  if (isClaudeManagementTitle(title)) {
+    return true
+  }
+  // Why: Antigravity CLI does not emit OSC window titles; its terminal title remains the host shell.
+  if (agentType === 'antigravity') {
+    return false
+  }
+  return isShellProcess(title)
 }
 
 export function getLatestAgentCandidateTitle(...titles: TitleCandidate[]): string | null {

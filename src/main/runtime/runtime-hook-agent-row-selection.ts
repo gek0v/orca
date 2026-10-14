@@ -3,6 +3,7 @@ import {
   pickParsedAgentStatusPayload,
   type AgentStatusEntry,
   type AgentStatusIpcPayload,
+  type AgentType,
   type ParsedAgentStatusPayload
 } from '../../shared/agent-status-types'
 import type { AgentProviderSessionMetadata } from '../../shared/agent-session-resume'
@@ -74,6 +75,7 @@ export function selectFreshExplicitAgentStatus(args: {
   status: NonNullable<RuntimeTerminalAgentStatus['status']>
   updatedAt: number
   stateStartedAt: number
+  agentType?: AgentType
 } | null {
   const row = selectFreshExplicitAgentStatusRow({
     handles: [args.handle],
@@ -84,7 +86,8 @@ export function selectFreshExplicitAgentStatus(args: {
     ? {
         status: mapExplicitAgentStateToRuntimeTerminalStatus(row.state),
         updatedAt: row.receivedAt,
-        stateStartedAt: typeof row.stateStartedAt === 'number' ? row.stateStartedAt : row.receivedAt
+        stateStartedAt: typeof row.stateStartedAt === 'number' ? row.stateStartedAt : row.receivedAt,
+        ...(row.agentType ? { agentType: row.agentType } : {})
       }
     : null
 }

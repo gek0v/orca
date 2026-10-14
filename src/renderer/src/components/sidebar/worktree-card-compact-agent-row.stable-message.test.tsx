@@ -6,6 +6,7 @@ import type { DashboardAgentRow as DashboardAgentRowData } from '@/components/da
 import type { AgentStatusEntry, AgentStatusState } from '../../../../shared/agent-status-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
+import { parseWorkspaceSession } from '../../../../shared/workspace-session-schema'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { setCachedAntigravityAccountsState } from '@/hooks/useAntigravityAccounts'
 import { CompactAgentRow } from './worktree-card-compact-agent-row'
@@ -27,7 +28,8 @@ function makeAgent({
   state = 'working',
   agentType = 'claude',
   launchAgent,
-  launchAccountId
+  launchAccountId,
+  tab: customTab
 }: {
   stateStartedAt: number
   lastAssistantMessage?: string
@@ -35,8 +37,9 @@ function makeAgent({
   agentType?: string
   launchAgent?: TuiAgent
   launchAccountId?: string
+  tab?: TerminalTab
 }): DashboardAgentRowData {
-  const tab: TerminalTab = {
+  const tab: TerminalTab = customTab ?? {
     id: 'tab-1',
     ptyId: null,
     worktreeId: 'wt-1',
@@ -176,5 +179,64 @@ describe('CompactAgentRow stable assistant message', () => {
     const container = renderRow(agent)
     expect(container.querySelector('[data-account-color]')).toBeNull()
     expect(container.querySelector('[data-account-emoji]')).toBeNull()
+  })
+
+  it('renders account badge for restored tab after workspace session parsing', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-emoji',
+          email: 'emoji@corp.com',
+          subject: 'sub-emoji',
+          authMethod: 'oauth',
+          alias: 'Business',
+          emoji: '💼',
+          color: null,
+          createdAt: 0,
+          updatedAt: 0
+        }
+      ],
+      activeAccountId: null,
+      currentAccount: null,
+      selectedAccountId: null
+    })
+
+    const parsedSession = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: 'wt-1',
+      activeTabId: 'tab-restored',
+      tabsByWorktree: {
+        'wt-1': [
+          {
+            id: 'tab-restored',
+            ptyId: null,
+            worktreeId: 'wt-1',
+            title: 'Terminal 1',
+            customTitle: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 1,
+            launchAgent: 'antigravity',
+            launchAccountId: 'acc-emoji'
+          }
+        ]
+      },
+      terminalLayoutsByTabId: {}
+    })
+    expect(parsedSession.ok).toBe(true)
+    if (!parsedSession.ok) {
+      return
+    }
+
+    const restoredTab = parsedSession.value.tabsByWorktree['wt-1'][0]
+    const agent = makeAgent({
+      stateStartedAt: 1000,
+      agentType: 'antigravity',
+      tab: restoredTab
+    })
+
+    const container = renderRow(agent)
+    const emojiBadge = container.querySelector('[data-account-emoji="💼"]')
+    expect(emojiBadge).not.toBeNull()
   })
 })

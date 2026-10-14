@@ -120,6 +120,7 @@ export const terminalTabSchema = z.object({
     .custom<TuiAgent>((v) => isTuiAgent(v))
     .optional()
     .catch(undefined),
+  launchAccountId: z.string().optional(),
   // Why: survives a restart so a restored launch pane reads its fate before it spawns.
   agentLaunchPane: agentLaunchPaneOnTabSchema
 })
@@ -145,6 +146,11 @@ const tabSchema = z.object({
     .refine((value) => isStructuredAgentId(value))
     .optional()
     .catch(undefined),
+  launchAgent: z
+    .custom<TuiAgent>((v) => isTuiAgent(v))
+    .optional()
+    .catch(undefined),
+  launchAccountId: z.string().optional(),
   label: z.string(),
   generatedLabel: z.string().nullable().optional(),
   aiVaultTitle: z

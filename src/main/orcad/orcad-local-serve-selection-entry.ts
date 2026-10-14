@@ -27,6 +27,7 @@ async function run(argv: readonly string[]): Promise<void> {
     env: process.env,
     platform: process.platform,
     userDataPath,
+    appRoot,
     templateDirs: [
       ...(process.resourcesPath ? [join(process.resourcesPath, 'orcad-template')] : []),
       join(appRoot, 'out', 'orcad-template')

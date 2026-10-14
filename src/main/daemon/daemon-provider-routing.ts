@@ -3,9 +3,18 @@ import type { DaemonPtyAdapter } from './daemon-pty-adapter'
 import { DaemonPtyRouter } from './daemon-pty-router'
 import type { IPtyProvider } from '../providers/types'
 
-export type DaemonProvider = DaemonPtyRouter | DaemonPtyAdapter | DegradedDaemonPtyProvider
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 
-export function getCurrentDaemonAdapter(provider: DaemonProvider): DaemonPtyAdapter {
+export type DaemonProvider =
+  | DaemonPtyRouter
+  | DaemonPtyAdapter
+  | DegradedDaemonPtyProvider
+  | OrcadNativePtyProvider
+
+export function getCurrentDaemonAdapter(provider: DaemonProvider): DaemonPtyAdapter | null {
+  if (provider instanceof OrcadNativePtyProvider) {
+    return null
+  }
   if (provider instanceof DaemonPtyRouter || provider instanceof DegradedDaemonPtyProvider) {
     return provider.getCurrentAdapter()
   }

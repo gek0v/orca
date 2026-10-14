@@ -30,6 +30,33 @@ import type { DaemonRespawnReason } from './daemon-pty-runtime-state'
 import { DaemonPtyRouter } from './daemon-pty-router'
 import { isDaemonRestartInFlight } from './daemon-restart-state'
 import { DaemonSpawner, getDaemonPidPath } from './daemon-spawner'
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
+import { resolveNativeBinary } from '../orcad/orcad-local-serve-selection'
+
+export type NativeOrcadAdoptionContext = {
+  hasNativeBinary?: boolean
+  env?: NodeJS.ProcessEnv
+}
+
+export function shouldAdoptNativeOrcadProvider(ctx?: NativeOrcadAdoptionContext): boolean {
+  const env = ctx?.env ?? process.env
+  if (env.ORCA_DISABLE_NATIVE_ORCAD === '1') {
+    return false
+  }
+  if (env.ORCA_USE_NATIVE_ORCAD === '1') {
+    return true
+  }
+  if (typeof ctx?.hasNativeBinary === 'boolean') {
+    return ctx.hasNativeBinary
+  }
+  const binary = resolveNativeBinary({
+    env,
+    platform: process.platform,
+    userDataPath: '',
+    templateDirs: []
+  })
+  return binary !== null
+}
 
 // Why: daemon init runs concurrent with window load, so an in-process t timestamp (not harness stderr timing) measures cold-start.
 function logDaemonMilestone(event: string, details: Record<string, unknown> = {}): void {
@@ -46,6 +73,22 @@ export async function initDaemonPtyProvider(
   options: DaemonLaunchPolicy = {}
 ): Promise<void> {
   logDaemonMilestone('daemon-init-start')
+  if (shouldAdoptNativeOrcadProvider()) {
+    try {
+      const nativeProvider = new OrcadNativePtyProvider()
+      await nativeProvider.ensureConnected()
+      installDaemonProvider(null, nativeProvider)
+      rebindLocalProviderListeners()
+      logDaemonMilestone('daemon-init-done', { native: true })
+      return
+    } catch (error) {
+      console.warn(
+        '[daemon] Native orcad provider init failed, falling back to legacy spawner:',
+        error
+      )
+      logDaemonMilestone('daemon-native-fallback', { error: String(error) })
+    }
+  }
   // Why: e2e coverage for the startup PTY gate (#5232) needs a daemon init that deterministically outlasts the first-window timeout.
   const e2eInitDelayMs = Number(process.env.ORCA_E2E_DAEMON_INIT_DELAY_MS)
   if (Number.isFinite(e2eInitDelayMs) && e2eInitDelayMs > 0) {

@@ -83,11 +83,21 @@ export function updateCachedAccountUsage(accountId: string, usage: ProviderRateL
   }
 }
 
+let inFlightRefresh: Promise<AntigravityAccountState> | null = null
+
 export function refreshAntigravityAccounts(): Promise<AntigravityAccountState> {
-  return callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'List').then((res) => {
-    setCachedAntigravityAccountsState(res)
-    return res
-  })
+  if (inFlightRefresh) {
+    return inFlightRefresh
+  }
+  inFlightRefresh = callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'List')
+    .then((res) => {
+      setCachedAntigravityAccountsState(res)
+      return res
+    })
+    .finally(() => {
+      inFlightRefresh = null
+    })
+  return inFlightRefresh
 }
 
 export function useAntigravityAccounts(): {
