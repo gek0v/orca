@@ -668,4 +668,68 @@ describe('AntigravitySwitcherMenu', () => {
       })
     )
   })
+
+  it('renders Ready badge when an inactive account has recovered its quota', () => {
+    setCachedAntigravityAccountsState({
+      accounts: [
+        {
+          id: 'acc-1',
+          email: 'personal@gmail.com',
+          subject: 'sub-1',
+          authMethod: 'oauth',
+          alias: 'Personal',
+          color: '#3b82f6',
+          emoji: '🏠',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsage: createRateLimits(90)
+        },
+        {
+          id: 'acc-2',
+          email: 'work@company.com',
+          subject: 'sub-2',
+          authMethod: 'oauth',
+          alias: 'Trabajo',
+          color: '#10b981',
+          emoji: '💼',
+          createdAt: 2000,
+          updatedAt: 2000,
+          lastUsage: {
+            provider: 'antigravity',
+            session: {
+              windowMinutes: 300,
+              usedPercent: 0,
+              resetsAt: Date.now() - 5000,
+              resetDescription: null
+            },
+            weekly: null,
+            updatedAt: Date.now(),
+            error: null,
+            status: 'ok'
+          }
+        }
+      ],
+      activeAccountId: 'acc-1',
+      selectedAccountId: 'acc-1',
+      currentAccount: {
+        email: 'personal@gmail.com',
+        subject: 'sub-1',
+        authMethod: 'oauth',
+        identityKnown: true
+      }
+    })
+
+    render(
+      <AntigravitySwitcherMenu
+        antigravity={createRateLimits(90)}
+        compact={false}
+        iconOnly={false}
+      />
+    )
+
+    const trigger = screen.getAllByText('Personal')[1]
+    fireEvent.click(trigger)
+
+    expect(screen.getByText('Ready')).toBeDefined()
+  })
 })
