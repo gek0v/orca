@@ -28,6 +28,7 @@ const {
 const {
   verifyPackagedWindowsNodePty
 } = require('./scripts/verify-packaged-node-pty-job-ownership.cjs')
+const { verifyPackagedWindowsAgentHook } = require('./scripts/verify-packaged-windows-agent-hook.cjs')
 const {
   assertOrcadTemplateBuilt,
   finalizePackagedOrcadTemplate,
@@ -418,6 +419,7 @@ module.exports = {
     const canExecuteTargetArch = context.arch === hostArchEnum || context.arch === 4
     if (context.electronPlatformName === 'win32') {
       verifyPackagedWindowsNodePty(resourcesDir, context.arch, { canExecuteTargetArch })
+      verifyPackagedWindowsAgentHook(resourcesDir, context.arch)
     }
     verifySkillsCliRuntime(join(resourcesDir, 'app.asar.unpacked', 'out'), resourcesDir, {
       executeCommands: canExecuteTargetArch
@@ -507,6 +509,14 @@ module.exports = {
       {
         from: 'native/windows-cli-launcher/.build/orca.exe',
         to: 'bin/orca.exe'
+      },
+      {
+        from: 'native/windows-cli-launcher/.build/orca-administrator-restart.exe',
+        to: 'bin/orca-administrator-restart.exe'
+      },
+      {
+        from: 'native/windows-agent-hook/.build/orca-agent-hook.exe',
+        to: 'bin/orca-agent-hook.exe'
       },
       {
         from: 'node_modules/agent-browser/bin/agent-browser-win32-x64.exe',
