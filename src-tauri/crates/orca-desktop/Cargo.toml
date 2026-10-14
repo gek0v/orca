@@ -32,3 +32,7 @@ tauri-plugin-window-state = { workspace = true }
 
 [build-dependencies]
 tauri-build = { workspace = true }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
