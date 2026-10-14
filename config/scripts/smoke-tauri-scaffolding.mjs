@@ -58,4 +58,17 @@ if (testResult.code !== 0) {
   process.exit(testResult.code ?? 1)
 }
 
+console.log('[smoke:tauri] Running unit tests on renderer Tauri adapter...')
+const vitestBin = join(root, 'node_modules', 'vitest', 'vitest.mjs')
+const vitestResult = runProcessSync({
+  program: process.execPath,
+  args: [vitestBin, 'run', 'src/renderer/src/tauri/'],
+  cwd: root
+})
+
+if (vitestResult.code !== 0) {
+  console.error('[smoke:tauri] renderer Tauri vitest failed:', describeProcessFailure(vitestResult))
+  process.exit(vitestResult.code ?? 1)
+}
+
 console.log('[smoke:tauri] All smoke checks passed successfully!')
