@@ -62,6 +62,51 @@ export function createTauriPreloadApi(): PreloadApi {
         return invokeTauri('settings_update', { patch: args })
       }
     },
+    opencodeGoCredentials: {
+      getStatus: async () => {
+        const key = await invokeTauri<string | null>('credentials_get', {
+          account: 'opencode-go'
+        })
+        return { apiKeyConfigured: Boolean(key) }
+      },
+      saveApiKey: async (key: string) => {
+        await invokeTauri('credentials_set', {
+          account: 'opencode-go',
+          secret: key
+        })
+        return { apiKeyConfigured: true }
+      },
+      clearApiKey: async () => {
+        await invokeTauri('credentials_delete', {
+          account: 'opencode-go'
+        })
+        return { apiKeyConfigured: false }
+      }
+    },
+    credentials: {
+      get: (service?: string, account?: string) =>
+        invokeTauri<string | null>('credentials_get', { service, account }),
+      set: (service: string | undefined, account: string, secret: string) =>
+        invokeTauri<void>('credentials_set', { service, account, secret }),
+      delete: (service: string | undefined, account: string) =>
+        invokeTauri<boolean>('credentials_delete', { service, account })
+    },
+    session: {
+      get: async () => {
+        const result = await invokeTauri<Record<string, unknown> | null>('sessions_load')
+        return result ?? { schemaVersion: 1 }
+      },
+      set: (args: unknown) => invokeTauri('sessions_save', { sessions: args })
+    },
+    orcad: {
+      invoke: (method: string, params?: unknown) => invokeTauri('orcad_invoke', { method, params })
+    },
+    watcher: {
+      watch: (watchId: string, path: string) => invokeTauri('watcher_watch', { watchId, path }),
+      unwatch: (watchId: string) => invokeTauri('watcher_unwatch', { watchId }),
+      onEvents: (callback: (payload: { watchId: string; events: unknown[] }) => void) =>
+        subscribeTauri('fs:change', callback)
+    },
     ui: {
       minimize: () => {
         void invokeTauri('window_minimize')
@@ -138,11 +183,11 @@ export function createTauriPreloadApi(): PreloadApi {
 
         return { id: sessionId }
       },
-      write: (id: string, data: string) => {
+      write: (id: string, data: string, _inputKind?: unknown) => {
         const bytes = Array.from(new TextEncoder().encode(data))
         void invokeTauri('pty_write', { sessionId: id, data: bytes })
       },
-      writeAccepted: async (id: string, data: string) => {
+      writeAccepted: async (id: string, data: string, _inputKind?: unknown) => {
         const bytes = Array.from(new TextEncoder().encode(data))
         await invokeTauri('pty_write', { sessionId: id, data: bytes })
         return true

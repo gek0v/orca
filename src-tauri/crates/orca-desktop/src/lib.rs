@@ -1,6 +1,6 @@
 pub mod commands;
 
-use orca_core::{handle_ping, AppState};
+use orca_core::{handle_ping, AppState, FileWatcherManager, OrcadClient, PersistenceActor};
 use orca_types::{PingResponse, SystemInfo};
 use tauri::{Emitter, Manager};
 
@@ -15,9 +15,25 @@ fn get_system_info(state: tauri::State<AppState>) -> SystemInfo {
 }
 
 pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
+    let persistence = match std::env::var("ORCA_DATA_DIR") {
+        Ok(dir) => {
+            let p = std::path::PathBuf::from(dir).join("profile-state.db");
+            PersistenceActor::open(p).unwrap_or_else(|_| {
+                PersistenceActor::open_in_memory().expect("sqlite fallback in-memory")
+            })
+        }
+        Err(_) => PersistenceActor::open_in_memory().expect("sqlite in-memory"),
+    };
+
+    let orcad_client = OrcadClient::new(&OrcadClient::default_endpoint());
+    let watcher_manager = FileWatcherManager::new();
+
     tauri::Builder::default()
         .manage(AppState::default())
         .manage(orca_pty::PortablePtyEngine::new())
+        .manage(persistence)
+        .manage(orcad_client)
+        .manage(watcher_manager)
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -56,7 +72,17 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             commands::pty::pty_spawn,
             commands::pty::pty_write,
             commands::pty::pty_resize,
-            commands::pty::pty_kill
+            commands::pty::pty_kill,
+            commands::persistence::settings_get,
+            commands::persistence::settings_update,
+            commands::persistence::sessions_save,
+            commands::persistence::sessions_load,
+            commands::credentials::credentials_get,
+            commands::credentials::credentials_set,
+            commands::credentials::credentials_delete,
+            commands::orcad::orcad_invoke,
+            commands::watcher::watcher_watch,
+            commands::watcher::watcher_unwatch,
         ])
 }
 

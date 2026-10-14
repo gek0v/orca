@@ -7,9 +7,10 @@ pub mod process;
 pub mod rpc;
 pub mod security;
 
-
-
-
+pub use fs::watcher::FileWatcherManager;
+pub use persistence::actor::PersistenceActor;
+pub use rpc::client::OrcadClient;
+pub use security::credentials;
 
 pub struct AppState {
     pub app_version: String,

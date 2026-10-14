@@ -139,7 +139,7 @@ describe('tauri-preload-adapter', () => {
       expect(receivedData).toEqual([{ id: 'pty-test-1', data: 'Hello PTY!' }])
 
       // Write test
-      api.pty.write('pty-test-1', 'ls\n')
+      api.pty.write('pty-test-1', 'ls\n', 'driving')
       expect(invoke).toHaveBeenCalledWith('pty_write', {
         sessionId: 'pty-test-1',
         data: Array.from(new TextEncoder().encode('ls\n'))
@@ -161,6 +161,90 @@ describe('tauri-preload-adapter', () => {
 
       unsubscribeData()
       unsubscribeExit()
+    })
+
+    it('dispatches credentials commands for opencodeGoCredentials', async () => {
+      const api = createTauriPreloadApi()
+      const { invoke } = await import('@tauri-apps/api/core')
+
+      vi.mocked(invoke).mockResolvedValueOnce('sk-secret')
+      const status1 = await api.opencodeGoCredentials.getStatus()
+      expect(status1).toEqual({ apiKeyConfigured: true })
+      expect(invoke).toHaveBeenCalledWith('credentials_get', {
+        account: 'opencode-go'
+      })
+
+      vi.mocked(invoke).mockResolvedValueOnce(undefined)
+      const saveRes = await api.opencodeGoCredentials.saveApiKey('sk-new-secret')
+      expect(saveRes).toEqual({ apiKeyConfigured: true })
+      expect(invoke).toHaveBeenCalledWith('credentials_set', {
+        account: 'opencode-go',
+        secret: 'sk-new-secret'
+      })
+
+      vi.mocked(invoke).mockResolvedValueOnce(true)
+      const clearRes = await api.opencodeGoCredentials.clearApiKey()
+      expect(clearRes).toEqual({ apiKeyConfigured: false })
+      expect(invoke).toHaveBeenCalledWith('credentials_delete', {
+        account: 'opencode-go'
+      })
+    })
+
+    it('dispatches session and settings commands to native persistence', async () => {
+      const api = createTauriPreloadApi()
+      const { invoke } = await import('@tauri-apps/api/core')
+
+      const dummySession = {
+        activeRepoId: 'repo-1'
+      }
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing session persistence mock return.
+      vi.mocked(invoke).mockResolvedValueOnce(
+        dummySession as unknown as Awaited<ReturnType<typeof api.session.get>>
+      )
+      const sessionData = await api.session.get()
+      expect(sessionData).toEqual(dummySession)
+      expect(invoke).toHaveBeenCalledWith('sessions_load', undefined)
+
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing session persistence mock argument.
+      await api.session.set(dummySession as unknown as Parameters<typeof api.session.set>[0])
+      expect(invoke).toHaveBeenCalledWith('sessions_save', {
+        sessions: dummySession
+      })
+    })
+
+    it('dispatches orcad and watcher commands', async () => {
+      const api = createTauriPreloadApi()
+      const { invoke } = await import('@tauri-apps/api/core')
+
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing orcad direct IPC adapter invoke.
+      const orcadApi = (
+        api as unknown as { orcad: { invoke: (m: string, p?: unknown) => Promise<unknown> } }
+      ).orcad
+      await orcadApi.invoke('workspace.ping', { echo: 'hello' })
+      expect(invoke).toHaveBeenCalledWith('orcad_invoke', {
+        method: 'workspace.ping',
+        params: { echo: 'hello' }
+      })
+
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing watcher adapter methods.
+      const watcherApi = (
+        api as unknown as {
+          watcher: {
+            watch: (id: string, p: string) => Promise<unknown>
+            unwatch: (id: string) => Promise<unknown>
+          }
+        }
+      ).watcher
+      await watcherApi.watch('watch-1', '/path/to/project')
+      expect(invoke).toHaveBeenCalledWith('watcher_watch', {
+        watchId: 'watch-1',
+        path: '/path/to/project'
+      })
+
+      await watcherApi.unwatch('watch-1')
+      expect(invoke).toHaveBeenCalledWith('watcher_unwatch', {
+        watchId: 'watch-1'
+      })
     })
   })
 
