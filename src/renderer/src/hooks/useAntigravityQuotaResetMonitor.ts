@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
-import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
-import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
+import type { AntigravityAccountSummary } from '../../../shared/antigravity-account-types'
+import type { ProviderRateLimits } from '../../../shared/rate-limit-types'
 import type { CodexStatusRuntimeTarget } from '@/components/status-bar/status-bar-runtime-targets'
 import { useAntigravityAccounts } from './useAntigravityAccounts'
 import { useResetCountdownClock } from './useResetCountdownClock'

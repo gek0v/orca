@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AntigravityAccountSummary } from '../../../../shared/antigravity-account-types'
-import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
+import type { AntigravityAccountSummary } from '../../../shared/antigravity-account-types'
+import type { ProviderRateLimits } from '../../../shared/rate-limit-types'
 
 import {
   findRecoveredCandidates,
@@ -53,6 +53,8 @@ function createMockRateLimits(overrides?: Partial<ProviderRateLimits>): Provider
     },
     weekly: null,
     status: 'ok',
+    updatedAt: NOW,
+    error: null,
     ...overrides
   }
 }
@@ -183,7 +185,12 @@ describe('useAntigravityQuotaResetMonitor', () => {
     )
 
     vi.spyOn(accountsHook, 'useAntigravityAccounts').mockReturnValue({
-      state: { accounts: [activeAcc, recoveredAcc], activeAccountId: 'active-id' },
+      state: {
+        accounts: [activeAcc, recoveredAcc],
+        activeAccountId: 'active-id',
+        selectedAccountId: 'active-id',
+        currentAccount: null
+      },
       accounts: [activeAcc, recoveredAcc],
       activeAccount: activeAcc,
       getAccountById: (id) => (id === 'active-id' ? activeAcc : recoveredAcc)
@@ -236,7 +243,12 @@ describe('useAntigravityQuotaResetMonitor', () => {
     )
 
     vi.spyOn(accountsHook, 'useAntigravityAccounts').mockReturnValue({
-      state: { accounts: [activeAcc, recoveredAcc], activeAccountId: 'active-id' },
+      state: {
+        accounts: [activeAcc, recoveredAcc],
+        activeAccountId: 'active-id',
+        selectedAccountId: 'active-id',
+        currentAccount: null
+      },
       accounts: [activeAcc, recoveredAcc],
       activeAccount: activeAcc,
       getAccountById: (id) => (id === 'active-id' ? activeAcc : recoveredAcc)
@@ -270,7 +282,12 @@ describe('useAntigravityQuotaResetMonitor', () => {
     )
 
     vi.spyOn(accountsHook, 'useAntigravityAccounts').mockReturnValue({
-      state: { accounts: [activeAcc, recoveredAcc], activeAccountId: 'active-id' },
+      state: {
+        accounts: [activeAcc, recoveredAcc],
+        activeAccountId: 'active-id',
+        selectedAccountId: 'active-id',
+        currentAccount: null
+      },
       accounts: [activeAcc, recoveredAcc],
       activeAccount: activeAcc,
       getAccountById: (id) => (id === 'active-id' ? activeAcc : recoveredAcc)
@@ -313,7 +330,12 @@ describe('useAntigravityQuotaResetMonitor', () => {
     )
 
     vi.spyOn(accountsHook, 'useAntigravityAccounts').mockReturnValue({
-      state: { accounts: [activeAcc, acc1, acc2], activeAccountId: 'active-id' },
+      state: {
+        accounts: [activeAcc, acc1, acc2],
+        activeAccountId: 'active-id',
+        selectedAccountId: 'active-id',
+        currentAccount: null
+      },
       accounts: [activeAcc, acc1, acc2],
       activeAccount: activeAcc,
       getAccountById: (id) => (id === 'active-id' ? activeAcc : id === 'acc1' ? acc1 : acc2)
