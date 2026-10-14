@@ -1,0 +1,85 @@
+name: Tauri v2 CI & Packaging
+
+on:
+  push:
+    branches: [feature/tauri-v2-migration, main]
+    paths:
+      - 'src-tauri/**'
+      - 'src/renderer/src/tauri/**'
+      - '.github/workflows/tauri-build.yml'
+  pull_request:
+    paths:
+      - 'src-tauri/**'
+      - 'src/renderer/src/tauri/**'
+      - '.github/workflows/tauri-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-check:
+    name: Tauri CI (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+          - os: ubuntu-22.04
+            platform: linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Tauri Scaffolding Smoke Test
+        run: pnpm run smoke:tauri
+
+      - name: Run Rust workspace unit tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml -p orca-core -p orca-pty -p orca-types
+
+      - name: Run Renderer Tauri Adapter Vitest
+        run: pnpm vitest run src/renderer/src/tauri/
