@@ -46,10 +46,22 @@ if (checkResult.code !== 0) {
   process.exit(checkResult.code ?? 1)
 }
 
-console.log('[smoke:tauri] Running cargo test on src-tauri workspace...')
+console.log(
+  '[smoke:tauri] Running cargo test on workspace crates (orca-core, orca-pty, orca-types)...'
+)
 const testResult = runProcessSync({
   program: 'cargo',
-  args: ['test', '--manifest-path', manifestPath],
+  args: [
+    'test',
+    '--manifest-path',
+    manifestPath,
+    '-p',
+    'orca-core',
+    '-p',
+    'orca-pty',
+    '-p',
+    'orca-types'
+  ],
   cwd: root
 })
 

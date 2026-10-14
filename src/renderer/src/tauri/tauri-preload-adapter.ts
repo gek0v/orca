@@ -1,7 +1,30 @@
 import type { PreloadApi } from '../../../preload/api-types'
-import { invokeTauri, isTauriEnvironment, subscribeTauri } from './tauri-ipc-core'
+import { Channel, invokeTauri, isTauriEnvironment, subscribeTauri } from './tauri-ipc-core'
 
 let cachedSettings: Record<string, unknown> | null = null
+
+const ptyDataListeners = new Set<(data: { id: string; data: string }) => void>()
+const ptyExitListeners = new Set<(data: { id: string; code: number }) => void>()
+
+function dispatchPtyData(id: string, data: string): void {
+  for (const listener of ptyDataListeners) {
+    try {
+      listener({ id, data })
+    } catch (err) {
+      console.error('[TauriAdapter] Error in pty:onData listener:', err)
+    }
+  }
+}
+
+function dispatchPtyExit(id: string, code: number): void {
+  for (const listener of ptyExitListeners) {
+    try {
+      listener({ id, code })
+    } catch (err) {
+      console.error('[TauriAdapter] Error in pty:onExit listener:', err)
+    }
+  }
+}
 
 export function setInitialCachedSettings(settings: Record<string, unknown>): void {
   cachedSettings = settings
@@ -69,6 +92,79 @@ export function createTauriPreloadApi(): PreloadApi {
         invokeTauri<void>('plugin:fs|write_file', { path, content }),
       stat: (path: string) => invokeTauri('plugin:fs|stat', { path }),
       exists: (path: string) => invokeTauri<boolean>('plugin:fs|exists', { path })
+    },
+    pty: {
+      spawn: async (opts: {
+        cols: number
+        rows: number
+        cwd?: string
+        command?: string
+        sessionId?: string
+      }) => {
+        const sessionId =
+          opts.sessionId ?? `pty-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+        const command =
+          opts.command ??
+          (typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows')
+            ? 'powershell.exe'
+            : '/bin/bash')
+        const channel = new Channel<number[] | Uint8Array>()
+
+        channel.onmessage = (frameRaw: number[] | Uint8Array) => {
+          const frameBytes = frameRaw instanceof Uint8Array ? frameRaw : new Uint8Array(frameRaw)
+          if (frameBytes.length >= 16 && frameBytes[0] === 0x74) {
+            const opcode = frameBytes[2]
+            if (opcode === 1) {
+              const text = new TextDecoder().decode(frameBytes.subarray(16))
+              dispatchPtyData(sessionId, text)
+            } else if (opcode === 2) {
+              const exitCode = frameBytes[16] ?? 0
+              dispatchPtyExit(sessionId, exitCode)
+            }
+          }
+        }
+
+        await invokeTauri('pty_spawn', {
+          descriptor: {
+            session_id: sessionId,
+            command,
+            args: [],
+            cwd: opts.cwd ?? null,
+            cols: opts.cols,
+            rows: opts.rows
+          },
+          on_event: channel
+        })
+
+        return { id: sessionId }
+      },
+      write: (id: string, data: string) => {
+        const bytes = Array.from(new TextEncoder().encode(data))
+        void invokeTauri('pty_write', { sessionId: id, data: bytes })
+      },
+      writeAccepted: async (id: string, data: string) => {
+        const bytes = Array.from(new TextEncoder().encode(data))
+        await invokeTauri('pty_write', { sessionId: id, data: bytes })
+        return true
+      },
+      resize: (id: string, cols: number, rows: number) => {
+        void invokeTauri('pty_resize', { sessionId: id, cols, rows })
+      },
+      kill: async (id: string) => {
+        await invokeTauri('pty_kill', { sessionId: id })
+      },
+      onData: (callback: (data: { id: string; data: string }) => void) => {
+        ptyDataListeners.add(callback)
+        return () => {
+          ptyDataListeners.delete(callback)
+        }
+      },
+      onExit: (callback: (data: { id: string; code: number }) => void) => {
+        ptyExitListeners.add(callback)
+        return () => {
+          ptyExitListeners.delete(callback)
+        }
+      }
     }
   }
 

@@ -1,5 +1,7 @@
-import { invoke } from '@tauri-apps/api/core'
+import { Channel, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+
+export { Channel }
 
 /**
  * Returns true if the current environment is running inside a Tauri webview.

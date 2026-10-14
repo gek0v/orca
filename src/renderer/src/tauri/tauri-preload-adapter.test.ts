@@ -6,9 +6,18 @@ import {
   setInitialCachedSettings
 } from './tauri-preload-adapter'
 
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn().mockImplementation((cmd, args) => Promise.resolve({ cmd, args }))
-}))
+vi.mock('@tauri-apps/api/core', () => {
+  class MockChannel<T> {
+    onmessage?: (data: T) => void
+    send(data: T): void {
+      this.onmessage?.(data)
+    }
+  }
+  return {
+    invoke: vi.fn().mockImplementation((cmd, args) => Promise.resolve({ cmd, args })),
+    Channel: MockChannel
+  }
+})
 
 vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn().mockImplementation((_event, _cb) => Promise.resolve(vi.fn()))
@@ -79,6 +88,79 @@ describe('tauri-preload-adapter', () => {
       const customDomain = api.projects as unknown as { listAll: (arg: string) => Promise<unknown> }
       await customDomain.listAll('workspace-1')
       expect(invoke).toHaveBeenCalledWith('projects_listAll', { args: ['workspace-1'] })
+    })
+
+    it('dispatches pty commands and decodes 16-byte frames', async () => {
+      const api = createTauriPreloadApi()
+      const { invoke } = await import('@tauri-apps/api/core')
+
+      const receivedData: { id: string; data: string }[] = []
+      const unsubscribeData = api.pty.onData((data) => {
+        receivedData.push(data)
+      })
+
+      const receivedExit: { id: string; code: number }[] = []
+      const unsubscribeExit = api.pty.onExit((exit) => {
+        receivedExit.push(exit)
+      })
+
+      const spawnResult = await api.pty.spawn({
+        cols: 80,
+        rows: 24,
+        sessionId: 'pty-test-1'
+      })
+      expect(spawnResult.id).toBe('pty-test-1')
+      expect(invoke).toHaveBeenCalledWith(
+        'pty_spawn',
+        expect.objectContaining({
+          descriptor: expect.objectContaining({
+            session_id: 'pty-test-1',
+            cols: 80,
+            rows: 24
+          })
+        })
+      )
+
+      // Simulate binary frame receipt over Channel:
+      const payloadText = 'Hello PTY!'
+      const textBytes = new TextEncoder().encode(payloadText)
+      const frame = new Uint8Array(16 + textBytes.length)
+      frame[0] = 0x74
+      frame[1] = 1
+      frame[2] = 1 // Output
+      frame.set(textBytes, 16)
+
+      const lastCall = vi.mocked(invoke).mock.calls.find((call) => call[0] === 'pty_spawn')
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test inspection of mocked channel argument.
+      const channelArg = (lastCall?.[1] as { on_event?: { send: (data: Uint8Array) => void } })
+        ?.on_event
+      channelArg?.send(frame)
+
+      expect(receivedData).toEqual([{ id: 'pty-test-1', data: 'Hello PTY!' }])
+
+      // Write test
+      api.pty.write('pty-test-1', 'ls\n')
+      expect(invoke).toHaveBeenCalledWith('pty_write', {
+        sessionId: 'pty-test-1',
+        data: Array.from(new TextEncoder().encode('ls\n'))
+      })
+
+      // Resize test
+      api.pty.resize('pty-test-1', 120, 40)
+      expect(invoke).toHaveBeenCalledWith('pty_resize', {
+        sessionId: 'pty-test-1',
+        cols: 120,
+        rows: 40
+      })
+
+      // Kill test
+      await api.pty.kill('pty-test-1')
+      expect(invoke).toHaveBeenCalledWith('pty_kill', {
+        sessionId: 'pty-test-1'
+      })
+
+      unsubscribeData()
+      unsubscribeExit()
     })
   })
 
