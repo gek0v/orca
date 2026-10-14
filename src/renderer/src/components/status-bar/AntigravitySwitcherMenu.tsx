@@ -13,6 +13,7 @@ import {
   updateCachedAccountUsage,
   useAntigravityAccounts
 } from '@/hooks/useAntigravityAccounts'
+import { useAntigravityQuotaResetMonitor } from '@/hooks/useAntigravityQuotaResetMonitor'
 import {
   hasActiveAntigravitySession,
   switchAntigravityAccountAndRestartSession
@@ -77,6 +78,30 @@ export function AntigravitySwitcherMenu({
 
   const selectedRuntimeKey = getCodexStatusRuntimeKey(selectedRuntimeTarget)
   const selectedGroup = switchGroups.find((g) => g.key === selectedRuntimeKey) ?? switchGroups[0]
+
+  const { readyAccountIds } = useAntigravityQuotaResetMonitor({
+    activeTarget: selectedGroup?.runtimeTarget
+  })
+
+  const sortedAccounts = useMemo(() => {
+    return [...accounts].sort((a, b) => {
+      if (a.id === activeAccount?.id) {
+        return -1
+      }
+      if (b.id === activeAccount?.id) {
+        return 1
+      }
+      const aReady = readyAccountIds.has(a.id)
+      const bReady = readyAccountIds.has(b.id)
+      if (aReady && !bReady) {
+        return -1
+      }
+      if (!aReady && bReady) {
+        return 1
+      }
+      return 0
+    })
+  }, [accounts, activeAccount?.id, readyAccountIds])
 
   const handleSelectRuntime = (group: CodexStatusSwitchGroup): void => {
     setSelectedRuntimeTarget(group.runtimeTarget)
@@ -284,7 +309,7 @@ export function AntigravitySwitcherMenu({
                 {translate('auto.components.status.bar.StatusBar.c98ea88392', 'No other accounts')}
               </div>
             ) : null}
-            {accounts.map((account) => {
+            {sortedAccounts.map((account) => {
               const isCurrentAccount = account.id === activeAccount?.id
               const label = account.alias || account.email || account.id
               const isFreshForThisAccount =
@@ -296,6 +321,7 @@ export function AntigravitySwitcherMenu({
               const usage = isFreshForThisAccount ? antigravity : account.lastUsage
               const isAccountFetching =
                 isCurrentAccount && (isSwitching || antigravity.status === 'fetching')
+              const isReady = !isCurrentAccount && readyAccountIds.has(account.id)
 
               return (
                 <DropdownMenuItem
@@ -315,6 +341,14 @@ export function AntigravitySwitcherMenu({
                       {isCurrentAccount ? (
                         <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
                           {translate('auto.components.status.bar.StatusBar.ff0fbe9311', 'Active')}
+                        </span>
+                      ) : null}
+                      {isReady ? (
+                        <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-foreground">
+                          {translate(
+                            'auto.components.status.bar.StatusBar.antigravityReadyBadge',
+                            'Ready'
+                          )}
                         </span>
                       ) : null}
                       {!isCurrentAccount && account.id === projectDefaultAccountId ? (
