@@ -195,7 +195,11 @@ describe('tauri-preload-adapter', () => {
       const { invoke } = await import('@tauri-apps/api/core')
 
       const dummySession = {
-        activeRepoId: 'repo-1'
+        activeRepoId: 'repo-1',
+        activeWorktreeId: null,
+        activeTabId: null,
+        tabsByWorktree: {},
+        terminalLayoutsByTabId: {}
       }
       vi.mocked(invoke).mockResolvedValueOnce(dummySession)
       const sessionData = await api.session.get()
