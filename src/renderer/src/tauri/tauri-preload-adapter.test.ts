@@ -197,16 +197,12 @@ describe('tauri-preload-adapter', () => {
       const dummySession = {
         activeRepoId: 'repo-1'
       }
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing session persistence mock return.
-      vi.mocked(invoke).mockResolvedValueOnce(
-        dummySession as unknown as Awaited<ReturnType<typeof api.session.get>>
-      )
+      vi.mocked(invoke).mockResolvedValueOnce(dummySession)
       const sessionData = await api.session.get()
       expect(sessionData).toEqual(dummySession)
       expect(invoke).toHaveBeenCalledWith('sessions_load', undefined)
 
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing session persistence mock argument.
-      await api.session.set(dummySession as unknown as Parameters<typeof api.session.set>[0])
+      await api.session.set(dummySession)
       expect(invoke).toHaveBeenCalledWith('sessions_save', {
         sessions: dummySession
       })
@@ -216,25 +212,14 @@ describe('tauri-preload-adapter', () => {
       const api = createTauriPreloadApi()
       const { invoke } = await import('@tauri-apps/api/core')
 
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing orcad direct IPC adapter invoke.
-      const orcadApi = (
-        api as unknown as { orcad: { invoke: (m: string, p?: unknown) => Promise<unknown> } }
-      ).orcad
+      const orcadApi = Reflect.get(api, 'orcad')
       await orcadApi.invoke('workspace.ping', { echo: 'hello' })
       expect(invoke).toHaveBeenCalledWith('orcad_invoke', {
         method: 'workspace.ping',
         params: { echo: 'hello' }
       })
 
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Testing watcher adapter methods.
-      const watcherApi = (
-        api as unknown as {
-          watcher: {
-            watch: (id: string, p: string) => Promise<unknown>
-            unwatch: (id: string) => Promise<unknown>
-          }
-        }
-      ).watcher
+      const watcherApi = Reflect.get(api, 'watcher')
       await watcherApi.watch('watch-1', '/path/to/project')
       expect(invoke).toHaveBeenCalledWith('watcher_watch', {
         watchId: 'watch-1',
