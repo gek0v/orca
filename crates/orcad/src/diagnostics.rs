@@ -50,17 +50,38 @@ pub fn get_process_memory() -> ProcessMemoryInfo {
 
 pub struct DaemonMetrics {
     started_at: Instant,
+    started_at_ms: u64,
+    launch_nonce: String,
 }
 
 impl DaemonMetrics {
     pub fn new() -> Self {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let nonce = format!("{:08x}{:016x}", std::process::id(), nanos);
         Self {
             started_at: Instant::now(),
+            started_at_ms: now_ms,
+            launch_nonce: nonce,
         }
     }
 
     pub fn uptime_seconds(&self) -> u64 {
         self.started_at.elapsed().as_secs()
+    }
+
+    pub fn started_at_ms(&self) -> u64 {
+        self.started_at_ms
+    }
+
+    pub fn launch_nonce(&self) -> &str {
+        &self.launch_nonce
     }
 }
 

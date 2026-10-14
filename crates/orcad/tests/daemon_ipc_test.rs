@@ -3,6 +3,7 @@ use orcad::server::{Server, ServerConfig};
 use orcad::test_client;
 use std::time::Duration;
 use tokio::time::sleep;
+use serde_json::json;
 
 fn make_test_endpoint(test_name: &str) -> String {
     if cfg!(windows) {
@@ -458,3 +459,240 @@ async fn test_daemon_worktree_operations() {
 
     daemon.shutdown().await.expect("Clean shutdown");
 }
+
+#[tokio::test]
+async fn test_daemon_binary_stream_framing_negotiation() {
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+    use orca_protocol::binary_stream::*;
+
+    let endpoint = make_test_endpoint("binary-stream");
+    let daemon = Server::start(&endpoint)
+        .await
+        .expect("Daemon must start successfully");
+
+    #[cfg(windows)]
+    let mut stream = tokio::net::windows::named_pipe::ClientOptions::new()
+        .open(&endpoint)
+        .expect("Named pipe connect");
+
+    #[cfg(unix)]
+    let mut stream = tokio::net::UnixStream::connect(&endpoint)
+        .await
+        .expect("Unix socket connect");
+
+    // 1. Send Hello with binary-v1 stream framing
+    let hello_req = r#"{"type":"hello","version":1,"role":"stream","streamFraming":"binary-v1"}"#;
+    stream.write_all(format!("{}\n", hello_req).as_bytes()).await.unwrap();
+    stream.flush().await.unwrap();
+
+    // 2. Read hello response line
+    let (reader, _writer) = tokio::io::split(stream);
+    let mut lines = BufReader::new(reader);
+    let mut first_line = String::new();
+    lines.read_line(&mut first_line).await.unwrap();
+
+    let hello_resp: HelloResponse = serde_json::from_str(first_line.trim()).expect("Valid hello response");
+    assert!(hello_resp.ok);
+    assert_eq!(hello_resp.stream_framing.as_deref(), Some("binary-v1"));
+
+    // 3. Connect a second client to trigger a terminal event
+    let mut control_client = test_client::connect(&endpoint).await.unwrap();
+    let (cmd, args) = if cfg!(windows) {
+        ("cmd.exe", vec!["/c".to_string(), "echo BINARY_OK".to_string()])
+    } else {
+        ("sh", vec!["-c".to_string(), "echo BINARY_OK".to_string()])
+    };
+    let _ = control_client.create_terminal(Some(cmd), Some(args)).await.unwrap();
+
+    // 4. Verify stream receives length-prefixed binary frames
+    let mut decoder = BinaryStreamDecoder::new();
+    let mut raw_reader = lines.into_inner();
+    let mut buf = [0u8; 1024];
+    let mut got_binary_data = false;
+
+    for _ in 0..30 {
+        tokio::select! {
+            res = raw_reader.read(&mut buf) => {
+                match res {
+                    Ok(n) if n > 0 => {
+                        decoder.feed(&buf[..n]);
+                        while let Ok(Some(frame)) = decoder.next_frame() {
+                            match frame {
+                                BinaryStreamDecodedFrame::Data { data, .. } => {
+                                    let s = String::from_utf8_lossy(&data);
+                                    if s.contains("BINARY_OK") {
+                                        got_binary_data = true;
+                                        break;
+                                    }
+                                }
+                                BinaryStreamDecodedFrame::Event(_) => {}
+                            }
+                        }
+                        if got_binary_data {
+                            break;
+                        }
+                    }
+                    _ => break,
+                }
+            }
+            _ = tokio::time::sleep(tokio::time::Duration::from_millis(100)) => {}
+        }
+    }
+
+    assert!(got_binary_data, "Stream must receive decoded binary data containing BINARY_OK");
+    daemon.shutdown().await.expect("Clean shutdown");
+}
+
+#[tokio::test]
+async fn test_daemon_automatic_work_and_spawn_intent_lifecycle() {
+    let endpoint = make_test_endpoint("spawn-intent");
+    let daemon = Server::start(&endpoint)
+        .await
+        .expect("Daemon must start successfully");
+
+    let mut client = test_client::connect(&endpoint)
+        .await
+        .expect("Client must connect to daemon");
+
+    // 1. Initial automatic work status is active
+    let status_val = client
+        .send_raw_request("runtime.automaticWork.status", None)
+        .await
+        .expect("Status query must succeed");
+    assert_eq!(status_val.get("mode").and_then(|v| v.as_str()), Some("active"));
+
+    // 2. Interactive terminal spawn succeeds
+    let (cmd, args) = if cfg!(windows) {
+        ("cmd.exe", vec!["/c".to_string(), "echo SPAWN_INTENT_OK".to_string()])
+    } else {
+        ("sh", vec!["-c".to_string(), "echo SPAWN_INTENT_OK".to_string()])
+    };
+
+    let term_val = client
+        .send_raw_request(
+            "terminal.create",
+            Some(json!({
+                "command": cmd,
+                "args": args,
+                "spawnIntent": "interactive",
+            })),
+        )
+        .await
+        .expect("Interactive terminal creation should succeed");
+    assert!(term_val.get("ok").and_then(|v| v.as_bool()).unwrap_or(false));
+    let term_id = term_val.get("terminalId").and_then(|v| v.as_str()).unwrap();
+
+    // Close created terminal
+    let _ = client
+        .send_raw_request("terminal.close", Some(json!({ "terminalId": term_id })))
+        .await;
+
+    // 3. Ingest process growth sample that trips breaker
+    // Sample 1: Baseline at t=0
+    let _ = client
+        .send_raw_request(
+            "runtime.processGrowth.sample",
+            Some(json!({
+                "atMs": 0,
+                "hostDescendants": 10,
+                "scopes": {}
+            })),
+        )
+        .await;
+
+    // Sample 2: Surge at t=4000 (rate=72.5/s, sample count = 1)
+    let _ = client
+        .send_raw_request(
+            "runtime.processGrowth.sample",
+            Some(json!({
+                "atMs": 4000,
+                "hostDescendants": 300,
+                "scopes": {}
+            })),
+        )
+        .await;
+
+    // Sample 3: Surge continued at t=8000 (rate=75/s, sample count = 2)
+    let _ = client
+        .send_raw_request(
+            "runtime.processGrowth.sample",
+            Some(json!({
+                "atMs": 8000,
+                "hostDescendants": 600,
+                "scopes": {}
+            })),
+        )
+        .await;
+
+    // Sample 4: Surge sustained at t=12000 (>10s sustain, min 3 rising samples -> TRIP)
+    let sample4_res = client
+        .send_raw_request(
+            "runtime.processGrowth.sample",
+            Some(json!({
+                "atMs": 12000,
+                "hostDescendants": 900,
+                "scopes": {}
+            })),
+        )
+        .await
+        .expect("Sample 4 must succeed");
+
+    assert_eq!(sample4_res.get("level").and_then(|v| v.as_str()), Some("critical"));
+
+    // 4. Automatic work status is now paused
+    let paused_status = client
+        .send_raw_request("runtime.automaticWork.status", None)
+        .await
+        .expect("Status query must succeed");
+    assert_eq!(paused_status.get("mode").and_then(|v| v.as_str()), Some("paused"));
+
+    // 5. Automatic restore spawn is now deferred with paused reason
+    let auto_create_err = client
+        .send_raw_request(
+            "terminal.create",
+            Some(json!({
+                "command": cmd,
+                "args": args,
+                "spawnIntent": "automatic-restore",
+            })),
+        )
+        .await;
+    assert!(auto_create_err.is_err(), "Automatic spawn should be deferred when paused");
+    if let Err(test_client::ClientError::Rpc(msg)) = auto_create_err {
+        assert_eq!(msg, "terminal_spawn_deferred:paused");
+    } else {
+        panic!("Expected Rpc error terminal_spawn_deferred:paused");
+    }
+
+    // 6. Resume automatic work
+    let resume_val = client
+        .send_raw_request("runtime.automaticWork.resume", None)
+        .await
+        .expect("Resume must succeed");
+    assert_eq!(resume_val.get("resumed").and_then(|v| v.as_bool()), Some(true));
+
+    let resumed_status = client
+        .send_raw_request("runtime.automaticWork.status", None)
+        .await
+        .expect("Status query must succeed");
+    assert_eq!(resumed_status.get("mode").and_then(|v| v.as_str()), Some("active"));
+
+    // 7. Workspace ports host-scoped query
+    let port_scan = client
+        .send_raw_request(
+            "workspacePorts.scanHost",
+            Some(json!({ "executionHostId": "test-execution-host" })),
+        )
+        .await
+        .expect("workspacePorts.scanHost must succeed");
+    assert_eq!(port_scan.get("ok").and_then(|v| v.as_bool()), Some(true));
+    assert_eq!(
+        port_scan.get("executionHostId").and_then(|v| v.as_str()),
+        Some("test-execution-host")
+    );
+    assert!(port_scan.get("ports").and_then(|v| v.as_array()).is_some());
+
+    daemon.shutdown().await.expect("Clean shutdown");
+}
+
+

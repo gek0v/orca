@@ -116,14 +116,15 @@ pub async fn handle_connection<S>(stream: S, dispatcher: Arc<RpcDispatcher>)
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
+    use std::sync::atomic::{AtomicBool, Ordering};
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
     let (reader, mut writer) = tokio::io::split(stream);
-    let (out_tx, mut out_rx) = tokio::sync::mpsc::channel::<String>(1024);
+    let (out_tx, mut out_rx) = tokio::sync::mpsc::channel::<bytes::Bytes>(1024);
 
     let writer_task = tokio::spawn(async move {
         while let Some(msg) = out_rx.recv().await {
-            if writer.write_all(msg.as_bytes()).await.is_err() {
+            if writer.write_all(&msg).await.is_err() {
                 break;
             }
             if writer.flush().await.is_err() {
@@ -132,15 +133,36 @@ where
         }
     });
 
+    let use_binary = Arc::new(AtomicBool::new(false));
     let mut event_rx = dispatcher.terminal_manager.subscribe_all_events();
     let event_tx = out_tx.clone();
+    let use_binary_event = Arc::clone(&use_binary);
+
     let event_task = tokio::spawn(async move {
         loop {
             match event_rx.recv().await {
                 Ok(event) => {
-                    if let Ok(mut json_str) = serde_json::to_string(&event) {
+                    if use_binary_event.load(Ordering::SeqCst) {
+                        if event.event == "data" {
+                            let text = event.data.as_deref().unwrap_or("");
+                            if let Ok(frame) = orca_protocol::encode_binary_stream_data_frame(
+                                &event.terminal_id,
+                                text.as_bytes(),
+                                None,
+                            ) {
+                                if event_tx.send(frame).await.is_err() {
+                                    break;
+                                }
+                            }
+                        } else if let Ok(json_bytes) = serde_json::to_vec(&event) {
+                            let frame = orca_protocol::encode_binary_stream_event_frame(&json_bytes);
+                            if event_tx.send(frame).await.is_err() {
+                                break;
+                            }
+                        }
+                    } else if let Ok(mut json_str) = serde_json::to_string(&event) {
                         json_str.push('\n');
-                        if event_tx.send(json_str).await.is_err() {
+                        if event_tx.send(bytes::Bytes::from(json_str)).await.is_err() {
                             break;
                         }
                     }
@@ -164,12 +186,50 @@ where
             continue;
         }
 
+        // Check for hello handshake
+        if let Ok(hello) = serde_json::from_str::<orca_protocol::HelloMessage>(trimmed) {
+            if hello.msg_type == "hello" {
+                let wants_binary = hello.role.as_deref() == Some("stream")
+                    && hello.stream_framing.as_deref() == Some(orca_protocol::BINARY_STREAM_FRAMING);
+
+                if wants_binary {
+                    use_binary.store(true, Ordering::SeqCst);
+                }
+
+                let resp = orca_protocol::HelloResponse {
+                    msg_type: "hello".to_string(),
+                    ok: true,
+                    error: None,
+                    stream_framing: if wants_binary {
+                        Some(orca_protocol::BINARY_STREAM_FRAMING.to_string())
+                    } else {
+                        None
+                    },
+                    daemon_identity: Some(orca_protocol::DaemonEndpointIdentity {
+                        pid: std::process::id(),
+                        started_at_ms: dispatcher.metrics.started_at_ms(),
+                        launch_nonce: dispatcher.metrics.launch_nonce().to_string(),
+                        entry_path: None,
+                        app_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+                    }),
+                };
+
+                if let Ok(mut json_str) = serde_json::to_string(&resp) {
+                    json_str.push('\n');
+                    if out_tx.send(bytes::Bytes::from(json_str)).await.is_err() {
+                        break;
+                    }
+                }
+                continue;
+            }
+        }
+
         match serde_json::from_str::<orca_protocol::RuntimeRpcRequest>(trimmed) {
             Ok(req) => {
                 let resp = dispatcher.dispatch(req).await;
                 if let Ok(mut json_str) = serde_json::to_string(&resp) {
                     json_str.push('\n');
-                    if out_tx.send(json_str).await.is_err() {
+                    if out_tx.send(bytes::Bytes::from(json_str)).await.is_err() {
                         break;
                     }
                 }
@@ -183,7 +243,7 @@ where
                 );
                 if let Ok(mut json_str) = serde_json::to_string(&err_resp) {
                     json_str.push('\n');
-                    if out_tx.send(json_str).await.is_err() {
+                    if out_tx.send(bytes::Bytes::from(json_str)).await.is_err() {
                         break;
                     }
                 }

@@ -15,6 +15,33 @@ pub struct DetectedPort {
     pub process_name: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspacePortEntry {
+    pub id: String,
+    pub bind_host: String,
+    pub connect_host: String,
+    pub port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pid: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub process_name: Option<String>,
+    pub protocol: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspacePortHostScanResult {
+    pub ok: bool,
+    pub platform: String,
+    pub scanned_at: u64,
+    pub execution_host_id: String,
+    pub ports: Vec<WorkspacePortEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unavailable_reason: Option<String>,
+}
+
 pub struct PortScanner;
 
 impl PortScanner {
@@ -33,6 +60,95 @@ impl PortScanner {
         #[cfg(not(any(target_os = "linux", target_os = "windows")))]
         {
             Self::scan_fallback().await
+        }
+    }
+
+    /// Scans ports and formats result according to workspace-ports.host-scoped.v1 contract.
+    pub async fn scan_host(execution_host_id: &str) -> WorkspacePortHostScanResult {
+        let detected = Self::scan_listening_ports().await;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        let platform = if cfg!(windows) {
+            "win32"
+        } else if cfg!(target_os = "linux") {
+            "linux"
+        } else if cfg!(target_os = "macos") {
+            "darwin"
+        } else {
+            "unknown"
+        };
+
+        let ports = detected
+            .into_iter()
+            .map(|p| {
+                let connect_host = if p.host == "0.0.0.0" || p.host == "::" || p.host == "127.0.0.1" {
+                    "localhost".to_string()
+                } else {
+                    p.host.clone()
+                };
+                let id = format!("{}:{}:{}", execution_host_id, p.host, p.port);
+                WorkspacePortEntry {
+                    id,
+                    bind_host: p.host,
+                    connect_host,
+                    port: p.port,
+                    pid: p.pid,
+                    process_name: p.process_name,
+                    protocol: "http".to_string(),
+                    kind: "workspace".to_string(),
+                }
+            })
+            .collect();
+
+        WorkspacePortHostScanResult {
+            ok: true,
+            platform: platform.to_string(),
+            scanned_at: now,
+            execution_host_id: execution_host_id.to_string(),
+            ports,
+            unavailable_reason: None,
+        }
+    }
+
+    /// Terminates the process listening on a given port.
+    pub async fn kill_host_port(pid: u32, _port: u16) -> Result<(), String> {
+        #[cfg(windows)]
+        {
+            let output = tokio::process::Command::new("taskkill")
+                .args(["/F", "/PID", &pid.to_string()])
+                .output()
+                .await
+                .map_err(|e| format!("Failed to spawn taskkill: {}", e))?;
+
+            if output.status.success() {
+                Ok(())
+            } else {
+                let err = String::from_utf8_lossy(&output.stderr);
+                Err(format!("taskkill failed: {}", err))
+            }
+        }
+
+        #[cfg(unix)]
+        {
+            let res = tokio::process::Command::new("kill")
+                .args(["-9", &pid.to_string()])
+                .output()
+                .await
+                .map_err(|e| format!("Failed to spawn kill: {}", e))?;
+
+            if res.status.success() {
+                Ok(())
+            } else {
+                Err("kill -9 exited with error".to_string())
+            }
+        }
+
+        #[cfg(not(any(windows, unix)))]
+        {
+            Err("Unsupported platform for kill_host_port".to_string())
         }
     }
 
@@ -74,7 +190,7 @@ impl PortScanner {
         let mut results = Vec::new();
         let mut seen = HashSet::new();
 
-        // On Windows, use `netstat -ano -p tcp` or fallback probe
+        // On Windows, use `netstat -ano -p tcp`
         if let Ok(output) = tokio::process::Command::new("netstat")
             .args(["-ano", "-p", "tcp"])
             .output()
@@ -142,6 +258,17 @@ mod tests {
         // Verify port 22 is excluded if any ports are returned
         for p in ports {
             assert_ne!(p.port, 22, "SSH port 22 must be excluded");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scan_host_scoped_contract() {
+        let res = PortScanner::scan_host("local").await;
+        assert!(res.ok);
+        assert_eq!(res.execution_host_id, "local");
+        for p in res.ports {
+            assert!(p.id.starts_with("local:"));
+            assert_eq!(p.protocol, "http");
         }
     }
 }

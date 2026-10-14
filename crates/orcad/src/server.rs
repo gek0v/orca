@@ -25,7 +25,11 @@ use crate::skill_installer::SkillInstaller;
 use crate::systemd_scope::{
     daemon_scope_unit_name, is_systemd_user_scope_supported, parse_cgroup_scope,
 };
+use crate::process_growth_breaker::ProcessGrowthMonitor;
 use crate::terminal_manager::TerminalManager;
+use crate::terminal_spawn_gate::{
+    SpawnAdmissionLimits, SpawnIntent, TerminalSpawnGate,
+};
 use crate::watch_registry::WatchRegistry;
 use crate::worktree_manager::WorktreeManager;
 
@@ -38,6 +42,8 @@ pub struct RpcDispatcher {
     pub git_stream_registry: Arc<crate::git_response_stream::GitResponseStreamRegistry>,
     pub watch_registry: Arc<WatchRegistry>,
     pub automations: Arc<AutomationManager>,
+    pub spawn_gate: Arc<TerminalSpawnGate>,
+    pub growth_monitor: Arc<ProcessGrowthMonitor>,
     pub runtime_id: String,
 }
 
@@ -50,6 +56,8 @@ impl RpcDispatcher {
         metrics: Arc<DaemonMetrics>,
         runtime_id: impl Into<String>,
     ) -> Self {
+        let spawn_gate = Arc::new(TerminalSpawnGate::new(SpawnAdmissionLimits::default()));
+        let growth_monitor = Arc::new(ProcessGrowthMonitor::new(Arc::clone(&spawn_gate)));
         Self {
             status_store,
             terminal_manager,
@@ -61,6 +69,8 @@ impl RpcDispatcher {
             ),
             watch_registry: Arc::new(WatchRegistry::new()),
             automations: Arc::new(AutomationManager::new()),
+            spawn_gate,
+            growth_monitor,
             runtime_id: runtime_id.into(),
         }
     }
@@ -74,6 +84,8 @@ impl RpcDispatcher {
         git_stream_registry: Arc<crate::git_response_stream::GitResponseStreamRegistry>,
         runtime_id: impl Into<String>,
     ) -> Self {
+        let spawn_gate = Arc::new(TerminalSpawnGate::new(SpawnAdmissionLimits::default()));
+        let growth_monitor = Arc::new(ProcessGrowthMonitor::new(Arc::clone(&spawn_gate)));
         Self {
             status_store,
             terminal_manager,
@@ -83,6 +95,8 @@ impl RpcDispatcher {
             git_stream_registry,
             watch_registry: Arc::new(WatchRegistry::new()),
             automations: Arc::new(AutomationManager::new()),
+            spawn_gate,
+            growth_monitor,
             runtime_id: runtime_id.into(),
         }
     }
@@ -98,6 +112,8 @@ impl RpcDispatcher {
         automations: Arc<AutomationManager>,
         runtime_id: impl Into<String>,
     ) -> Self {
+        let spawn_gate = Arc::new(TerminalSpawnGate::new(SpawnAdmissionLimits::default()));
+        let growth_monitor = Arc::new(ProcessGrowthMonitor::new(Arc::clone(&spawn_gate)));
         Self {
             status_store,
             terminal_manager,
@@ -107,6 +123,8 @@ impl RpcDispatcher {
             git_stream_registry,
             watch_registry,
             automations,
+            spawn_gate,
+            growth_monitor,
             runtime_id: runtime_id.into(),
         }
     }
@@ -150,6 +168,18 @@ impl RpcDispatcher {
                     obj.insert(
                         "caller".to_string(),
                         json!({ "orcaSessionId": "session-native" }),
+                    );
+                    obj.insert(
+                        "capabilities".to_string(),
+                        json!([
+                            "terminal.binary-stream.v1",
+                            "terminal.spawn-intent.v1",
+                            "runtime.automatic-work.v1",
+                            "workspace-ports.host-scoped.v1",
+                            "workspace-ports.v1",
+                            "terminal.multiplex.v1",
+                            "terminal.create-idempotency.v1"
+                        ]),
                     );
                 }
 
@@ -257,12 +287,43 @@ impl RpcDispatcher {
                     map
                 });
 
+                let declared_intent = params
+                    .get("spawnIntent")
+                    .and_then(|v| v.as_str())
+                    .and_then(SpawnIntent::from_str);
+                let has_agent_claim = params
+                    .get("agentSessionClaim")
+                    .or_else(|| params.get("hasAgentSessionClaim"))
+                    .is_some();
+                let client_id = params
+                    .get("clientId")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("local");
+                let deadline_at = params.get("deadlineAt").and_then(|v| v.as_u64());
+
+                let charge = match self
+                    .spawn_gate
+                    .check_and_admit(client_id, declared_intent, has_agent_claim, deadline_at)
+                    .await
+                {
+                    Ok(c) => c,
+                    Err(defer_err) => {
+                        return RuntimeRpcEnvelope::failure(
+                            id,
+                            "terminal_spawn_deferred",
+                            defer_err,
+                            Some(self.runtime_id.clone()),
+                        );
+                    }
+                };
+
                 match self
                     .terminal_manager
                     .create_terminal_with_id(exec, args, cols, rows, cwd, env, requested_id)
                     .await
                 {
                     Ok((term_id, pid)) => {
+                        self.spawn_gate.settle(charge, true).await;
                         if let Some(cmd_text) = startup_cmd {
                             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                             let _ = self
@@ -276,12 +337,15 @@ impl RpcDispatcher {
                             &self.runtime_id,
                         )
                     }
-                    Err(e) => RuntimeRpcEnvelope::failure(
-                        id,
-                        "terminal_create_error",
-                        e.to_string(),
-                        Some(self.runtime_id.clone()),
-                    ),
+                    Err(e) => {
+                        self.spawn_gate.settle(charge, false).await;
+                        RuntimeRpcEnvelope::failure(
+                            id,
+                            "terminal_create_error",
+                            e.to_string(),
+                            Some(self.runtime_id.clone()),
+                        )
+                    }
                 }
             }
 
@@ -470,6 +534,9 @@ impl RpcDispatcher {
 
                 if is_all {
                     let closed_count = self.terminal_manager.kill_all().await;
+                    for _ in 0..closed_count {
+                        self.spawn_gate.release_live_automatic().await;
+                    }
                     RuntimeRpcEnvelope::success(
                         id,
                         json!({ "ok": true, "closed": closed_count }),
@@ -499,11 +566,14 @@ impl RpcDispatcher {
 
                     match term_id {
                         Some(tid) => match self.terminal_manager.kill_terminal(&tid).await {
-                            Ok(()) => RuntimeRpcEnvelope::success(
-                                id,
-                                json!({ "ok": true, "closed": 1, "terminalId": tid }),
-                                &self.runtime_id,
-                            ),
+                            Ok(()) => {
+                                self.spawn_gate.release_live_automatic().await;
+                                RuntimeRpcEnvelope::success(
+                                    id,
+                                    json!({ "ok": true, "closed": 1, "terminalId": tid }),
+                                    &self.runtime_id,
+                                )
+                            }
                             Err(e) => RuntimeRpcEnvelope::failure(
                                 id,
                                 "terminal_kill_error",
@@ -1808,6 +1878,127 @@ impl RpcDispatcher {
                 RuntimeRpcEnvelope::success(
                     id,
                     json!({ "ok": true, "ports": ports }),
+                    &self.runtime_id,
+                )
+            }
+
+            "workspacePorts.scanHost" | "ports.scanHost" => {
+                let execution_host_id = params
+                    .get("executionHostId")
+                    .or_else(|| params.get("execution_host_id"))
+                    .or_else(|| params.get("hostId"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("local");
+                let result = PortScanner::scan_host(execution_host_id).await;
+                RuntimeRpcEnvelope::success(id, json!(result), &self.runtime_id)
+            }
+
+            "workspacePorts.killHost" | "ports.killHost" => {
+                let pid = params
+                    .get("pid")
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n as u32);
+                let port = params
+                    .get("port")
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n as u16)
+                    .unwrap_or(0);
+
+                match pid {
+                    Some(p) => match PortScanner::kill_host_port(p, port).await {
+                        Ok(()) => RuntimeRpcEnvelope::success(
+                            id,
+                            json!({ "ok": true, "pid": p, "port": port }),
+                            &self.runtime_id,
+                        ),
+                        Err(e) => RuntimeRpcEnvelope::failure(
+                            id,
+                            "port_kill_error",
+                            e,
+                            Some(self.runtime_id.clone()),
+                        ),
+                    },
+                    None => RuntimeRpcEnvelope::failure(
+                        id,
+                        "invalid_params",
+                        "Missing pid",
+                        Some(self.runtime_id.clone()),
+                    ),
+                }
+            }
+
+            "runtime.automaticWork.status" | "automaticWork.status" => {
+                let status = self.spawn_gate.status().await;
+                RuntimeRpcEnvelope::success(id, status, &self.runtime_id)
+            }
+
+            "runtime.automaticWork.resume" | "automaticWork.resume" => {
+                let resumed = self.spawn_gate.resume_automatic_work().await;
+                RuntimeRpcEnvelope::success(
+                    id,
+                    json!({ "ok": true, "resumed": resumed }),
+                    &self.runtime_id,
+                )
+            }
+
+            "runtime.processGrowth.sample" | "processGrowth.sample" => {
+                let host_descendants = params
+                    .get("hostDescendants")
+                    .or_else(|| params.get("host_descendants"))
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n as usize);
+                let at_ms = params
+                    .get("atMs")
+                    .or_else(|| params.get("at_ms"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or_else(|| {
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64
+                    });
+                let mut scopes = HashMap::new();
+                if let Some(obj) = params.get("scopes").and_then(|v| v.as_object()) {
+                    for (k, v) in obj {
+                        if let Some(n) = v.as_u64() {
+                            scopes.insert(k.clone(), n as usize);
+                        }
+                    }
+                }
+
+                let sample = crate::process_growth_breaker::ProcessGrowthSample {
+                    at_ms,
+                    host_descendants,
+                    scopes,
+                };
+                let verdict = self.growth_monitor.ingest_sample(sample).await;
+                let trips_json: Vec<_> = verdict
+                    .trips
+                    .iter()
+                    .map(|t| {
+                        json!({
+                            "scopeId": t.scope_id,
+                            "descendants": t.descendants,
+                            "growthPerSecond": t.growth_per_second,
+                        })
+                    })
+                    .collect();
+
+                let level_str = match verdict.level {
+                    crate::process_growth_breaker::GrowthLevel::Ok => "ok",
+                    crate::process_growth_breaker::GrowthLevel::Elevated => "elevated",
+                    crate::process_growth_breaker::GrowthLevel::Critical => "critical",
+                    crate::process_growth_breaker::GrowthLevel::Unknown => "unknown",
+                };
+
+                RuntimeRpcEnvelope::success(
+                    id,
+                    json!({
+                        "ok": true,
+                        "level": level_str,
+                        "rising": verdict.rising,
+                        "trips": trips_json,
+                    }),
                     &self.runtime_id,
                 )
             }
