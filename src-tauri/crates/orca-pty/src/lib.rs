@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+pub mod engine;
+pub mod framing;
+
+pub use engine::PortablePtyEngine;
+pub use framing::{
+    decode_pty_frame, encode_pty_frame, PtyFrame, PtyFrameOpcode, PtyFramingError,
+    PTY_FRAME_HEADER_SIZE, PTY_FRAME_KIND, PTY_FRAME_VERSION,
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PtySessionDescriptor {
     pub session_id: String,

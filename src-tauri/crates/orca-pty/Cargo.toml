@@ -7,7 +7,10 @@ license.workspace = true
 
 [dependencies]
 orca-types = { path = "../orca-types" }
+orca-core = { path = "../orca-core" }
+portable-pty = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
