@@ -148,9 +148,7 @@ describe('InlineUsageBars', () => {
 
     expect(markup).toContain('data-usage-bar')
     expect(markup).toContain('width:37%')
-    expect(markup).toContain('37%')
-    expect(markup).toContain('wk')
-    expect(markup).not.toContain('used')
+    expect(markup).toContain('37% wk')
   })
 
   it('shows remaining copy and remaining meter fill', async () => {

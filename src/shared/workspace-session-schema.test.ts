@@ -231,7 +231,7 @@ describe('parseWorkspaceSession', () => {
     }
   })
 
-  it("keeps a launch pane's state for the tab's life, and drops a malformed one", () => {
+  it('drops a launch pane an older build saved: after a restart its pane is an ordinary pane', () => {
     const result = parseWorkspaceSession({
       activeRepoId: null,
       activeWorktreeId: null,
@@ -267,11 +267,8 @@ describe('parseWorkspaceSession', () => {
     })
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.value.tabsByWorktree.wt[0].agentLaunchPane).toEqual({
-        leafId: 'leaf-1',
-        outcome: { kind: 'not-started', code: 'boom' }
-      })
-      expect(result.value.tabsByWorktree.wt[1].agentLaunchPane).toBeUndefined()
+      expect(result.value.tabsByWorktree.wt[0]).not.toHaveProperty('agentLaunchPane')
+      expect(result.value.tabsByWorktree.wt[1]).not.toHaveProperty('agentLaunchPane')
     }
   })
 

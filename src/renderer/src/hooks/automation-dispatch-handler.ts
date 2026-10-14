@@ -179,6 +179,7 @@ export async function handleAutomationDispatchRequest({
       worktreeId: worktree.id,
       launchAccountId: automation.launchAccountId,
       prompt: automation.prompt,
+      ...(automation.extraAgentArgs ? { extraAgentArgs: automation.extraAgentArgs } : {}),
       launchSource: 'unknown',
       title: run.title,
       onData: completion.appendOutput,

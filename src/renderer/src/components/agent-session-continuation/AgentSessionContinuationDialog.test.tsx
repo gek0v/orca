@@ -26,16 +26,19 @@ vi.mock('@/components/agent/AgentCombobox', () => ({
   default: ({
     value,
     launchAccountId,
-    onLaunchAccountIdChange
+    onLaunchAccountIdChange,
+    allowBlankTerminal
   }: {
     value: string | null
     launchAccountId?: string | null
     onLaunchAccountIdChange?: (id: string | null) => void
+    allowBlankTerminal?: boolean
   }) =>
     React.createElement(
       'div',
       {
         'data-agent': value ?? '',
+        'data-allow-blank': String(allowBlankTerminal === true),
         'data-launch-account-id': launchAccountId ?? ''
       },
       React.createElement('button', {
@@ -124,6 +127,8 @@ describe('AgentSessionContinuationDialog', () => {
 
     await act(async () => resolveSecond(['codex']))
     await vi.waitFor(() => expect(container.querySelector('[data-agent="codex"]')).not.toBeNull())
+    // Why: continuing a chat needs an agent to resume it into.
+    expect(container.querySelector('[data-allow-blank="false"]')).not.toBeNull()
   })
 
   it('tracks launchAccountId and forwards it to launchAgentSessionContinuation', async () => {

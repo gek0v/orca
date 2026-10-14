@@ -12,6 +12,7 @@ import type {
 } from '../../shared/antigravity-usage-types'
 import type { Store } from '../persistence'
 import { UsageProviderStoreLifecycle } from '../usage/usage-provider-store-lifecycle'
+import { splitUsageCacheFileViaWorker } from '../usage/usage-scan-worker-spawn'
 import { filterUsageDaily, filterUsageSessions } from '../usage/usage-scope-filters'
 import { antigravityUsageProvider } from './antigravity-usage-provider'
 import {
@@ -56,7 +57,8 @@ export class AntigravityUsageStore extends UsageProviderStoreLifecycle<
       normalizeState: normalizeAntigravityUsageState,
       sourceKey: 'processedFiles',
       dataPresenceKey: 'hasAnyAntigravityData',
-      scan: antigravityUsageProvider.scan
+      scan: antigravityUsageProvider.scan,
+      splitCacheFile: splitUsageCacheFileViaWorker
     })
   }
 

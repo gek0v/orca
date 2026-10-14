@@ -34,7 +34,6 @@ function seedSettings(settings: Partial<GlobalSettings>): void {
     settings: {
       ...getDefaultSettings('/tmp'),
       experimentalNativeChat: true,
-      openAgentTabsInChatByDefault: true,
       defaultTuiAgent: 'codex',
       disabledTuiAgents: [],
       ...settings
@@ -98,7 +97,7 @@ describe('openDefaultAgentChatInEmptyWorkspace', () => {
   })
 
   it('does nothing unless new agent tabs open as chat', () => {
-    seedSettings({ openAgentTabsInChatByDefault: false })
+    seedSettings({ experimentalNativeChat: false })
 
     expect(openDefaultAgentChatInEmptyWorkspace('wt-1', mocks.seedShell)).toBeNull()
     expect(mocks.launchAgentInNewTab).not.toHaveBeenCalled()
@@ -151,7 +150,7 @@ describe('agent detection for the default chat', () => {
     useAppStore.setState({ remoteDetectedAgentIds: { 'conn-1': [] } })
     expect(emptyWorkspaceDefaultChatAwaitsDetection('wt-1')).toBe(false)
 
-    seedSettings({ openAgentTabsInChatByDefault: false })
+    seedSettings({ experimentalNativeChat: false })
     useAppStore.setState({ remoteDetectedAgentIds: {} })
     expect(emptyWorkspaceDefaultChatAwaitsDetection('wt-1')).toBe(false)
   })

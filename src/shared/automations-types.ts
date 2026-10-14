@@ -98,6 +98,8 @@ export type Automation = {
   agentId: TuiAgent
   /** Optional account ID for multi-account providers like Antigravity. */
   launchAccountId?: string | null
+  /** Saved text appended to the host's default agent Arguments on each fresh run; absent means none. */
+  extraAgentArgs?: string
   /** Why: runContext carries the logical project + host setup identity for
    *  multi-host projects; projectId remains only as the legacy repo-id storage
    *  field for pre-host-context automations.
@@ -185,6 +187,8 @@ export type AutomationCreateInput = {
   prompt: string
   precheck?: AutomationPrecheck | null
   agentId: TuiAgent
+  /** Empty or whitespace means no extras. */
+  extraAgentArgs?: string
   runContext?: WorkspaceRunContext | null
   sourceContext?: TaskSourceContext | null
   /** @deprecated Legacy repo-id compatibility field required for older stored
@@ -211,6 +215,7 @@ export type AutomationUpdateInput = Partial<
     | 'precheck'
     | 'agentId'
     | 'launchAccountId'
+    | 'extraAgentArgs'
     | 'runContext'
     | 'sourceContext'
     | 'projectId'
@@ -247,7 +252,7 @@ export type AutomationDispatchResult = {
   error?: string | null
 }
 
-export type ExternalAutomationProvider = 'hermes' | 'openclaw'
+export type ExternalAutomationProvider = 'openclaw'
 export type ExternalAutomationManagerStatus = 'available' | 'unavailable'
 export type ExternalAutomationAction = 'pause' | 'resume' | 'run' | 'delete'
 export type ExternalAutomationRunStatus = 'completed' | 'failed' | 'unknown'
@@ -293,41 +298,6 @@ export type ExternalAutomationRun = {
   outputContent: string | null
   error: string | null
   outputPath: string | null
-}
-
-export type ExternalAutomationRunsPage = {
-  managerId: string
-  provider: ExternalAutomationProvider
-  target: ExternalAutomationTarget
-  jobId: string
-  page: number
-  pageSize: number
-  total: number
-  totalSaturated?: true
-  runs: ExternalAutomationRun[]
-}
-
-export type ExternalAutomationRunsInput = {
-  managerId: string
-  provider: ExternalAutomationProvider
-  target: ExternalAutomationTarget
-  jobId: string
-  page: number
-  pageSize: number
-}
-
-export type ExternalAutomationCreateInput = {
-  managerId: string
-  provider: ExternalAutomationProvider
-  target: ExternalAutomationTarget
-  name: string
-  prompt: string
-  schedule: string
-  workdir: string | null
-}
-
-export type ExternalAutomationUpdateInput = ExternalAutomationCreateInput & {
-  jobId: string
 }
 
 export type ExternalAutomationManager = {

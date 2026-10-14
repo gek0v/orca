@@ -54,7 +54,7 @@ import { hooksApi } from './api/hooks-bridge'
 import { ephemeralVmApi } from './api/ephemeral-vm-bridge'
 import { cacheApi } from './api/cache-bridge'
 import { sessionApi } from './api/session-bridge'
-import { remoteWorkspaceApi } from './api/remote-workspace-bridge'
+import { legacyRelayBridgeApi } from './api/legacy-relay-bridge-api'
 import { goalsApi } from './api/goals-bridge'
 import { updaterApi } from './api/updater-bridge'
 import { docPreviewApi } from './api/doc-preview-bridge'
@@ -156,7 +156,7 @@ const api = {
   ephemeralVm: ephemeralVmApi,
   cache: cacheApi,
   session: sessionApi,
-  remoteWorkspace: remoteWorkspaceApi,
+  legacyRelayBridge: legacyRelayBridgeApi,
   updater: updaterApi,
   docPreview: docPreviewApi,
   notebook: notebookApi,

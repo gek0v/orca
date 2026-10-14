@@ -40,7 +40,11 @@ export type NewWorkspaceComposerCardProps = {
   onQuickAgentChange: (agent: TuiAgent | null) => void
   launchAccountId?: string | null
   onLaunchAccountIdChange?: (accountId: string | null) => void
+  /** Cleared picker: skip the agent and the extra shell when setup runs. */
+  quickSetupOnly?: boolean
+  onQuickSetupOnlySelect?: () => void
   eligibleRepos: readonly RepoOption[]
+  selectedRepo?: RepoOption | null
   repoId: string
   projectOptions?: NewWorkspaceProjectOption[]
   selectedProjectId?: string | null
