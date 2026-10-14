@@ -3,7 +3,7 @@
 //! Provides cross-platform pseudo-terminal management (ConPTY on Windows, POSIX /dev/ptmx on Unix)
 //! with 16-byte binary framing and streaming callbacks.
 
-use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize, Child};
+use portable_pty::{native_pty_system, Child, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -17,8 +17,10 @@ use crate::{PtyDimensions, PtyError, PtySessionDescriptor};
 
 struct ActiveSession {
     _stream_id: u32,
-    master: Box<dyn MasterPty + Send>,
+    master: Option<Box<dyn MasterPty + Send>>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    killer: Box<dyn ChildKiller + Send + Sync>,
+    #[allow(dead_code)]
     child: Arc<Mutex<Box<dyn Child + Send + Sync>>>,
     #[allow(dead_code)]
     job_object: Option<ProcessJobObject>,
@@ -71,6 +73,18 @@ impl PortablePtyEngine {
             .spawn_command(cmd)
             .map_err(|e| PtyError::SpawnError(format!("Failed to spawn command in PTY: {}", e)))?;
 
+        // On Windows, retrieve raw handle and assign to Job Object to contain process and children
+        #[cfg(windows)]
+        if let Some(ref job) = job_object {
+            if let Some(handle) = child.as_raw_handle() {
+                if let Err(e) = job.assign_process(handle) {
+                    tracing::warn!("Failed to assign child process to Job Object: {}", e);
+                }
+            }
+        }
+
+        let killer = child.clone_killer();
+
         let mut reader = pair
             .master
             .try_clone_reader()
@@ -92,8 +106,9 @@ impl PortablePtyEngine {
                 session_id.clone(),
                 ActiveSession {
                     _stream_id: stream_id,
-                    master: pair.master,
+                    master: Some(pair.master),
                     writer: writer_arc.clone(),
+                    killer,
                     child: child_arc.clone(),
                     job_object,
                 },
@@ -115,10 +130,12 @@ impl PortablePtyEngine {
                 let mut child_guard = child_arc_watcher.lock().unwrap();
                 child_guard.wait()
             };
-            // Allow trailing output to be flushed to reader buffer before retiring master
-            thread::sleep(std::time::Duration::from_millis(100));
+            // Child process has exited. Retire master to signal EOF on the ConPTY output pipe
+            // (ClosePseudoConsole), enabling the reader thread to drain trailing output cleanly.
             let mut sessions = sessions_map_watcher.lock().unwrap();
-            sessions.remove(&sess_id_watcher);
+            if let Some(session) = sessions.get_mut(&sess_id_watcher) {
+                let _ = session.master.take();
+            }
         });
 
         thread::spawn(move || {
@@ -199,36 +216,34 @@ impl PortablePtyEngine {
             .get_mut(session_id)
             .ok_or_else(|| PtyError::SessionNotFound(session_id.to_string()))?;
 
-        session
-            .master
-            .resize(PtySize {
-                rows: dimensions.rows,
-                cols: dimensions.cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(|e| PtyError::IoError(format!("Resize failed: {}", e)))?;
+        if let Some(ref mut master) = session.master {
+            master
+                .resize(PtySize {
+                    rows: dimensions.rows,
+                    cols: dimensions.cols,
+                    pixel_width: 0,
+                    pixel_height: 0,
+                })
+                .map_err(|e| PtyError::IoError(format!("Resize failed: {}", e)))?;
+        }
 
         Ok(())
     }
 
-    /// Terminates the PTY session.
+    /// Terminates the PTY session without deadlocking child watcher threads.
     pub fn kill(&self, session_id: &str) -> Result<(), PtyError> {
-        let session = {
+        let mut session = {
             let mut sessions = self.sessions.lock().unwrap();
             sessions.remove(session_id)
-        };
-
-        if let Some(session) = session {
-            if let Some(ref job) = session.job_object {
-                let _ = job.terminate(1);
-            }
-            let mut child = session.child.lock().unwrap();
-            let _ = child.kill();
-            Ok(())
-        } else {
-            Err(PtyError::SessionNotFound(session_id.to_string()))
         }
+        .ok_or_else(|| PtyError::SessionNotFound(session_id.to_string()))?;
+
+        if let Some(ref job) = session.job_object {
+            let _ = job.terminate(1);
+        }
+        let _ = session.killer.kill();
+        let _ = session.master.take();
+        Ok(())
     }
 }
 
@@ -286,4 +301,98 @@ mod tests {
         assert!(received_output, "Did not receive expected PTY output containing HELLO_PTY_ENGINE");
         assert!(received_exit, "Did not receive exit opcode frame");
     }
+
+    #[test]
+    fn test_engine_kill_running_process_no_deadlock() {
+        let engine = PortablePtyEngine::new();
+        let (tx, rx) = mpsc::channel();
+
+        #[cfg(windows)]
+        let (cmd, args) = (
+            "cmd.exe".to_string(),
+            vec!["/c".to_string(), "ping -n 60 127.0.0.1 >nul".to_string()],
+        );
+        #[cfg(not(windows))]
+        let (cmd, args) = ("sh".to_string(), vec!["-c".to_string(), "sleep 60".to_string()]);
+
+        let descriptor = PtySessionDescriptor {
+            session_id: "test-kill-deadlock".to_string(),
+            command: cmd,
+            args,
+            cwd: None,
+            cols: 80,
+            rows: 24,
+        };
+
+        let session_id = engine
+            .spawn(descriptor, move |frame| {
+                let _ = tx.send(frame);
+            })
+            .expect("spawn succeeds");
+
+        // Allow child process to start
+        thread::sleep(Duration::from_millis(150));
+
+        let start_time = std::time::Instant::now();
+        let kill_result = engine.kill(&session_id);
+        let elapsed = start_time.elapsed();
+
+        assert!(kill_result.is_ok(), "kill must succeed on running session");
+        assert!(
+            elapsed < Duration::from_secs(2),
+            "kill must not deadlock or block indefinitely, took {:?}",
+            elapsed
+        );
+
+        // Verify Exit frame is received promptly
+        let mut got_exit = false;
+        while let Ok(frame_data) = rx.recv_timeout(Duration::from_secs(4)) {
+            let frame = decode_pty_frame(&frame_data).expect("valid frame");
+            if frame.opcode == PtyFrameOpcode::Exit {
+                got_exit = true;
+                break;
+            }
+        }
+        assert!(got_exit, "Should receive Exit frame after kill");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_job_object_assignment_and_containment() {
+        use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+        use orca_core::process::ProcessJobObject;
+
+        let pty_system = native_pty_system();
+        let pair = pty_system
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
+
+        let job = ProcessJobObject::create().expect("Win32 Job Object creation succeeds");
+        let mut cmd = CommandBuilder::new("cmd.exe");
+        cmd.args(&["/c", "ping -n 10 127.0.0.1 >nul"]);
+        let child = pair.slave.spawn_command(cmd).expect("Child spawned");
+
+        let raw_handle = child.as_raw_handle();
+        assert!(
+            raw_handle.is_some(),
+            "Child process handle must be obtainable on Windows"
+        );
+
+        let assign_res = job.assign_process(raw_handle.unwrap());
+        assert!(
+            assign_res.is_ok(),
+            "Process must be successfully assigned to Job Object: {:?}",
+            assign_res.err()
+        );
+
+        // Terminating job reaps the process
+        let term_res = job.terminate(1);
+        assert!(term_res.is_ok(), "Job termination must succeed");
+    }
 }
+

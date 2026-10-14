@@ -16,6 +16,12 @@ use std::sync::LazyLock;
 /// Maximum size in bytes of a recognizable npm/pnpm shim file.
 pub const MAX_SHIM_BYTES: usize = 64 * 1024;
 
+/// Environment variable name that disables .cmd shim resolution past cmd.exe.
+pub const DISABLE_CMD_SHIM_RESOLUTION_ENV: &str = "ORCA_DISABLE_CMD_SHIM_RESOLUTION";
+
+/// Permitted file extensions for direct executable targets that CreateProcessW can start directly.
+pub const DIRECT_TARGET_EXTENSIONS: &[&str] = &[".exe", ".com"];
+
 /// Result of parsing an npm/pnpm cmd shim.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParsedWindowsCmdShim {
@@ -146,9 +152,12 @@ pub fn parse_windows_cmd_shim(contents: &str) -> Option<ParsedWindowsCmdShim> {
             if let Some(target) = captures.name("target") {
                 let target_str = target.as_str();
                 if is_plain_relative_path(target_str) {
-                    return Some(ParsedWindowsCmdShim::Direct {
-                        target: target_str.to_string(),
-                    });
+                    let lower = target_str.to_ascii_lowercase();
+                    if DIRECT_TARGET_EXTENSIONS.iter().any(|ext| lower.ends_with(ext)) {
+                        return Some(ParsedWindowsCmdShim::Direct {
+                            target: target_str.to_string(),
+                        });
+                    }
                 }
             }
             return None;
@@ -160,6 +169,17 @@ pub fn parse_windows_cmd_shim(contents: &str) -> Option<ParsedWindowsCmdShim> {
 
 /// Attempts to read and resolve a `.cmd` shim file from disk.
 pub fn resolve_windows_cmd_shim(shim_path: &Path) -> Option<ResolvedWindowsCmdShim> {
+    if std::env::var(DISABLE_CMD_SHIM_RESOLUTION_ENV)
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        return None;
+    }
+
+    if !shim_path.is_absolute() {
+        return None;
+    }
+
     let metadata = std::fs::metadata(shim_path).ok()?;
     if !metadata.is_file() || metadata.len() > MAX_SHIM_BYTES as u64 {
         return None;
@@ -182,6 +202,10 @@ pub fn resolve_windows_cmd_shim(shim_path: &Path) -> Option<ResolvedWindowsCmdSh
             }
         }
         ParsedWindowsCmdShim::Direct { target } => {
+            let lower = target.to_ascii_lowercase();
+            if !DIRECT_TARGET_EXTENSIONS.iter().any(|ext| lower.ends_with(ext)) {
+                return None;
+            }
             let target_path = shim_dir.join(&target);
             if target_path.exists() {
                 Some(ResolvedWindowsCmdShim::Direct { target_path })
@@ -289,5 +313,83 @@ endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\node_
     fn test_refuse_tampered_shim() {
         let tampered = format!("{}echo tampered\r\n", REAL_CODEX_CMD);
         assert_eq!(parse_windows_cmd_shim(&tampered), None);
+    }
+
+    #[test]
+    fn test_parse_direct_cmd_shim_rejects_non_executable_extension() {
+        let bad_ext = r#"@echo off
+"%~dp0\nested\subscript.cmd" %*
+"#;
+        assert_eq!(parse_windows_cmd_shim(bad_ext), None);
+
+        let bad_bat = r#"@echo off
+"%~dp0\nested\subscript.bat" %*
+"#;
+        assert_eq!(parse_windows_cmd_shim(bad_bat), None);
+
+        let no_ext = r#"@echo off
+"%~dp0\nested\binary" %*
+"#;
+        assert_eq!(parse_windows_cmd_shim(no_ext), None);
+
+        let valid_com = r#"@echo off
+"%~dp0\legacy\tool.com" %*
+"#;
+        assert_eq!(
+            parse_windows_cmd_shim(valid_com),
+            Some(ParsedWindowsCmdShim::Direct {
+                target: r#"legacy\tool.com"#.to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn test_resolve_windows_cmd_shim_rejects_relative_path() {
+        let rel_path = Path::new("relative/path/to/shim.cmd");
+        assert_eq!(resolve_windows_cmd_shim(rel_path), None);
+    }
+
+    #[test]
+    fn test_resolve_windows_cmd_shim_kill_switch() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "orca_cmd_shim_test_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let shim_file = temp_dir.join("cli.cmd");
+        std::fs::write(&shim_file, REAL_PNPM_DIRECT_CMD).unwrap();
+
+        // Target path specified in REAL_PNPM_DIRECT_CMD is `..\global\pnpm.exe`
+        let target_dir = temp_dir.parent().unwrap().join("global");
+        std::fs::create_dir_all(&target_dir).unwrap();
+        let target_file = target_dir.join("pnpm.exe");
+        std::fs::write(&target_file, b"executable").unwrap();
+
+        // 1. Normal resolution when kill switch is unset
+        std::env::remove_var(DISABLE_CMD_SHIM_RESOLUTION_ENV);
+        let resolved = resolve_windows_cmd_shim(&shim_file);
+        assert!(resolved.is_some(), "Shim resolution should succeed when kill switch is unset");
+
+        // 2. Kill switch set to "1"
+        std::env::set_var(DISABLE_CMD_SHIM_RESOLUTION_ENV, "1");
+        assert_eq!(resolve_windows_cmd_shim(&shim_file), None);
+
+        // 3. Kill switch set to "true"
+        std::env::set_var(DISABLE_CMD_SHIM_RESOLUTION_ENV, "true");
+        assert_eq!(resolve_windows_cmd_shim(&shim_file), None);
+
+        // 4. Kill switch set to "TRUE" (case-insensitive)
+        std::env::set_var(DISABLE_CMD_SHIM_RESOLUTION_ENV, "TRUE");
+        assert_eq!(resolve_windows_cmd_shim(&shim_file), None);
+
+        // Cleanup
+        std::env::remove_var(DISABLE_CMD_SHIM_RESOLUTION_ENV);
+        let _ = std::fs::remove_file(&shim_file);
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _ = std::fs::remove_file(&target_file);
+        let _ = std::fs::remove_dir(&target_dir);
     }
 }
