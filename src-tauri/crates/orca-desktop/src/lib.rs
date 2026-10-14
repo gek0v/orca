@@ -17,6 +17,7 @@ fn get_system_info(state: tauri::State<AppState>) -> SystemInfo {
 pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
         .manage(AppState::default())
+        .manage(orca_pty::PortablePtyEngine::new())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -51,7 +52,11 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             commands::window::window_minimize,
             commands::window::window_toggle_maximize,
             commands::window::window_close,
-            commands::window::window_is_maximized
+            commands::window::window_is_maximized,
+            commands::pty::pty_spawn,
+            commands::pty::pty_write,
+            commands::pty::pty_resize,
+            commands::pty::pty_kill
         ])
 }
 
