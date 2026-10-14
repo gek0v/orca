@@ -5,6 +5,9 @@
 import './lib/react-devtools-commit-hook-shim'
 import './lib/react-commit-cascade-observer'
 import './assets/main.css'
+import { installTauriPreloadApi } from './tauri/tauri-preload-adapter'
+
+installTauriPreloadApi()
 
 import { StrictMode, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'

@@ -1,4 +1,4 @@
-import type { PreloadApi } from '../../../../preload/api-types'
+import type { PreloadApi } from '../../../preload/api-types'
 import { invokeTauri, isTauriEnvironment, subscribeTauri } from './tauri-ipc-core'
 
 let cachedSettings: Record<string, unknown> | null = null
@@ -33,17 +33,31 @@ export function createTauriPreloadApi(): PreloadApi {
     },
     settings: {
       get: () => invokeTauri('settings_get'),
-      getSync: () => cachedSettings ?? {},
-      update: (patch: Record<string, unknown>) => {
-        cachedSettings = { ...cachedSettings, ...patch }
-        return invokeTauri('settings_update', { patch })
+      getSync: () => cachedSettings,
+      set: (args: Record<string, unknown>) => {
+        cachedSettings = { ...cachedSettings, ...args }
+        return invokeTauri('settings_update', { patch: args })
       }
     },
     ui: {
-      minimize: () => invokeTauri<void>('window_minimize'),
-      toggleMaximize: () => invokeTauri<void>('window_toggle_maximize'),
-      close: () => invokeTauri<void>('window_close'),
-      isMaximized: () => invokeTauri<boolean>('window_is_maximized')
+      minimize: () => {
+        void invokeTauri('window_minimize')
+      },
+      maximize: () => {
+        void invokeTauri('window_toggle_maximize')
+      },
+      isMaximized: () => invokeTauri<boolean>('window_is_maximized'),
+      requestClose: () => {
+        void invokeTauri('window_close')
+      },
+      confirmWindowClose: () => {
+        void invokeTauri('app_confirm_close_ready')
+      },
+      onWindowCloseRequested: (callback: (data: { isQuitting: boolean }) => void) => {
+        return subscribeTauri<{ isQuitting?: boolean }>('app:prepare-close', (payload) => {
+          callback({ isQuitting: payload?.isQuitting ?? false })
+        })
+      }
     },
     platform: {
       getPlatform: () => invokeTauri<string>('get_platform')

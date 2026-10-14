@@ -31,23 +31,23 @@ describe('tauri-preload-adapter', () => {
   describe('createTauriPreloadApi', () => {
     it('provides synchronous settings cache via getSync', () => {
       const api = createTauriPreloadApi()
-      expect(api.settings.getSync()).toEqual({})
+      expect(api.settings.getSync()).toBeNull()
 
       setInitialCachedSettings({ theme: 'dark' })
       expect(api.settings.getSync()).toEqual({ theme: 'dark' })
     })
 
-    it('updates synchronous settings cache on settings.update', async () => {
+    it('updates synchronous settings cache on settings.set', async () => {
       const api = createTauriPreloadApi()
       setInitialCachedSettings({ theme: 'dark' })
 
-      await api.settings.update({ theme: 'light' })
+      await api.settings.set({ theme: 'light' })
       expect(api.settings.getSync()).toEqual({ theme: 'light' })
     })
 
     it('synchronously snapshots to sessionStorage in stageBeforeUnloadSync', () => {
       const api = createTauriPreloadApi()
-      const payload = { openWorktrees: ['wt-1', 'wt-2'] }
+      const payload = { sessions: [], ui: {} }
 
       api.app.stageBeforeUnloadSync(payload)
       const stored = sessionStorage.getItem('orca:stage-before-unload-snapshot')
@@ -58,14 +58,17 @@ describe('tauri-preload-adapter', () => {
       const api = createTauriPreloadApi()
       const { invoke } = await import('@tauri-apps/api/core')
 
-      await api.ui.minimize()
+      api.ui.minimize()
       expect(invoke).toHaveBeenCalledWith('window_minimize', undefined)
 
-      await api.ui.toggleMaximize()
+      api.ui.maximize()
       expect(invoke).toHaveBeenCalledWith('window_toggle_maximize', undefined)
 
-      await api.ui.close()
+      api.ui.requestClose()
       expect(invoke).toHaveBeenCalledWith('window_close', undefined)
+
+      api.ui.confirmWindowClose()
+      expect(invoke).toHaveBeenCalledWith('app_confirm_close_ready', undefined)
     })
 
     it('dispatches dynamic domains and methods via proxy', async () => {
@@ -84,7 +87,7 @@ describe('tauri-preload-adapter', () => {
       Reflect.set(window, '__TAURI_INTERNALS__', {})
       installTauriPreloadApi()
       expect(window.api).toBeDefined()
-      expect(typeof window.api.ui.close).toBe('function')
+      expect(typeof window.api.ui.requestClose).toBe('function')
     })
 
     it('does not overwrite window.api when not running in Tauri environment', () => {
