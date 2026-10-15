@@ -146,6 +146,8 @@ describe('tabs-hydration account retention', () => {
       state: 'working',
       prompt: 'do work',
       providerSession: { key: 'conversation_id', id: 'conv-123' },
+      stateStartedAt: 1000,
+      stateHistory: [],
       updatedAt: 1000
     }
     const tab: TerminalTab = {
