@@ -1,7 +1,6 @@
 import type { Tab, TabGroup, TabGroupLayoutNode } from '../../../../shared/tab-types'
 import type { WorkspaceSessionState } from '../../../../shared/workspace-session-state-types'
 import { isValidTerminalTabId } from '../../../../shared/terminal-tab-id'
-import { createBrowserUuid } from '@/lib/browser-uuid'
 import {
   adoptGrouplessTabs,
   appendOwnedTabIdsToGroups,
@@ -17,12 +16,9 @@ import {
 } from './tab-group-state'
 import { dedupeTabOrder } from '../../../../shared/workspace-layout/tab-order'
 
-type HydratedTabState = {
-  unifiedTabsByWorktree: Record<string, Tab[]>
-  groupsByWorktree: Record<string, TabGroup[]>
-  activeGroupIdByWorktree: Record<string, string>
-  layoutByWorktree: Record<string, TabGroupLayoutNode>
-}
+import { type HydratedTabState, hydrateLegacyFormat } from './tabs-legacy-hydration'
+
+export type { HydratedTabState }
 
 /** Drops leaves whose group is gone, and repeat leaves for a group already
  *  placed earlier in the tree — one column per group is the render invariant,
@@ -97,6 +93,16 @@ function hydrateUnifiedFormat(
         .filter((tab) => tab.aiVaultTitle)
         .map((tab) => [tab.id, tab.aiVaultTitle!])
     )
+    const launchAccountIdByTerminalId = new Map(
+      (session.tabsByWorktree[worktreeId] ?? [])
+        .filter((tab) => tab.launchAccountId)
+        .map((tab) => [tab.id, tab.launchAccountId!])
+    )
+    const launchAgentByTerminalId = new Map(
+      (session.tabsByWorktree[worktreeId] ?? [])
+        .filter((tab) => tab.launchAgent)
+        .map((tab) => [tab.id, tab.launchAgent!])
+    )
     const hydratedTabs = [...tabs]
       .map((tab) => ({
         ...tab,
@@ -106,6 +112,8 @@ function hydrateUnifiedFormat(
         if (tab.contentType !== 'terminal') {
           return tab
         }
+        const launchAccountId = tab.launchAccountId ?? launchAccountIdByTerminalId.get(tab.entityId)
+        const launchAgent = tab.launchAgent ?? launchAgentByTerminalId.get(tab.entityId)
         const quickCommandLabel = tab.quickCommandLabel?.trim()
           ? tab.quickCommandLabel.trim()
           : quickCommandLabelByTerminalId.get(tab.entityId)
@@ -113,6 +121,8 @@ function hydrateUnifiedFormat(
         const aiVaultTitle = tab.aiVaultTitle ?? aiVaultTitleByTerminalId.get(tab.entityId)
         return {
           ...tab,
+          ...(launchAccountId ? { launchAccountId } : {}),
+          ...(launchAgent ? { launchAgent } : {}),
           ...(quickCommandLabel ? { quickCommandLabel } : {}),
           ...(aiVaultTitle ? { aiVaultTitle } : {}),
           ...(!tab.generatedLabel?.trim() && generatedLabel ? { generatedLabel } : {})
@@ -223,112 +233,6 @@ function hydrateUnifiedFormat(
   }
 
   adoptGrouplessTabs(tabsByWorktree, groupsByWorktree, activeGroupIdByWorktree, layoutByWorktree)
-
-  return {
-    unifiedTabsByWorktree: tabsByWorktree,
-    groupsByWorktree,
-    activeGroupIdByWorktree,
-    layoutByWorktree
-  }
-}
-
-function hydrateLegacyFormat(
-  session: WorkspaceSessionState,
-  validWorktreeIds: Set<string>
-): HydratedTabState {
-  const tabsByWorktree: Record<string, Tab[]> = {}
-  const groupsByWorktree: Record<string, TabGroup[]> = {}
-  const activeGroupIdByWorktree: Record<string, string> = {}
-  const layoutByWorktree: Record<string, TabGroupLayoutNode> = {}
-
-  for (const worktreeId of validWorktreeIds) {
-    const terminalTabs = (session.tabsByWorktree[worktreeId] ?? []).filter((tab) =>
-      isValidTerminalTabId(tab.id)
-    )
-    const editorFiles = session.openFilesByWorktree?.[worktreeId] ?? []
-
-    if (terminalTabs.length === 0 && editorFiles.length === 0) {
-      continue
-    }
-
-    const groupId = createBrowserUuid()
-    const tabs: Tab[] = []
-    const tabOrder: string[] = []
-
-    for (const tt of terminalTabs) {
-      tabs.push({
-        id: tt.id,
-        entityId: tt.id,
-        groupId,
-        worktreeId,
-        contentType: 'terminal',
-        label: tt.title,
-        ...(tt.quickCommandLabel?.trim() ? { quickCommandLabel: tt.quickCommandLabel.trim() } : {}),
-        ...(tt.generatedTitle?.trim() ? { generatedLabel: tt.generatedTitle.trim() } : {}),
-        customLabel: tt.customTitle,
-        color: tt.color,
-        sortOrder: tt.sortOrder,
-        createdAt: tt.createdAt,
-        isPreview: false,
-        isPinned: false
-      })
-      tabOrder.push(tt.id)
-    }
-
-    for (const ef of editorFiles) {
-      tabs.push({
-        id: ef.filePath,
-        entityId: ef.filePath,
-        groupId,
-        worktreeId,
-        contentType: 'editor',
-        label: ef.relativePath,
-        customLabel: null,
-        color: null,
-        sortOrder: tabs.length,
-        createdAt: Date.now(),
-        isPreview: ef.isPreview,
-        isPinned: false
-      })
-      tabOrder.push(ef.filePath)
-    }
-
-    const activeTabType = session.activeTabTypeByWorktree?.[worktreeId] ?? 'terminal'
-    let activeTabId: string | null = null
-    if (activeTabType === 'editor') {
-      activeTabId = session.activeFileIdByWorktree?.[worktreeId] ?? null
-    } else {
-      // Why: honor this worktree's own remembered terminal before the global
-      // active tab. The global session.activeTabId only names the last-focused
-      // worktree's tab, so using it here reset every other worktree to its
-      // first terminal on restart.
-      const rememberedTabId = session.activeTabIdByWorktree?.[worktreeId]
-      if (rememberedTabId && terminalTabs.some((t) => t.id === rememberedTabId)) {
-        activeTabId = rememberedTabId
-      } else if (session.activeTabId && terminalTabs.some((t) => t.id === session.activeTabId)) {
-        activeTabId = session.activeTabId
-      }
-    }
-    if (activeTabId && !tabs.some((t) => t.id === activeTabId)) {
-      activeTabId = tabs[0]?.id ?? null
-    }
-
-    tabsByWorktree[worktreeId] = tabs
-    groupsByWorktree[worktreeId] = [
-      {
-        id: groupId,
-        worktreeId,
-        activeTabId,
-        tabOrder,
-        // Why: legacy sessions don't persist MRU; seed with the active tab so
-        // the first close after a legacy restore still behaves MRU-ish (falls
-        // back to neighbor selection if only one tab is in the stack).
-        recentTabIds: activeTabId ? [activeTabId] : []
-      }
-    ]
-    activeGroupIdByWorktree[worktreeId] = groupId
-    layoutByWorktree[worktreeId] = { type: 'leaf', groupId }
-  }
 
   return {
     unifiedTabsByWorktree: tabsByWorktree,

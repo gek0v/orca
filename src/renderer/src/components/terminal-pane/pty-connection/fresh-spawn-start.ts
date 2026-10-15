@@ -86,6 +86,16 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
     session.pendingSpawnDeferral = null
     const visibleAtSpawn = session.deps.isVisibleRef.current === true
     const effectiveStartup = startupOverride === undefined ? session.paneStartup : startupOverride
+    const tabForPane = findTerminalTabForPane(
+      useAppStore.getState(),
+      session.deps.worktreeId,
+      session.deps.tabId
+    )
+    const resolvedLaunchAccountId =
+      coldRestoreOverride?.launchAccountId ??
+      startupOverride?.launchAccountId ??
+      tabForPane?.launchAccountId ??
+      useAppStore.getState().getTab?.(session.deps.tabId)?.launchAccountId
     const outputCallbacks = session.captureTransportOutputCallbacks(
       session.reportError,
       toProcessExitStartup(coldRestoreOverride ?? effectiveStartup)
@@ -94,6 +104,7 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
       url: '',
       cols: session.cols,
       rows: session.rows,
+      ...(resolvedLaunchAccountId ? { launchAccountId: resolvedLaunchAccountId } : {}),
       ...(startupOverride?.command ? { command: startupOverride.command } : {}),
       ...(startupOverride?.env
         ? { env: session.mergeStartupEnvWithPaneIdentity(startupOverride.env) }

@@ -8,6 +8,7 @@ import { getAntigravityAccountService, getAntigravityAccountVaultPath } from './
 
 export async function prepareAntigravityAccountForLaunch(args: {
   launchAgent?: string
+  launchAccountId?: string
   command?: string
   connectionId?: string | null
   isWsl?: boolean
@@ -26,7 +27,8 @@ export async function prepareAntigravityAccountForLaunch(args: {
   if (!existsSync(path)) {
     return
   }
-  if (!createEncryptedAntigravityAccountStore(path).read().selectedAccountId) {
+  const vault = createEncryptedAntigravityAccountStore(path).read()
+  if (!vault.selectedAccountId && !args.launchAccountId) {
     return
   }
   const env = args.envIsComplete ? { ...args.env } : { ...process.env, ...args.env }
@@ -43,5 +45,10 @@ export async function prepareAntigravityAccountForLaunch(args: {
       'This agy launch uses a different credential authority from the selected Antigravity account.'
     )
   }
-  await getAntigravityAccountService({ runtime: 'host' }).prepareForLaunch()
+  const service = getAntigravityAccountService({ runtime: 'host' })
+  if (args.launchAccountId && vault.accounts.some((a) => a.id === args.launchAccountId)) {
+    await service.selectAccount(args.launchAccountId)
+  } else if (vault.selectedAccountId) {
+    await service.prepareForLaunch()
+  }
 }

@@ -54,6 +54,7 @@ export function sleepingRecordFromEntry(args: {
     state: args.entry.state,
     capturedAt: args.capturedAt,
     updatedAt: args.entry.updatedAt,
+    ...(tab?.launchAccountId ? { launchAccountId: tab.launchAccountId } : {}),
     ...((args.entry.terminalTitle ?? tab?.title)
       ? { terminalTitle: (args.entry.terminalTitle ?? tab?.title)! }
       : {}),

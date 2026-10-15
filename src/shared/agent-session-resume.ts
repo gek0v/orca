@@ -72,6 +72,7 @@ export type SleepingAgentSessionRecord = {
   mainAgent?: AgentMainAgentStatus
   connectionId?: string | null
   launchConfig?: SleepingAgentLaunchConfig
+  launchAccountId?: string
   /** How the record was captured. Worktree-sleep records (legacy records have
    *  no origin) are consumed by worktree activation, which opens a fresh tab.
    *  Quit/live records describe panes that still exist in the restored session,

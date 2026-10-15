@@ -82,6 +82,7 @@ export function launchSleepingAgentSession(
 
   const tab = state.createTab(record.worktreeId, undefined, undefined, {
     launchAgent: record.agent,
+    ...(record.launchAccountId ? { launchAccountId: record.launchAccountId } : {}),
     pendingStartup: {
       command: startupPlan.launchCommand,
       ...(startupPlan.env ? { env: startupPlan.env } : {}),

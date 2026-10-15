@@ -23,11 +23,18 @@ type TerminalTabRecord = {
   id: string
   generation?: number
   recovery?: TerminalTab['recovery']
+  launchAccountId?: string
 }
 type TerminalTabState = {
   getTab?: (
     tabId: string
-  ) => ({ contentType: string; entityId: string } & Partial<TerminalTabRecord>) | null
+  ) =>
+    | ({
+        contentType: string
+        entityId: string
+        launchAccountId?: string
+      } & Partial<TerminalTabRecord>)
+    | null
   tabsByWorktree: Record<string, readonly TerminalTabRecord[]>
   getTerminalTabOwnerWorktreeId?: (tabId: string) => string | null | undefined
 }
@@ -69,7 +76,11 @@ export function findTerminalTabForPane(
       .flat()
       .find((candidate) => candidate.id === terminalTabId) ??
     (unifiedTab && 'generation' in unifiedTab
-      ? { id: unifiedTab.entityId, generation: unifiedTab.generation }
+      ? {
+          id: unifiedTab.entityId,
+          generation: unifiedTab.generation,
+          ...(unifiedTab.launchAccountId ? { launchAccountId: unifiedTab.launchAccountId } : {})
+        }
       : null)
   )
 }

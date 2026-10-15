@@ -168,6 +168,7 @@ export async function assemblePtyIpcSpawnEnv(ctx: PtyIpcSpawnState): Promise<voi
   await assemblePtyIpcSpawnCodexEnv(ctx)
   await prepareAntigravityAccountForLaunch({
     launchAgent: args.launchAgent,
+    launchAccountId: args.launchAccountId,
     command: args.command ?? args.launchConfig?.agentCommand,
     connectionId: args.connectionId,
     isWsl: ctx.codexSelectionTarget.runtime === 'wsl',
