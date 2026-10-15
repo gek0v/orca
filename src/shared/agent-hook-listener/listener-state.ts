@@ -44,6 +44,8 @@ export type HookListenerState = {
   antigravitySubagentRosterByPaneKey: Map<string, AntigravitySubagentRoster>
   /** Incremental transcript cursor for Antigravity subagent tracking. */
   antigravitySubagentTranscriptByPaneKey: Map<string, AntigravitySubagentTranscriptState>
+  /** The Antigravity main agent's own state as last published. */
+  antigravityMainAgentStatusByPaneKey: Map<string, AgentMainAgentStatus>
   /** Journal-backed prompt for each jcode pane's current turn; see readJcodeTurnPrompt. */
   jcodeTurnPromptByPaneKey: Map<string, JcodeUserPromptEvidence | null>
   ampCompletedCacheKeys: Set<string>
@@ -124,6 +126,7 @@ export function createHookListenerState(
     antigravityCompletedTranscriptByPaneKey: new Map(),
     antigravitySubagentRosterByPaneKey: new Map(),
     antigravitySubagentTranscriptByPaneKey: new Map(),
+    antigravityMainAgentStatusByPaneKey: new Map(),
     jcodeTurnPromptByPaneKey: new Map(),
     ampCompletedCacheKeys: new Set(),
     claudeSubagentRosterByPaneKey: new Map(),
@@ -219,6 +222,7 @@ export function clearPaneCacheState(state: HookListenerState, paneKey: string): 
   deletePaneScopedCacheEntry(state.antigravityCompletedTranscriptByPaneKey, paneKey)
   state.antigravitySubagentRosterByPaneKey.delete(paneKey)
   state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
+  state.antigravityMainAgentStatusByPaneKey.delete(paneKey)
   deletePaneScopedSetEntry(state.ampCompletedCacheKeys, paneKey)
   deletePaneScopedCacheEntry(state.claudeConsumedCompactPromptIdByPaneKey, paneKey)
   state.claudeSubagentRosterByPaneKey.delete(paneKey)
@@ -272,6 +276,7 @@ export function movePaneCacheState(
   movePaneScopedMapEntries(state.lastToolByPaneKey, fromPaneKey, toPaneKey)
   moveLegacyAgentStatuses(state, fromPaneKey, toPaneKey)
   movePaneScopedMapEntries(state.antigravityCompletedTranscriptByPaneKey, fromPaneKey, toPaneKey)
+  movePaneScopedMapEntries(state.antigravityMainAgentStatusByPaneKey, fromPaneKey, toPaneKey)
   movePaneScopedMapEntries(state.jcodeTurnPromptByPaneKey, fromPaneKey, toPaneKey)
   movePaneScopedSetEntries(state.ampCompletedCacheKeys, fromPaneKey, toPaneKey)
   movePaneScopedMapEntries(state.claudeConsumedCompactPromptIdByPaneKey, fromPaneKey, toPaneKey)
@@ -296,6 +301,7 @@ export function clearPaneTurnCacheState(state: HookListenerState, paneKey: strin
   state.lastPromptByPaneKey.delete(paneKey)
   state.lastToolByPaneKey.delete(paneKey)
   state.antigravityCompletedTranscriptByPaneKey.delete(paneKey)
+  state.antigravityMainAgentStatusByPaneKey.delete(paneKey)
   state.jcodeTurnPromptByPaneKey.delete(paneKey)
   state.ampCompletedCacheKeys.delete(paneKey)
   state.grokActiveTurnByPaneKey.delete(paneKey)
@@ -309,6 +315,7 @@ export function clearAllListenerCaches(state: HookListenerState): void {
   state.antigravityCompletedTranscriptByPaneKey.clear()
   state.antigravitySubagentRosterByPaneKey.clear()
   state.antigravitySubagentTranscriptByPaneKey.clear()
+  state.antigravityMainAgentStatusByPaneKey.clear()
   state.jcodeTurnPromptByPaneKey.clear()
   state.ampCompletedCacheKeys.clear()
   state.claudeConsumedCompactPromptIdByPaneKey.clear()

@@ -1,11 +1,8 @@
-import type { FolderWorkspace } from '../../../shared/folder-workspace-types'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import type { PendingSidebarWorktreeReveal } from '@/store/slices/ui'
-import {
-  activateWebRuntimeSessionWorktree,
-  isWebRuntimeSessionActive
-} from '@/runtime/web-runtime-session'
+import { activateWebRuntimeSessionWorktree } from '@/runtime/web-runtime-worktree-activation'
+import { isWebRuntimeSessionActive } from '@/runtime/web-runtime-session-environment'
 import { registerWorktreeActivation } from '@/lib/worktree-activation-nav-registration'
 import { workspaceHasSleepingAgentSessions } from '@/lib/worktree-agent-activation-gate'
 import { resumeSleepingAgentSessionsForWorktree } from '@/lib/resume-sleeping-agent-session'
@@ -19,9 +16,16 @@ import {
 } from './folder-workspace-path-status'
 import { toast } from 'sonner'
 import type { ExecutionHostId } from '../../../shared/execution-host'
-import { findFolderWorkspaceOwner } from './folder-workspace-runtime-owner'
+import {
+  findFolderWorkspaceOwner,
+  getRuntimeEnvironmentIdForFolderWorkspace
+} from './folder-workspace-runtime-owner'
+import { getFolderWorkspaceHostId } from '@/store/folder-workspaces/folder-workspace-catalog'
 import type { WorktreeStartupPayload } from '@/lib/worktree-startup-payload'
-import { ensureWorktreeHasInitialTerminal } from '@/lib/worktree-initial-terminal-seeding'
+import {
+  ensureFolderWorkspaceInitialTerminal,
+  ensureWorktreeHasInitialTerminal
+} from '@/lib/worktree-initial-terminal-seeding'
 import { ensureWebRuntimeWorktreeTerminalAfterWake } from '@/lib/web-runtime-worktree-terminal-after-wake'
 import { applyWorktreeNavViewEntry } from '@/lib/worktree-nav-view-history-replay'
 import {
@@ -32,6 +36,8 @@ import {
 } from './worktree-activation-surface-selection'
 import { gateAndReseedEmptyWorkspace } from './worktree-activation-gated-empty-reseed'
 import { liftSidebarFiltersHidingWorktree } from './worktree-activation-sidebar-filters'
+import { isFloatingWorkspaceId } from '../../../shared/floating-workspace-worktree'
+import { revealFloatingWorkspacePanel } from './floating-workspace-panel-reveal'
 
 /**
  * Shared activation sequence used by the worktree palette and add-repo/worktree dialogs.
@@ -44,33 +50,6 @@ export type ActivateAndRevealResult = {
   primaryTabId: string | null
 }
 
-function ensureFolderWorkspaceInitialTerminal(
-  folderWorkspace: FolderWorkspace,
-  startup?: WorktreeStartupPayload,
-  providesInitialSurface?: boolean,
-  seedUserDefaultSurface?: boolean,
-  launchAccountId?: string
-): string | null {
-  if (providesInitialSurface === true && startup === undefined) {
-    return null
-  }
-  const state = useAppStore.getState()
-  const workspaceKey = folderWorkspaceKey(folderWorkspace.id)
-  const primaryTabId = ensureWorktreeHasInitialTerminal(
-    state,
-    workspaceKey,
-    startup,
-    undefined,
-    undefined,
-    undefined,
-    {
-      reseedEmptiedWorkspace: providesInitialSurface !== true,
-      ...(seedUserDefaultSurface ? { seedUserDefaultSurface: true } : {}),
-      ...(launchAccountId ? { launchAccountId } : {})
-    }
-  )
-  return primaryTabId
-}
 
 function canInspectAgentActivationInventory(): boolean {
   return (
@@ -107,7 +86,7 @@ export function activateAndRevealFolderWorkspace(
   const runtimeEnvironmentId =
     opts && 'runtimeEnvironmentId' in opts
       ? (opts.runtimeEnvironmentId ?? null)
-      : getRuntimeEnvironmentIdForWorktree(state, folderWorkspaceKey(folderWorkspaceId))
+      : getRuntimeEnvironmentIdForFolderWorkspace(state, folderWorkspaceId, opts?.executionHostId)
   const pathStatus = state.getFreshFolderWorkspacePathStatus(
     {
       scope: 'folder-workspace',
@@ -173,10 +152,11 @@ export function activateAndRevealFolderWorkspace(
     state.setSidebarBody('workspaces')
   }
   if (opts?.revealInSidebar !== false) {
-    state.revealWorktreeInSidebar(
-      workspaceKey,
-      opts?.sidebarRevealBehavior ? { behavior: opts.sidebarRevealBehavior } : undefined
-    )
+    state.revealWorktreeInSidebar(workspaceKey, {
+      executionHostId:
+        opts?.executionHostId ?? getFolderWorkspaceHostId(folderWorkspace, state.projectGroups),
+      ...(opts?.sidebarRevealBehavior ? { behavior: opts.sidebarRevealBehavior } : {})
+    })
   }
 
   if (opts?.providesInitialSurface !== true) {
@@ -195,6 +175,11 @@ export function activateAndRevealWorktree(
   opts?: WorktreeActivationOptions
 ): ActivateAndRevealResult | false {
   const state = useAppStore.getState()
+  // The floating workspace owns a separate panel, never the main window's selection.
+  if (isFloatingWorkspaceId(worktreeId)) {
+    revealFloatingWorkspacePanel(state)
+    return { primaryTabId: null }
+  }
   const wt = state.getKnownWorktreeById(worktreeId, opts?.executionHostId)
   if (!wt) {
     return false

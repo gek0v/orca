@@ -76,6 +76,22 @@ describe('InlineUsageBars', () => {
     expect(markup).not.toContain('left')
   })
 
+  it('asks for a sign-in when another provider has no usage to show', async () => {
+    const { InlineUsageBars } = await import('./StatusBar')
+    const limits: ProviderRateLimits = {
+      provider: 'codex',
+      session: null,
+      weekly: null,
+      updatedAt: Date.now(),
+      error: 'Not signed in',
+      status: 'error'
+    }
+
+    const markup = renderToStaticMarkup(<InlineUsageBars limits={limits} isFetching={false} />)
+
+    expect(markup).toContain('Sign in to see usage')
+  })
+
   it('derives the collapsed session label from resetsAt (#5399)', async () => {
     const { InlineUsageBars } = await import('./StatusBar')
 
@@ -132,9 +148,7 @@ describe('InlineUsageBars', () => {
 
     expect(markup).toContain('data-usage-bar')
     expect(markup).toContain('width:37%')
-    expect(markup).toContain('37%')
-    expect(markup).toContain('wk')
-    expect(markup).not.toContain('used')
+    expect(markup).toContain('37% wk')
   })
 
   it('shows remaining copy and remaining meter fill', async () => {

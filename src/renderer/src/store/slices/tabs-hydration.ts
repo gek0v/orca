@@ -9,12 +9,12 @@ import {
 } from './tab-group-reference-repair'
 import {
   dedupeEditorTabsWithinGroups,
-  dedupeTabOrder,
   getPersistedEditFileIdsByWorktree,
   isTransientEditorContentType,
   sanitizeRecentTabIds,
   selectHydratedActiveGroupId
 } from './tab-group-state'
+import { dedupeTabOrder } from '../../../../shared/workspace-layout/tab-order'
 
 import { type HydratedTabState, hydrateLegacyFormat } from './tabs-legacy-hydration'
 

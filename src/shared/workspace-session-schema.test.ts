@@ -169,7 +169,69 @@ describe('parseWorkspaceSession', () => {
     }
   })
 
-  it("keeps a launch pane's state for the tab's life, and drops a malformed one", () => {
+  it('preserves launchAccountId on a terminal tab across session parsing', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: null,
+      activeTabId: null,
+      tabsByWorktree: {
+        wt: [
+          {
+            id: 'tab1',
+            ptyId: null,
+            worktreeId: 'wt',
+            title: 'agy',
+            customTitle: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 1,
+            launchAgent: 'antigravity',
+            launchAccountId: 'acc-work-123'
+          }
+        ]
+      },
+      terminalLayoutsByTabId: {}
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.tabsByWorktree.wt[0].launchAccountId).toBe('acc-work-123')
+    }
+  })
+
+  it('preserves launchAgent and launchAccountId on unifiedTabs across session parsing', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: null,
+      activeTabId: null,
+      tabsByWorktree: {},
+      terminalLayoutsByTabId: {},
+      unifiedTabs: {
+        wt: [
+          {
+            id: 'tab1',
+            entityId: 'tab1',
+            groupId: 'grp1',
+            worktreeId: 'wt',
+            contentType: 'terminal',
+            label: 'agy',
+            customLabel: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 1,
+            launchAgent: 'antigravity',
+            launchAccountId: 'acc-work-123'
+          }
+        ]
+      }
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.unifiedTabs?.wt?.[0]?.launchAgent).toBe('antigravity')
+      expect(result.value.unifiedTabs?.wt?.[0]?.launchAccountId).toBe('acc-work-123')
+    }
+  })
+
+  it('drops a launch pane an older build saved: after a restart its pane is an ordinary pane', () => {
     const result = parseWorkspaceSession({
       activeRepoId: null,
       activeWorktreeId: null,
@@ -205,11 +267,8 @@ describe('parseWorkspaceSession', () => {
     })
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.value.tabsByWorktree.wt[0].agentLaunchPane).toEqual({
-        leafId: 'leaf-1',
-        outcome: { kind: 'not-started', code: 'boom' }
-      })
-      expect(result.value.tabsByWorktree.wt[1].agentLaunchPane).toBeUndefined()
+      expect(result.value.tabsByWorktree.wt[0]).not.toHaveProperty('agentLaunchPane')
+      expect(result.value.tabsByWorktree.wt[1]).not.toHaveProperty('agentLaunchPane')
     }
   })
 

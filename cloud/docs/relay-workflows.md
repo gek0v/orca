@@ -227,6 +227,17 @@ director's serving digest and C34's runtime digest with the one `image-digest` i
 first rolled to the director's image as a migration-only same-cap wave. Once its canary promoted
 it, it moved to the same-cap general list and the fleet pool list together, so the same-cap job now
 rolls it as a general cell and a rollback restores it general. It is a declared rehome source.
+
+C35 is a seventh Asia cell at the C34 shape in `asia-east2-a`, starting a third zone round. It was
+its own topology wave on image F (`sha256:41cba995…`), registered alone as migration-only, and then
+the director was configured with `cell-ids` set to C35. It launched as a migration-only spare and has
+a promotion wave of its own, with the same five-minute canary C30, C31 and C34 ran. Promotion
+compares the director's serving digest and C35's runtime digest with the one `image-digest` input,
+so C35 was first rolled to the director's image as a migration-only same-cap wave. Once its canary
+promoted it, it moved to the same-cap general list and the fleet pool list together, so the same-cap
+job now rolls it as a general cell and a rollback restores it general. It is a declared rehome source.
+Its pool of 16 leaves 3 connections under the usable Cloud SQL ceiling
+(`relay-cloud-sql-connection-budget.mjs`).
 Rollback returns
 Asia cells to migration-only; it does not destroy the network or use
 existing-only. The production topology dispatch remains unavailable until the
@@ -450,8 +461,9 @@ margin covers. Each cell is isolated, drained until restart-safe, replaced
 from a targeted saved plan, and restored only after a new incarnation reports the exact digest, cap,
 heartbeat, and rehome protocol. Restart-safe means the cell runtime itself carries nothing live (no
 controls, in-flight connections, reserved connection units, splices, or queued bytes) and no
-migration is open, for a whole drain pace window, which every live restart-safe call must pass.
-Pre-auth and total connections are printed but do not reset the window: they include
+migration is open, on two consecutive samples the second of which is taken at or after the end
+of the drain pace window. Every live restart-safe call supplies that window (`--pace-window-ms`).
+Pre-auth and total connections are printed but do not restart the count: they include
 unauthenticated redials that lose nothing on a restart. Director activity leases left by hosts that already went or cannot
 be placed do not hold the restart; every `relay_capacity_transition_restart_progress` sample and
 the final verified line report them under `stranded`. The durable
@@ -528,24 +540,35 @@ drained. Then read the cell's live runtime image from
 The `drain-pace-window-ms` input sets the window the cell spreads its drain sends over. Each
 drained host re-dials the director as soon as it reads `drain`, so the window sets the re-placement
 arrival rate: hosts / window, about 1.8-2.7 hosts/s for a US cell at the default. The window also
-sets two waits: restart-safe needs an empty runtime for (ceil(window / 5 s) + 1) consecutive
-5-second samples, and the drain step's overall timeout is the 15-minute migration lease plus the
-window (20 minutes at the default).
+sets two waits: restart-safe needs an empty runtime on two consecutive 5-second samples, the
+second at or after the window's end, and the drain step's overall timeout is the 15-minute
+migration lease plus the window (20 minutes at the default, 35 at `1200000`). The runtime empties
+as the window closes, so a drain step takes about the window plus a few seconds to half a minute.
 
-- Allowed values are `300000` (the default, and every wave before this input), `60000`, and
-  `30000`. The wave validator refuses anything else, and each cell job checks again.
+- Allowed values are `300000` (the default, and every wave before this input), `60000`,
+  `30000`, `900000`, and `1200000`. The wave validator refuses anything else, and each cell job
+  checks again.
 - Below `300000` is for US general cells only (C7-C10, C13-C16, C19-C26, C32, C33). Asia drains
   are bound by the target cells' own accept rate (about 4-6 hosts/s per Asia cell), not by the
-  window. Migration-only cells hold no hosts. Both stay at `300000`.
+  window. Migration-only cells hold no hosts. Both stay at `300000` or slower.
+- `900000` and `1200000` are for any cell. They exist because c28's 1,901-host drain at `300000`
+  (about 6.3 hosts/s, 2026-10-07) held database lock time above its bar for about 10 minutes.
+  At `1200000` a 2,000-host Asia cell re-places about 1.7 hosts/s.
 - A non-default window must be named at the end of the confirmation, for example
   `ROLL_RELAY_SAME_CAP <target-digest> <cells> drain-pace-window-ms=60000`. A confirmation that
   names no window confirms `300000`, so a form left at another value fails closed.
 - A canary's authority records its window and its pace verdict (below). A batch may use that
   window or a slower one, never a faster one. A batch below `300000` also needs the canary's pace
-  verdict to be PASS. Stepping back to `300000` mid-ladder needs no new canary.
+  verdict to be PASS. Stepping back to `300000` or slower mid-ladder needs no new canary.
 - A cell on an image without paced drains rejects the window, and the job falls back to an
   unpaced drain. The job records what the cell accepted, and a canary that did not drain at its own
   window seals `UNVERIFIED`.
+- A window above `300000` needs the cell being drained to already run an image that accepts it
+  (the cap rose with this ladder's slow rungs). Before the isolate, the job reads the cap the cell
+  advertises on `/health` (`drainPaceWindowMaxMs`; an image without it has `300000`) and stops
+  with the cell untouched if the window is above it. Re-dispatch at `300000`, or after the cell's
+  next roll. If a cell still rejects the window at the drain, the job fails rather than drain
+  unpaced, and the cell stays isolated for an operator, as any failed cell does.
 
 **What judges a paced drain.** The shadow health gate (report only, after each cell) judges two
 checks the pace can move. Together they are the report's `paceVerdict`, which the canary seals:
@@ -611,7 +634,7 @@ monitor already excludes 503s from its director 5xx rule.
    - its `paceVerdict` is PASS, sealed only from a report on that cell that drained at least 400
      hosts at that pace;
    - time to empty is within window + hosts / 50 s + 10 s. Take `settledAfterSeconds` minus the
-     restart-safe quiet; this is an upper bound, since it includes the isolate.
+     one 5-second confirming sample; this is an upper bound, since it includes the isolate.
 
    The batch check enforces the PASS. A canary that sealed anything else authorizes only
    `300000` batches. The 400-host floor exists because a pace is an arrival rate (hosts /

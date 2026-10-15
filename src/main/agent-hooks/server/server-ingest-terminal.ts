@@ -106,8 +106,8 @@ export abstract class AgentHookServerIngestTerminal extends AgentHookServerInges
       previous.receivedAt >= event.yieldsToHookSince
     if (
       hookOwnsCommand ||
-      (previous?.payload.agentType === 'claude' &&
-        event.payload.agentType === 'claude' &&
+      ((previous?.payload.agentType === 'claude' ||
+        previous?.payload.agentType === 'antigravity') &&
         isAgentStatusHeldOpenByChildWork(previous.payload) &&
         previous.payload.subagents?.some((subagent) => subagent.state === 'working') === true)
     ) {
@@ -159,11 +159,12 @@ export abstract class AgentHookServerIngestTerminal extends AgentHookServerInges
     // Why: OSC carries no main agent fact. While it repaints the state the hook row already holds, the
     // main agent behind that state is unchanged too; a different state is a turn edge OSC cannot date.
     const preservedMainAgent =
-      previous?.payload.mainAgent &&
+      event.payload.mainAgent ??
+      (previous?.payload.mainAgent &&
       previous.payload.state === event.payload.state &&
       (claimedAgentType === undefined || claimedAgentType === previous.payload.agentType)
         ? previous.payload.mainAgent
-        : undefined
+        : undefined)
     // Why: OSC status is a runtime observation, not a prompt boundary; keep prompt-sent telemetry tied to native hooks.
     this.applyNormalizedStatus(
       {

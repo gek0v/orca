@@ -8,13 +8,16 @@ import type { Repo } from '../../../../shared/repo-types'
 vi.mock('@/components/agent/AgentCombobox', () => ({
   default: ({
     value,
-    launchAccountId
+    launchAccountId,
+    allowBlankTerminal
   }: {
     value: string | null
     launchAccountId?: string | null
+    allowBlankTerminal?: boolean
   }) =>
     React.createElement('div', {
       'data-agent-value': value ?? '',
+      'data-allow-blank': String(allowBlankTerminal === true),
       'data-launch-account-id': launchAccountId ?? ''
     })
 }))
@@ -117,6 +120,10 @@ describe('SourceControlAgentActionDialogForm', () => {
     const markup = renderForm()
 
     expect(markup).toContain('Resolve the merge conflicts reported for this pull request.')
+  })
+
+  it('offers agents only, since an action cannot start without one', () => {
+    expect(renderForm()).toContain('data-allow-blank="false"')
   })
 
   it('checks already-saved copy against the selected save target', () => {

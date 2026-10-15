@@ -1,8 +1,5 @@
-import { getLocalPtyProvider, rebindLocalProviderListeners } from '../ipc/pty'
-import {
-  confirmSeededClaudeLivePtys,
-  hasSeededUnconfirmedClaudePtys
-} from '../claude-accounts/live-pty-gate'
+import { getLocalPtyProvider } from '../ipc/pty/provider/registry'
+import { rebindLocalProviderListeners } from '../ipc/pty/provider/listener-lifecycle'
 import { isStartupDiagnosticsEnabled, logStartupDiagnostic } from '../startup/startup-diagnostics'
 import { checkDaemonHealth } from './daemon-health'
 import { collectPinnedDaemonVersions, pruneOldDaemonHosts } from './daemon-host-relocation'
@@ -34,6 +31,33 @@ import type { DaemonRespawnReason } from './daemon-pty-runtime-state'
 import { DaemonPtyRouter } from './daemon-pty-router'
 import { isDaemonRestartInFlight } from './daemon-restart-state'
 import { DaemonSpawner, getDaemonPidPath } from './daemon-spawner'
+import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
+import { resolveNativeBinary } from '../orcad/orcad-local-serve-selection'
+
+export type NativeOrcadAdoptionContext = {
+  hasNativeBinary?: boolean
+  env?: NodeJS.ProcessEnv
+}
+
+export function shouldAdoptNativeOrcadProvider(ctx?: NativeOrcadAdoptionContext): boolean {
+  const env = ctx?.env ?? process.env
+  if (env.ORCA_DISABLE_NATIVE_ORCAD === '1') {
+    return false
+  }
+  if (env.ORCA_USE_NATIVE_ORCAD === '1') {
+    return true
+  }
+  if (typeof ctx?.hasNativeBinary === 'boolean') {
+    return ctx.hasNativeBinary
+  }
+  const binary = resolveNativeBinary({
+    env,
+    platform: process.platform,
+    userDataPath: '',
+    templateDirs: []
+  })
+  return binary !== null
+}
 
 // Why: daemon init runs concurrent with window load, so an in-process t timestamp (not harness stderr timing) measures cold-start.
 function logDaemonMilestone(event: string, details: Record<string, unknown> = {}): void {
@@ -50,6 +74,22 @@ export async function initDaemonPtyProvider(
   options: DaemonLaunchPolicy = {}
 ): Promise<void> {
   logDaemonMilestone('daemon-init-start')
+  if (shouldAdoptNativeOrcadProvider()) {
+    try {
+      const nativeProvider = new OrcadNativePtyProvider()
+      await nativeProvider.ensureConnected()
+      installDaemonProvider(null, nativeProvider)
+      rebindLocalProviderListeners()
+      logDaemonMilestone('daemon-init-done', { native: true })
+      return
+    } catch (error) {
+      console.warn(
+        '[daemon] Native orcad provider init failed, falling back to legacy spawner:',
+        error
+      )
+      logDaemonMilestone('daemon-native-fallback', { error: String(error) })
+    }
+  }
   // Why: e2e coverage for the startup PTY gate (#5232) needs a daemon init that deterministically outlasts the first-window timeout.
   const e2eInitDelayMs = Number(process.env.ORCA_E2E_DAEMON_INIT_DELAY_MS)
   if (Number.isFinite(e2eInitDelayMs) && e2eInitDelayMs > 0) {
@@ -163,7 +203,6 @@ export async function initDaemonPtyProvider(
   if (process.platform === 'darwin' && newSpawner.getHandle()?.adopted) {
     void reportDaemonAdoption(runtimeDir, info.socketPath, info.tokenPath, newAdapter)
   }
-  await reconcileSeededClaudeLivePtys(routedAdapter)
 }
 
 // Why off the init path: this is measurement of an adopted daemon (#17696), and neither its probes nor their failure may delay or fail startup.
@@ -188,31 +227,5 @@ async function reportDaemonAdoption(
     )
   } catch {
     // Best-effort measurement only.
-  }
-}
-
-// Why: release gate ids only for daemon-confirmed-dead sessions; keep seeds on listing failure since releasing early can rotate a live CLI's refresh token.
-async function reconcileSeededClaudeLivePtys(provider: DaemonProvider): Promise<void> {
-  if (!hasSeededUnconfirmedClaudePtys()) {
-    return
-  }
-  try {
-    const adapters =
-      provider instanceof DaemonPtyRouter || provider instanceof DegradedDaemonPtyProvider
-        ? provider.getAllAdapters()
-        : [provider]
-    const results = await Promise.allSettled(adapters.map((entry) => entry.listSessions()))
-    if (results.some((result) => result.status === 'rejected')) {
-      console.warn('[daemon] Keeping seeded Claude live-PTY gate — session listing failed')
-      return
-    }
-    confirmSeededClaudeLivePtys(
-      results.flatMap((result) =>
-        result.status === 'fulfilled' ? result.value.map((session) => session.sessionId) : []
-      )
-    )
-  } catch (error) {
-    // Why: gate bookkeeping must never fail daemon init; stale seeds only defer a usage refresh until next restart.
-    console.warn('[daemon] Failed to reconcile seeded Claude live-PTY gate:', error)
   }
 }

@@ -38,6 +38,18 @@ describe('selectFreshExplicitAgentStatus', () => {
     expect(selected).toMatchObject({ status: 'working' })
   })
 
+  it('returns agentType from the selected hook row when present', () => {
+    const selected = selectFreshExplicitAgentStatus({
+      handle: HANDLE,
+      paneKey: PANE_KEY,
+      hookRows: [row({ agentType: 'antigravity' })]
+    })
+    expect(selected).toMatchObject({
+      status: 'working',
+      agentType: 'antigravity'
+    })
+  })
+
   it('ignores a row belonging to neither the handle nor the pane', () => {
     expect(
       selectFreshExplicitAgentStatus({
