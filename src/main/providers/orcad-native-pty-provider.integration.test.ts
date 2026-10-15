@@ -13,12 +13,18 @@ describe('OrcadNativePtyProvider Live Integration', () => {
         userDataPath: '',
         templateDirs: []
       }) ??
-      path.resolve(
-        process.cwd(),
-        process.platform === 'win32' ? 'target/release/orcad.exe' : 'target/release/orcad'
-      )
+      [
+        path.resolve(
+          process.cwd(),
+          process.platform === 'win32' ? 'target/release/orcad.exe' : 'target/release/orcad'
+        ),
+        path.resolve(
+          process.cwd(),
+          process.platform === 'win32' ? 'target/debug/orcad.exe' : 'target/debug/orcad'
+        )
+      ].find((p) => fs.existsSync(p))
 
-    if (!fs.existsSync(binaryPath)) {
+    if (!binaryPath || !fs.existsSync(binaryPath)) {
       return
     }
 

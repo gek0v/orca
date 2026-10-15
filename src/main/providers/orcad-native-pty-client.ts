@@ -1,6 +1,6 @@
 import * as net from 'node:net'
 import * as readline from 'node:readline'
-import { spawnProcess } from '../../shared/child-process/run-process'
+import { spawnProcess } from '@orca/process-host'
 
 export type OrcadNativePtyClientOptions = {
   endpoint: string

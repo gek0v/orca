@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { runProcess } from '../../shared/child-process/run-process'
+import { runProcess } from '@orca/process-host'
 
 export function getOrcaDirectoryPath(workspacePath: string): string {
   return path.join(workspacePath, '.orca')
