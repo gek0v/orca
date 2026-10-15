@@ -4,7 +4,10 @@ import { prepareAntigravityAccountForLaunch } from './native-account-launch'
 import { createEncryptedAntigravityAccountStore } from './native-account-store'
 import { getAntigravityAccountService } from './native-account-host'
 
-const { prepareForLaunch } = vi.hoisted(() => ({ prepareForLaunch: vi.fn() }))
+const { prepareForLaunch, selectAccount } = vi.hoisted(() => ({
+  prepareForLaunch: vi.fn(),
+  selectAccount: vi.fn()
+}))
 vi.mock('node:fs', () => ({ existsSync: vi.fn() }))
 vi.mock('../../shared/app-environment', () => ({
   getAppEnvironment: () => ({ getPath: () => '/task/home' })
@@ -12,7 +15,7 @@ vi.mock('../../shared/app-environment', () => ({
 vi.mock('./native-account-store', () => ({ createEncryptedAntigravityAccountStore: vi.fn() }))
 vi.mock('./native-account-host', () => ({
   getAntigravityAccountVaultPath: () => '/task/vault',
-  getAntigravityAccountService: vi.fn(() => ({ prepareForLaunch }))
+  getAntigravityAccountService: vi.fn(() => ({ prepareForLaunch, selectAccount }))
 }))
 
 beforeEach(() => {
@@ -24,6 +27,7 @@ beforeEach(() => {
     updateAccountUsage: vi.fn()
   })
   prepareForLaunch.mockReset().mockResolvedValue(undefined)
+  selectAccount.mockReset().mockResolvedValue(undefined)
 })
 
 describe('native account verification before agy launch', () => {
@@ -101,5 +105,43 @@ describe('native account verification before agy launch', () => {
     } finally {
       vi.unstubAllEnvs()
     }
+  })
+
+  it('activates tab launchAccountId when present in the vault', async () => {
+    vi.mocked(createEncryptedAntigravityAccountStore).mockReturnValue({
+      read: () => ({
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: minimal mock shape for test
+        accounts: [{ id: 'acc-1' }, { id: 'acc-2' }] as never,
+        selectedAccountId: 'acc-1'
+      }),
+      write: vi.fn(),
+      updateAccountUsage: vi.fn()
+    })
+    await prepareAntigravityAccountForLaunch({
+      launchAgent: 'antigravity',
+      launchAccountId: 'acc-2',
+      env: { HOME: '/task/home' }
+    })
+    expect(selectAccount).toHaveBeenCalledWith('acc-2')
+    expect(prepareForLaunch).not.toHaveBeenCalled()
+  })
+
+  it('falls back to prepareForLaunch when launchAccountId is unknown or deleted from vault', async () => {
+    vi.mocked(createEncryptedAntigravityAccountStore).mockReturnValue({
+      read: () => ({
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: minimal mock shape for test
+        accounts: [{ id: 'acc-1' }] as never,
+        selectedAccountId: 'acc-1'
+      }),
+      write: vi.fn(),
+      updateAccountUsage: vi.fn()
+    })
+    await prepareAntigravityAccountForLaunch({
+      launchAgent: 'antigravity',
+      launchAccountId: 'deleted-acc',
+      env: { HOME: '/task/home' }
+    })
+    expect(prepareForLaunch).toHaveBeenCalledOnce()
+    expect(selectAccount).not.toHaveBeenCalled()
   })
 })
