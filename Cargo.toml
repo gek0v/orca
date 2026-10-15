@@ -9,7 +9,7 @@ exclude = ["native/windows-cli-launcher"]
 resolver = "2"
 
 [workspace.package]
-version = "1.4.214"
+version = "1.4.225"
 edition = "2021"
 authors = ["Orca Team"]
 license = "MIT"
