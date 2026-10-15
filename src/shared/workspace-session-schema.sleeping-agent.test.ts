@@ -41,6 +41,42 @@ describe('parseWorkspaceSession sleeping agents', () => {
     }
   })
 
+  it('preserves launchAccountId on sleeping agent record', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: null,
+      activeTabId: null,
+      tabsByWorktree: {},
+      terminalLayoutsByTabId: {},
+      sleepingAgentSessionsByPaneKey: {
+        'tab1:pane-1': {
+          paneKey: 'tab1:pane-1',
+          tabId: 'tab1',
+          worktreeId: 'wt',
+          agent: 'antigravity',
+          providerSession: { key: 'conversation_id', id: 'agy-session' },
+          prompt: 'continue',
+          state: 'working',
+          capturedAt: 10,
+          updatedAt: 9,
+          terminalTitle: 'Antigravity',
+          launchAccountId: 'acc-work',
+          launchConfig: {
+            agentArgs: '',
+            agentEnv: {}
+          },
+          origin: 'live'
+        }
+      }
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.sleepingAgentSessionsByPaneKey?.['tab1:pane-1']?.launchAccountId).toBe(
+        'acc-work'
+      )
+    }
+  })
+
   it.each([undefined, 'legacy-orchestration-worker'])(
     'new host ignores an old client resume fence (%s)',
     (automaticResumeBlockedBy) => {

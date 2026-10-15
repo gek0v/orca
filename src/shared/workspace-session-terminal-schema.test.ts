@@ -143,4 +143,67 @@ describe('parseWorkspaceSession terminal fields', () => {
       expect(parseRow({ viewMode: 'holographic' })?.viewMode).toBe('terminal')
     })
   })
+
+  it('preserves launchAccountId on legacy terminal tabs', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: 'wt',
+      activeTabId: 'tab1',
+      tabsByWorktree: {
+        wt: [
+          {
+            id: 'tab1',
+            ptyId: null,
+            worktreeId: 'wt',
+            title: 'Terminal 1',
+            customTitle: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 0,
+            launchAgent: 'antigravity',
+            launchAccountId: 'acc-123'
+          }
+        ]
+      },
+      terminalLayoutsByTabId: {}
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.tabsByWorktree.wt[0].launchAccountId).toBe('acc-123')
+      expect(result.value.tabsByWorktree.wt[0].launchAgent).toBe('antigravity')
+    }
+  })
+
+  it('preserves launchAccountId and launchAgent on unified tabs', () => {
+    const result = parseWorkspaceSession({
+      activeRepoId: null,
+      activeWorktreeId: 'wt',
+      activeTabId: 'tab1',
+      tabsByWorktree: {},
+      terminalLayoutsByTabId: {},
+      unifiedTabs: {
+        wt: [
+          {
+            id: 'tab1',
+            entityId: 'tab1',
+            groupId: 'group-1',
+            worktreeId: 'wt',
+            contentType: 'terminal',
+            label: 'Terminal 1',
+            customLabel: null,
+            color: null,
+            sortOrder: 0,
+            createdAt: 0,
+            launchAgent: 'antigravity',
+            launchAccountId: 'acc-123'
+          }
+        ]
+      }
+    })
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.unifiedTabs?.wt[0].launchAccountId).toBe('acc-123')
+      expect(result.value.unifiedTabs?.wt[0].launchAgent).toBe('antigravity')
+    }
+  })
 })
