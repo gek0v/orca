@@ -87,6 +87,16 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
 
     session.transportConnectInFlightSince = Date.now()
     const effectiveStartup = startupOverride === undefined ? session.paneStartup : startupOverride
+    const tabForPane = findTerminalTabForPane(
+      useAppStore.getState(),
+      session.deps.worktreeId,
+      session.deps.tabId
+    )
+    const resolvedLaunchAccountId =
+      coldRestoreOverride?.launchAccountId ??
+      startupOverride?.launchAccountId ??
+      tabForPane?.launchAccountId ??
+      useAppStore.getState().getTab?.(session.deps.tabId)?.launchAccountId
     const outputCallbacks = session.captureTransportOutputCallbacks(
       session.reportError,
       toProcessExitStartup(coldRestoreOverride ?? effectiveStartup)
@@ -95,6 +105,7 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
       url: '',
       cols: session.cols,
       rows: session.rows,
+      ...(resolvedLaunchAccountId ? { launchAccountId: resolvedLaunchAccountId } : {}),
       ...(startupOverride?.command ? { command: startupOverride.command } : {}),
       ...(session.connectionId &&
       startupOverride?.command &&
@@ -118,9 +129,7 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
         ? { claimReplacedPtyId: session.claimPendingReplacedPtyId }
         : {}),
       shouldContinue: () =>
-        !session.disposed &&
-        (findTerminalTabForPane(useAppStore.getState(), session.deps.worktreeId, session.deps.tabId)
-          ?.generation ?? 0) === session.tabGeneration,
+        !session.disposed && (tabForPane?.generation ?? 0) === session.tabGeneration,
       callbacks: outputCallbacks.callbacks
     })
 

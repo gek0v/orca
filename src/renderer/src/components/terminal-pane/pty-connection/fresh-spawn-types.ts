@@ -8,6 +8,7 @@ import type { buildAgentResumeStartupPlan } from '@/lib/tui-agent-startup'
 export type PendingStartupCommand = {
   command: string
   env?: Record<string, string>
+  launchAccountId?: string
 }
 
 export type FreshSpawnOptions = {

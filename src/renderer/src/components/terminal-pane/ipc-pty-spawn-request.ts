@@ -80,6 +80,7 @@ export async function spawnIpcPty(
     resumeProviderSession,
     launchToken,
     launchAgent,
+    launchAccountId,
     startupCommandDelivery,
     connectionId,
     worktreeId,
@@ -119,6 +120,9 @@ export async function spawnIpcPty(
       : {}),
     ...((connectOptions.launchAgent ?? launchAgent)
       ? { launchAgent: connectOptions.launchAgent ?? launchAgent }
+      : {}),
+    ...((connectOptions.launchAccountId ?? launchAccountId)
+      ? { launchAccountId: connectOptions.launchAccountId ?? launchAccountId }
       : {}),
     ...((connectOptions.startupCommandDelivery ?? startupCommandDelivery)
       ? {

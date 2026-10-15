@@ -17,7 +17,7 @@ import {
 } from '../../../../../shared/agent-session-resume'
 
 import type { ColdRestoreAgentResumeStartup } from './fresh-spawn-types'
-
+import { findTerminalTabForPane } from './terminal-tab-id'
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
 
 export function bindBuildColdRestoreAgentResumeStartup(session: ConnectPanePtySession): void {
@@ -103,6 +103,10 @@ export function bindBuildColdRestoreAgentResumeStartup(session: ConnectPanePtySe
       return null
     }
     const coldRestoreLaunchToken = createBrowserUuid()
+    const launchAccountId =
+      sleepingRecord?.launchAccountId ??
+      findTerminalTabForPane(state, session.deps.worktreeId, session.deps.tabId)?.launchAccountId ??
+      state.getTab?.(session.deps.tabId)?.launchAccountId
     // Why: cold restore means the PTY process is gone but the agent provider
     // session is still resumable, so the replacement spawn must launch it.
     return {
@@ -117,7 +121,8 @@ export function bindBuildColdRestoreAgentResumeStartup(session: ConnectPanePtySe
       launchToken: coldRestoreLaunchToken,
       useLiveEntry: Boolean(useLiveEntry),
       hasSleepingRecord: Boolean(sleepingRecord),
-      sleepingRecordEntry
+      sleepingRecordEntry,
+      ...(launchAccountId ? { launchAccountId } : {})
     }
   }
 }

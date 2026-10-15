@@ -397,4 +397,38 @@ describe('createIpcPtyTransport', () => {
     })
     expect(writeMock).not.toHaveBeenCalled()
   })
+
+  it('forwards launchAccountId from transport options and connect options to pty.spawn', async () => {
+    const { createIpcPtyTransport } = await import('./pty-transport')
+    const spawnMock = vi.fn().mockResolvedValue({ id: 'pty-1' })
+    vi.mocked(window.api.pty.spawn).mockImplementation(spawnMock)
+
+    const transport = createIpcPtyTransport({
+      cwd: '/tmp/worktree',
+      launchAccountId: 'account-opt'
+    })
+
+    await transport.connect({
+      url: '',
+      callbacks: {}
+    })
+
+    expect(spawnMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        launchAccountId: 'account-opt'
+      })
+    )
+
+    await transport.connect({
+      url: '',
+      launchAccountId: 'account-override',
+      callbacks: {}
+    })
+
+    expect(spawnMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        launchAccountId: 'account-override'
+      })
+    )
+  })
 })

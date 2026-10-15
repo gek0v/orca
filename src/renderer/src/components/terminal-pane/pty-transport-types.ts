@@ -171,6 +171,7 @@ export type PtyTransport = {
     resumeProviderSession?: AgentProviderSessionMetadata
     launchToken?: string
     launchAgent?: TuiAgent
+    launchAccountId?: string
     startupCommandDelivery?: StartupCommandDelivery
     /** Taken only as the spawn request is sent; main stops the returned PTY before resolving the
      *  pane's owner. Never taken on a session reattach, so the caller still holds it. */
@@ -274,6 +275,7 @@ export type IpcPtyTransportOptions = {
   agentLaunchPreferences?: AgentLaunchPreferences
   launchToken?: string
   launchAgent?: TuiAgent
+  launchAccountId?: string
   startupCommandDelivery?: StartupCommandDelivery
   connectionId?: string | null
   executionHostId?: ExecutionHostId | null
