@@ -6,8 +6,8 @@ import {
 import type { DaemonPtyAdapter } from '../daemon/daemon-pty-adapter'
 import { DaemonPtyRouter } from '../daemon/daemon-pty-router'
 import { DegradedDaemonPtyProvider } from '../daemon/degraded-daemon-pty-provider'
-import { getDaemonProvider } from '../daemon/daemon-init'
-import { getLocalPtyProvider } from '../ipc/pty'
+import { getDaemonProvider } from '../daemon/daemon-provider-state'
+import { getLocalPtyProvider } from '../ipc/pty/provider/registry'
 import { LocalPtyProvider } from '../providers/local-pty-provider'
 import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 

@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runProcess } from '../../shared/child-process/run-process'
+import { runProcess } from '@orca/process-host'
 import { hasReachedAppVersion, parseCliVersion } from '../../shared/app-version'
 import { resolveCommandOnLocalPath } from '../ipc/command-path-resolver'
 import { resolveLoginShellEnvironment } from '../startup/login-shell-environment'

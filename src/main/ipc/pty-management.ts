@@ -5,9 +5,9 @@ import { OrcadNativePtyProvider } from '../providers/orcad-native-pty-provider'
 import type { DaemonPtyAdapter } from '../daemon/daemon-pty-adapter'
 import {
   getCurrentDaemonMacTccAttributionHealth,
-  getDaemonProvider,
-  restartDaemon
-} from '../daemon/daemon-init'
+  getDaemonProvider
+} from '../daemon/daemon-provider-state'
+import { restartDaemon } from '../daemon/daemon-provider-restart'
 import { getCurrentDaemonAdapter } from '../daemon/daemon-provider-routing'
 import {
   getDaemonFolderAccessMismatch,
