@@ -129,7 +129,9 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
         ? { claimReplacedPtyId: session.claimPendingReplacedPtyId }
         : {}),
       shouldContinue: () =>
-        !session.disposed && (tabForPane?.generation ?? 0) === session.tabGeneration,
+        !session.disposed &&
+        (findTerminalTabForPane(useAppStore.getState(), session.deps.worktreeId, session.deps.tabId)
+          ?.generation ?? 0) === session.tabGeneration,
       callbacks: outputCallbacks.callbacks
     })
 
