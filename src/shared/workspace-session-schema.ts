@@ -20,7 +20,8 @@ import type { WorkspaceSessionState } from './workspace-session-state-types'
 import { terminalTabIdSchema } from './terminal-tab-id-schema'
 import {
   leafStringsSchema,
-  terminalLayoutSnapshotSchema
+  terminalLayoutSnapshotSchema,
+  terminalPaneLayoutNodeSchema
 } from './workspace-session-terminal-layout-schema'
 import { terminalSurfaceTombstoneSchema } from './terminal-surface-tombstone-schema'
 import { parseExecutionHostId, type ExecutionHostId } from './execution-host'
@@ -42,6 +43,8 @@ import {
 } from './workspace-session-tab-type-schema'
 import { salvagedField, salvagedOptional, salvagingArray, salvagingRecord } from './zod-salvage'
 import { isStructuredAgentId } from './agent-session-provider-handle-encoding'
+
+export { terminalPaneLayoutNodeSchema }
 
 const workspaceKeySchema = z.custom<WorkspaceKey>(
   (value) => typeof value === 'string' && isWorkspaceKey(value)

@@ -246,6 +246,7 @@ const SLEEPING = {
   connectionId: paneRecord('leaf.sleeping.connectionId'),
   launchConfig: paneRecord('leaf.sleeping.launchConfig'),
   origin: paneRecord('leaf.sleeping.origin'),
+  launchAccountId: paneRecord('leaf.sleeping.launchAccountId'),
   restoreOnTabOpenOnly: paneRecord('leaf.sleeping.restoreOnTabOpenOnly')
 } as const satisfies Record<keyof SleepingAgentSessionRecord, DiskFieldWritten>
 
