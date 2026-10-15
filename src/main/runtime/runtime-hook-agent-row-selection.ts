@@ -3,6 +3,7 @@ import {
   pickParsedAgentStatusPayload,
   type AgentStatusEntry,
   type AgentStatusIpcPayload,
+  type AgentType,
   type ParsedAgentStatusPayload
 } from '../../shared/agent-status-types'
 import type { AgentProviderSessionMetadata } from '../../shared/agent-session-resume'
@@ -65,6 +66,8 @@ export function selectFreshExplicitAgentStatusRow(args: HookRowJoin): AgentStatu
   return best
 }
 
+export type FreshExplicitAgentStatus = ReturnType<typeof selectFreshExplicitAgentStatus>
+
 /** The freshest explicit state for a terminal, matched on its handle or its pane key. */
 export function selectFreshExplicitAgentStatus(args: {
   handle: string
@@ -74,6 +77,7 @@ export function selectFreshExplicitAgentStatus(args: {
   status: NonNullable<RuntimeTerminalAgentStatus['status']>
   updatedAt: number
   stateStartedAt: number
+  agentType?: AgentType
 } | null {
   const row = selectFreshExplicitAgentStatusRow({
     handles: [args.handle],
@@ -84,7 +88,8 @@ export function selectFreshExplicitAgentStatus(args: {
     ? {
         status: mapExplicitAgentStateToRuntimeTerminalStatus(row.state),
         updatedAt: row.receivedAt,
-        stateStartedAt: typeof row.stateStartedAt === 'number' ? row.stateStartedAt : row.receivedAt
+        stateStartedAt: typeof row.stateStartedAt === 'number' ? row.stateStartedAt : row.receivedAt,
+        ...(row.agentType ? { agentType: row.agentType } : {})
       }
     : null
 }

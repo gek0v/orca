@@ -183,6 +183,9 @@ export const AutomationRuns = z.object({
   cursor: OptionalString
 })
 
+// Why strict: null or a non-string must fail rather than fall back to "omitted", which preserves.
+const ExtraAgentArgs = z.string({ message: 'Extra agent arguments must be text.' }).optional()
+
 export const AutomationCreate = z.object({
   creationKey: OptionalString,
   name: requiredString('Missing automation name'),
@@ -190,6 +193,7 @@ export const AutomationCreate = z.object({
   precheck: AutomationPrecheck,
   agentId: TuiAgent,
   launchAccountId: OptionalNullablePlainString,
+  extraAgentArgs: ExtraAgentArgs,
   runContext: WorkspaceRunContext,
   sourceContext: TaskSourceContext,
   repo: OptionalString,
@@ -212,6 +216,7 @@ export const AutomationUpdateFields = z.object({
   precheck: AutomationPrecheck,
   agentId: TuiAgent.optional(),
   launchAccountId: OptionalNullablePlainString,
+  extraAgentArgs: ExtraAgentArgs,
   runContext: WorkspaceRunContext,
   sourceContext: TaskSourceContext,
   repo: OptionalString,

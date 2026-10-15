@@ -102,10 +102,6 @@ export function buildSubagentChildRows(args: {
   parentIsFresh: boolean
 }): DashboardAgentRow[] {
   const { parentEntry } = args
-  // Why: Antigravity subagents live strictly within the lead agent's execution; a completed parent leaves no running children.
-  if (parentEntry.agentType === 'antigravity' && parentEntry.state === 'done') {
-    return []
-  }
   const context = agentChildRowContextForParent(parentEntry, args.parentIsFresh)
   const rows =
     parentEntry.children !== undefined

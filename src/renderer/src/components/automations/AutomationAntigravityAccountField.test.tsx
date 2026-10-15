@@ -26,6 +26,7 @@ const BASE_DRAFT: AutomationDraft = {
   name: 'Test',
   prompt: 'Do something',
   agentId: 'antigravity',
+  extraAgentArgs: '',
   launchAccountId: null,
   projectId: 'repo-1',
   workspaceMode: 'existing',

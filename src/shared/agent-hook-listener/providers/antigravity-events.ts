@@ -7,7 +7,7 @@ import type { HookListenerState } from '../listener-state'
 import { resolvePrompt, resolveToolState } from '../prompt-fields'
 import { extractToolFields, isNewTurnEvent } from '../provider-event-routing'
 import { readLastUserPromptFromTranscript } from '../transcript-lines'
-import { foldAgentLeadStatus } from '../../agent-lead-status-fold'
+import { continueMainAgentStatus, foldAgentLeadStatus } from '../../agent-lead-status-fold'
 import {
   antigravityRosterChildWorkLiveness,
   antigravityRosterToSnapshots,
@@ -134,9 +134,13 @@ export function normalizeAntigravityEvent(
     }
   }
 
+  const previousMainAgent = state.antigravityMainAgentStatusByPaneKey.get(paneKey)
+  const mainAgent = continueMainAgentStatus(previousMainAgent, { state: stateName }, Date.now())
+  state.antigravityMainAgentStatusByPaneKey.set(paneKey, mainAgent)
+
   const payload = normalizeAgentStatusPayload({
     state: resolution.stateName,
-    workingMode: resolution.workingMode,
+    ...(resolution.workingMode ? { workingMode: resolution.workingMode } : {}),
     prompt: resolvePrompt(state, paneKey, effectivePrompt, {
       resetOnNewTurn: resetsTurn
     }),
@@ -146,11 +150,8 @@ export function normalizeAntigravityEvent(
     interactivePrompt: snapshot.interactivePrompt,
     lastAssistantMessage: snapshot.lastAssistantMessage,
     lastAssistantMessageIsToolOutput: snapshot.lastAssistantMessageIsToolOutput,
-    subagents: antigravityRosterToSnapshots(roster),
-    mainAgent: {
-      state: stateName,
-      stateStartedAt: Date.now()
-    }
+    subagents: antigravityRosterToSnapshots(state.antigravitySubagentRosterByPaneKey.get(paneKey)),
+    mainAgent
   })
   return payload
 }

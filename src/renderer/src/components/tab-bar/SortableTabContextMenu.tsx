@@ -1,5 +1,4 @@
 import {
-  MessageSquare,
   PanelLeftClose,
   PanelRightClose,
   Pin,
@@ -27,9 +26,12 @@ import { useAppStore } from '../../store'
 import { formatShortcutLabel, useOptionalShortcutLabel } from '@/hooks/useShortcutLabel'
 import { translate } from '@/i18n/i18n'
 import { TerminalTabSplitMenuSection } from './TerminalTabSplitMenuSection'
+import { TabSessionSurfaceSwitchMenuItems } from './TabSessionSurfaceSwitchMenuItems'
+import type { NativeChatTabSession } from './tab-session-history-switch'
 import { TAB_CONTEXT_MENU_CONTENT_CLASS } from './tab-context-menu-sizing'
 import { AntigravityAccountGlyph } from '@/components/agent/AntigravityAccountGlyph'
 import { useAntigravityAccounts } from '@/hooks/useAntigravityAccounts'
+import { CopyTabIdMenuItem } from './CopyTabIdMenuItem'
 
 const TAB_COLORS = [
   {
@@ -95,7 +97,10 @@ const TAB_COLORS = [
 ] as const
 
 type SortableTabContextMenuProps = {
-  tab: TerminalTab
+  tab: Pick<
+    TerminalTab,
+    'id' | 'worktreeId' | 'color' | 'launchAgent' | 'launchAccountId'
+  >
   unifiedTabId: string
   groupId: string
   isActive: boolean
@@ -124,6 +129,8 @@ type SortableTabContextMenuProps = {
   /** Toggle the tab between terminal and native chat view. */
   onToggleViewMode?: () => void
   canSplitTerminal?: boolean
+  /** Set only for a native chat tab. */
+  nativeChat?: NativeChatTabSession
 }
 
 export function SortableTabContextMenu({
@@ -149,7 +156,8 @@ export function SortableTabContextMenu({
   canToggleViewMode = false,
   isChatView = false,
   onToggleViewMode,
-  canSplitTerminal = true
+  canSplitTerminal = true,
+  nativeChat
 }: SortableTabContextMenuProps): React.JSX.Element {
   const keybindings = useAppStore((state) => state.keybindings)
   const splitRightShortcut = formatShortcutLabel('terminal.splitRight', keybindings)
@@ -157,6 +165,9 @@ export function SortableTabContextMenu({
 
   const closeShortcut = useOptionalShortcutLabel('tab.close')
   const renameShortcut = useOptionalShortcutLabel('tab.rename')
+  // Why: switching a tab into chat view is hidden while that toggle is removed; a tab already in
+  // chat view keeps its way back.
+  const showTerminalViewSwitch = canToggleViewMode && isChatView && onToggleViewMode !== undefined
 
   const isAntigravity = tab.launchAgent === 'antigravity'
   const { accounts: antigravityAccounts, activeAccount: activeAntigravityAccount } =
@@ -217,27 +228,23 @@ export function SortableTabContextMenu({
           splitDownShortcut={splitDownShortcut}
           showTerminalSplit={canSplitTerminal}
         />
-        {canToggleViewMode && onToggleViewMode ? (
+        {showTerminalViewSwitch ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onToggleViewMode}>
-              {isChatView ? (
-                <SquareTerminal className="size-3.5 shrink-0" />
-              ) : (
-                <MessageSquare className="size-3.5 shrink-0" />
+              <SquareTerminal className="size-3.5 shrink-0" />
+              {translate(
+                'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
+                'Switch to terminal view'
               )}
-              {isChatView
-                ? translate(
-                    'components.tab.bar.SortableTabContextMenu.switchToTerminalView',
-                    'Switch to terminal view'
-                  )
-                : translate(
-                    'components.tab.bar.SortableTabContextMenu.switchToChatView',
-                    'Switch to chat view'
-                  )}
             </DropdownMenuItem>
           </>
         ) : null}
+        <TabSessionSurfaceSwitchMenuItems
+          tab={tab}
+          nativeChat={nativeChat}
+          leadingSeparator={!showTerminalViewSwitch}
+        />
         {isAntigravity ? (
           <>
             <DropdownMenuSeparator />
@@ -293,6 +300,7 @@ export function SortableTabContextMenu({
             ? translate('auto.components.tab.bar.SortableTabContextMenu.417722e9c2', 'Unpin Tab')
             : translate('auto.components.tab.bar.SortableTabContextMenu.60f958ec75', 'Pin Tab')}
         </DropdownMenuItem>
+        <CopyTabIdMenuItem unifiedTabId={unifiedTabId} />
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => !isPinned && onClose(tab.id)} disabled={isPinned}>
           <X className="size-3.5" />

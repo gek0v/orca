@@ -627,4 +627,59 @@ describe('OrcaRuntimeService', () => {
       status: 'idle'
     })
   })
+
+  it('authorizes Antigravity explicit status in a PowerShell terminal without OSC title', async () => {
+    const leafId = '11111111-1111-4111-8111-111111111111'
+    const paneKey = makePaneKey('tab-1', leafId)
+    const now = Date.now()
+    const runtime = new OrcaRuntimeService(store, undefined, {
+      getAgentStatusSnapshot: () => [
+        {
+          paneKey,
+          state: 'done',
+          prompt: '',
+          agentType: 'antigravity',
+          connectionId: null,
+          receivedAt: now,
+          stateStartedAt: now,
+          tabId: 'tab-1',
+          worktreeId: TEST_WORKTREE_ID
+        }
+      ]
+    })
+    runtime.setPtyController({
+      spawn: vi.fn().mockResolvedValue({ id: 'pty-1' }),
+      write: () => true,
+      kill: () => true,
+      getForegroundProcess: async () => 'agy'
+    })
+    runtime.attachWindow(1)
+    runtime.syncWindowGraph(1, {
+      tabs: [
+        {
+          tabId: 'tab-1',
+          worktreeId: TEST_WORKTREE_ID,
+          title: 'powershell.exe',
+          activeLeafId: leafId,
+          layout: null
+        }
+      ],
+      leaves: [
+        {
+          tabId: 'tab-1',
+          worktreeId: TEST_WORKTREE_ID,
+          leafId,
+          paneRuntimeId: 1,
+          ptyId: 'pty-1'
+        }
+      ]
+    })
+
+    const [terminal] = (await runtime.listTerminals()).terminals
+    await expect(runtime.getTerminalAgentStatus(terminal.handle)).resolves.toEqual({
+      handle: terminal.handle,
+      isRunningAgent: true,
+      status: 'idle'
+    })
+  })
 })

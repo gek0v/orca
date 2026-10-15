@@ -90,6 +90,28 @@ describe('antigravity-events', () => {
     rmSync(testDir, { recursive: true, force: true })
   })
 
+  it('settles to done on Stop when no subagents are running', () => {
+    const testDir = join(tmpdir(), `orca-agy-events-stop-done-${Date.now()}`)
+    const brainDir = join(testDir, 'brain', 'parent-done')
+    const logsDir = join(brainDir, '.system_generated', 'logs')
+    mkdirSync(logsDir, { recursive: true })
+
+    const transcriptPath = join(logsDir, 'transcript.jsonl')
+    writeFileSync(transcriptPath, '')
+
+    const state = createHookListenerState()
+    const payload = normalizeAntigravityEvent(state, 'Stop', 'Finished task', 'pane-1', {
+      transcriptPath
+    })
+
+    expect(payload?.state).toBe('done')
+    expect(payload?.mainAgent?.state).toBe('done')
+    expect(payload?.subagents).toBeUndefined()
+    expect(state.antigravityCompletedTranscriptByPaneKey.get('pane-1')).toBe(transcriptPath)
+
+    rmSync(testDir, { recursive: true, force: true })
+  })
+
   it('preserves subagent roster across multiple turn PreInvocation events without transcriptPath', () => {
     const testDir = join(tmpdir(), `orca-agy-events-turns-${Date.now()}`)
     const brainDir = join(testDir, 'brain', 'parent-turns')
@@ -100,7 +122,6 @@ describe('antigravity-events', () => {
 
     const transcriptPath = join(logsDir, 'transcript.jsonl')
     writeFileSync(transcriptPath, '')
-
     writeFileSync(
       join(subagentsDir, 'subagent-worker.json'),
       JSON.stringify({

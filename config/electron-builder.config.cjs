@@ -28,6 +28,7 @@ const {
 const {
   verifyPackagedWindowsNodePty
 } = require('./scripts/verify-packaged-node-pty-job-ownership.cjs')
+const { verifyPackagedWindowsAgentHook } = require('./scripts/verify-packaged-windows-agent-hook.cjs')
 const {
   assertOrcadTemplateBuilt,
   finalizePackagedOrcadTemplate,
@@ -38,6 +39,7 @@ const {
 const { verifySkillsCliRuntime } = require('./scripts/verify-skills-cli-runtime.cjs')
 const { verifyStaticAppImagePackage } = require('./scripts/static-appimage-package-contract.cjs')
 const { signWindowsUninstallerViaSignPath } = require('./scripts/windows-uninstaller-signing.cjs')
+const { getPackagedNativeBinaryResources } = require('./scripts/packaged-native-binaries.cjs')
 
 // Why: dev-channel builds must carry the *release* identity — same bundle id,
 // Developer ID signature, and notarization ticket — or Squirrel.Mac refuses to
@@ -92,6 +94,12 @@ const skillFreshnessResources = {
   from: 'resources/skills',
   to: 'skills'
 }
+// Why a real directory: native-chat agents load this skill plugin by path (Claude --plugin-dir,
+// Codex skill roots), and neither can read inside app.asar.
+const nativeChatVisualsResource = {
+  from: 'resources/native-chat-visuals',
+  to: 'native-chat-visuals'
+}
 // Why: SSH relay deploy resolves bundles from process.resourcesPath in packaged
 // apps. Keeping relay assets as extraResources makes them real directories
 // instead of paths hidden inside app.asar.
@@ -123,6 +131,7 @@ const commonExtraResources = [
   ...bundledRipgrepExtraResources,
   bundledPluginResources,
   skillFreshnessResources,
+  nativeChatVisualsResource,
   emojiShortcodeDatasetResource
 ]
 // Why: native speech addons must be real files outside app.asar; copy only the
@@ -138,6 +147,9 @@ const linuxSpeechNativeResource = {
 const winSpeechNativeResource = {
   from: 'node_modules/sherpa-onnx-win-x64',
   to: 'node_modules/sherpa-onnx-win-x64'
+}
+function nativeOrcadResource(platform) {
+  return getPackagedNativeBinaryResources(platform, { includeCli: false })
 }
 // electron-builder replaces these defaults when `depends` is configured; retain
 // Electron's loader requirements alongside Orca's headless-host dependencies.
@@ -211,6 +223,11 @@ module.exports = {
     '!docs{,/**/*}',
     '!mobile{,/**/*}',
     '!native{,/**/*}',
+    '!crates{,/**/*}',
+    '!target{,/**/*}',
+    '!cloud{,/**/*}',
+    '!{.orca,.agents}{,/**/*}',
+    '!{Cargo.toml,Cargo.lock,rust-toolchain.toml,PROJECT.md}',
     '!skills{,/**/*}',
     // Why: guide/stub authoring sources are compiled into runtime artifacts; shipping
     // either source tree would duplicate content without a runtime consumer.
@@ -256,6 +273,7 @@ module.exports = {
     // it from process.resourcesPath; exclude the source copy from app.asar.
     '!resources/onboarding/feature-wall/**',
     '!resources/skills/**',
+    '!resources/native-chat-visuals/**',
     // Why: bundled plugins ship via extraResources to resources/plugins/launch;
     // packing the source tree into app.asar would duplicate those exact bytes.
     '!resources/plugins/launch/**',
@@ -306,6 +324,7 @@ module.exports = {
     'out/main/droid/**',
     'out/main/gemini/**',
     'out/main/gitlab/project-ref-parser.js',
+    'out/main/goals/**',
     'out/main/grok/**',
     'out/main/hermes/**',
     'out/main/orca-profiles/profile-index-store.js',
@@ -400,6 +419,7 @@ module.exports = {
     const canExecuteTargetArch = context.arch === hostArchEnum || context.arch === 4
     if (context.electronPlatformName === 'win32') {
       verifyPackagedWindowsNodePty(resourcesDir, context.arch, { canExecuteTargetArch })
+      verifyPackagedWindowsAgentHook(resourcesDir, context.arch)
     }
     verifySkillsCliRuntime(join(resourcesDir, 'app.asar.unpacked', 'out'), resourcesDir, {
       executeCommands: canExecuteTargetArch
@@ -481,6 +501,7 @@ module.exports = {
       ...commonExtraResources,
       ...windowsRuntimeResources,
       winSpeechNativeResource,
+      ...nativeOrcadResource('win32'),
       {
         from: 'resources/win32/bin/orca.cmd',
         to: 'bin/orca.cmd'
@@ -488,6 +509,14 @@ module.exports = {
       {
         from: 'native/windows-cli-launcher/.build/orca.exe',
         to: 'bin/orca.exe'
+      },
+      {
+        from: 'native/windows-cli-launcher/.build/orca-administrator-restart.exe',
+        to: 'bin/orca-administrator-restart.exe'
+      },
+      {
+        from: 'native/windows-agent-hook/.build/orca-agent-hook.exe',
+        to: 'bin/orca-agent-hook.exe'
       },
       {
         from: 'node_modules/agent-browser/bin/agent-browser-win32-x64.exe',

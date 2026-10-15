@@ -143,11 +143,37 @@ export class WorktreeGoalsService {
     this.lastWrittenContentHash = createHash('sha256').update(content).digest('hex')
     this.cachedData = data
 
-    const tmpPath = path.join(orcaDir, 'goals.json.tmp')
+    const tmpPath = path.join(
+      orcaDir,
+      `goals.json.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    )
     const targetPath = getGoalsJsonPath(this.workspacePath)
 
     await fs.writeFile(tmpPath, content, 'utf8')
-    await fs.rename(tmpPath, targetPath)
+    try {
+      let renamed = false
+      for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+          await fs.rename(tmpPath, targetPath)
+          renamed = true
+          break
+        } catch (err: unknown) {
+          const code = (err as { code?: string })?.code
+          if (code === 'EPERM' || code === 'EBUSY') {
+            await new Promise((r) => setTimeout(r, 10 * (attempt + 1)))
+          } else {
+            throw err
+          }
+        }
+      }
+      if (!renamed) {
+        await fs.rename(tmpPath, targetPath)
+      }
+    } finally {
+      if (existsSync(tmpPath)) {
+        await fs.unlink(tmpPath).catch(() => {})
+      }
+    }
 
     await this.projectCurrentGoalFile()
     this.ensureWatcher()

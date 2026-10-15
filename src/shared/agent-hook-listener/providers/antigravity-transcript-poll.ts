@@ -45,7 +45,7 @@ export function pollAntigravityTranscriptStatus<T extends AgentHookEventPayload>
     payload: {
       ...original.payload,
       state: resolution.stateName,
-      workingMode: resolution.workingMode,
+      ...(resolution.workingMode ? { workingMode: resolution.workingMode } : {}),
       mainAgent: {
         state: leadState,
         stateStartedAt: original.payload.mainAgent?.stateStartedAt ?? Date.now()
