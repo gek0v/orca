@@ -21,14 +21,14 @@ const SUBAGENT_RECENCY_MS = 15 * 60_000
 
 export function isSubagentCompletionMessage(content: string): boolean {
   if (
-    /\b(?:status update|progress report|liveness|iteration|standing by|en espera|esperando(?: a)?|standby)\b/i.test(
+    /\b(?:status update|progress report|liveness|iteration|standing by|standby|en espera|esperando(?: a)?|actualizaci[oó]n|reporte de progreso|informe de estado)\b/i.test(
       content
     )
   ) {
     return false
   }
   return (
-    /\b(?:(?:task|mission|work|implementation|survey|review|audit|analysis|refactor|investigation|job|tarea|misi[oó]n|trabajo|implementaci[oó]n|revisi[oó]n|auditor[ií]a|an[aá]lisis)(?: \w+)? (?:is |est[aá] )?(?:complete|completed|finished|done|completad[oa]|finalizad[oa]|terminad[oa]|concluid[oa])|all tasks? (?:are )?(?:complete|completed|finished|done)|todas las tareas (?:est[aá]n )?completadas|completed successfully|completad[oa] con [eé]xito|100% completad[oa]|completad[oa] al 100%|acciones completadas|soluci[oó]n completa|ready to merge|listo para merge|listo para fusionar)\b/i.test(
+    /\b(?:(?:task|mission|work|implementation|survey|review|audit|analysis|refactor|investigation|job|tarea|misi[oó]n|trabajo|implementaci[oó]n|revisi[oó]n|auditor[ií]a|an[aá]lisis)(?: \w+)? (?:is |est[aá] )?(?:complete|completed|finished|done|completad[oa]|finalizad[oa]|terminad[oa]|concluid[oa])|all tasks? (?:are )?(?:complete|completed|finished|done)|todas las tareas (?:est[aá]n )?completadas|completed successfully|completad[oa] con [eé]xito|100% completad[oa]|completad[oa] al 100%|acciones completadas|soluci[oó]n completa|ready to merge|listo para merge|listo para fusionar|misi[oó]n cumplida|todo (?:completado|terminado|finalizado))\b/i.test(
       content
     ) || /\btask \d+ complete\b/i.test(content)
   )

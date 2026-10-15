@@ -2,8 +2,8 @@ import {
   antigravityRosterChildWorkLiveness,
   antigravityRosterToSnapshots
 } from '../../antigravity-subagent-roster'
-import { foldAgentLeadStatus } from '../../agent-lead-status-fold'
 import { reconcileAntigravitySubagentTranscript } from '../../antigravity-subagent-transcript'
+import { foldAgentLeadStatus } from '../../agent-lead-status-fold'
 import type { AgentHookEventPayload } from '../listener-event'
 import type { HookListenerState } from '../listener-state'
 
@@ -29,14 +29,16 @@ export function pollAntigravityTranscriptStatus<T extends AgentHookEventPayload>
     return original
   }
   const subagents = antigravityRosterToSnapshots(roster)
-  const liveness = antigravityRosterChildWorkLiveness(roster)
-  const leadState = original.payload.mainAgent?.state ?? original.payload.state
+  const leadState =
+    original.payload.mainAgent?.state ?? (original.payload.state === 'done' ? 'done' : 'working')
   const resolution = foldAgentLeadStatus({
     leadState,
-    childWorkLiveness: liveness
+    childWorkLiveness: antigravityRosterChildWorkLiveness(roster)
   })
   if (roster.size === 0 && resolution.stateName === 'done') {
     state.antigravityCompletedTranscriptByPaneKey.set(original.paneKey, transcript.parent.filePath)
+    state.antigravitySubagentRosterByPaneKey.delete(original.paneKey)
+    state.antigravitySubagentTranscriptByPaneKey.delete(original.paneKey)
   }
   return {
     ...original,
@@ -44,6 +46,10 @@ export function pollAntigravityTranscriptStatus<T extends AgentHookEventPayload>
       ...original.payload,
       state: resolution.stateName,
       ...(resolution.workingMode ? { workingMode: resolution.workingMode } : {}),
+      mainAgent: {
+        state: leadState,
+        stateStartedAt: original.payload.mainAgent?.stateStartedAt ?? Date.now()
+      },
       subagents
     }
   }

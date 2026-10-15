@@ -108,34 +108,31 @@ export function normalizeAntigravityEvent(
     { resetOnNewTurn: resetsTurn }
   )
 
-  if (resetsTurn) {
-    state.antigravitySubagentRosterByPaneKey.delete(paneKey)
-    state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
-  }
+  const effectiveTranscriptPath =
+    transcriptPath ?? state.antigravitySubagentTranscriptByPaneKey.get(paneKey)?.parent.filePath
 
-  if (transcriptPath) {
+  if (effectiveTranscriptPath) {
     const roster = getOrCreateAntigravitySubagentRoster(state, paneKey)
     const transcriptState = getOrCreateAntigravitySubagentTranscriptState(state, paneKey)
-    reconcileAntigravitySubagentTranscript(transcriptState, roster, transcriptPath)
+    reconcileAntigravitySubagentTranscript(transcriptState, roster, effectiveTranscriptPath)
   }
 
   const roster = state.antigravitySubagentRosterByPaneKey.get(paneKey)
-  const liveness = antigravityRosterChildWorkLiveness(roster)
-  const hasRunningSubagents = liveness !== null
+  const childWorkLiveness = antigravityRosterChildWorkLiveness(roster)
+  const resolution = foldAgentLeadStatus({
+    leadState: stateName,
+    childWorkLiveness
+  })
 
   // Why: Antigravity can emit Stop with fullyIdle=false between tool steps; only a fully idle Stop without subagents is terminal.
-  if (eventName === 'Stop' && !stopStillBusy && transcriptPath) {
+  const hasRunningSubagents = hasAntigravityTranscriptSubagents(state, paneKey)
+  if (eventName === 'Stop' && !stopStillBusy && effectiveTranscriptPath) {
     if (!hasRunningSubagents) {
-      state.antigravityCompletedTranscriptByPaneKey.set(paneKey, transcriptPath)
+      state.antigravityCompletedTranscriptByPaneKey.set(paneKey, effectiveTranscriptPath)
       state.antigravitySubagentRosterByPaneKey.delete(paneKey)
       state.antigravitySubagentTranscriptByPaneKey.delete(paneKey)
     }
   }
-
-  const resolution = foldAgentLeadStatus({
-    leadState: stateName,
-    childWorkLiveness: liveness
-  })
 
   const previousMainAgent = state.antigravityMainAgentStatusByPaneKey.get(paneKey)
   const mainAgent = continueMainAgentStatus(previousMainAgent, { state: stateName }, Date.now())

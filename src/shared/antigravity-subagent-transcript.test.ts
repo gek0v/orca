@@ -452,6 +452,54 @@ describe('antigravity-subagent-transcript', () => {
     rmSync(testDir, { recursive: true, force: true })
   })
 
+  it('retains active subagents reporting idle in manage_subagents as idle state without eviction', () => {
+    const testDir = join(tmpdir(), `orca-agy-idle-subagent-${Date.now()}`)
+    const brainDir = join(testDir, 'brain', 'parent-idle-test')
+    const subagentsDir = join(brainDir, '.system_generated', 'subagents')
+    const logsDir = join(brainDir, '.system_generated', 'logs')
+    mkdirSync(subagentsDir, { recursive: true })
+    mkdirSync(logsDir, { recursive: true })
+    const transcriptPath = join(logsDir, 'transcript.jsonl')
+
+    writeFileSync(
+      join(subagentsDir, 'forge-auditor.json'),
+      JSON.stringify({
+        conversationId: 'forge-auditor',
+        subagentDescriptor: {
+          typeName: 'forge-mod-developer',
+          role: 'Forge Mod Auditor'
+        },
+        state: 'SUBAGENT_STATE_ALIVE'
+      })
+    )
+
+    // Transcript contains manage_subagents result with state: "idle"
+    const step1 = JSON.stringify({
+      step_index: 43,
+      source: 'MODEL',
+      type: 'GENERIC',
+      status: 'DONE',
+      content:
+        'You have 1 active subagent(s):\n[{"role":"Forge Mod Auditor","type":"forge-mod-developer","conversationId":"forge-auditor","state":"idle"}]'
+    })
+    writeFileSync(transcriptPath, `${step1}\n`)
+
+    const state = createAntigravitySubagentTranscriptState()
+    const roster: AntigravitySubagentRoster = new Map()
+
+    const changed = reconcileAntigravitySubagentTranscript(state, roster, transcriptPath)
+    expect(changed).toBe(true)
+
+    // The subagent must stay in the roster with state: 'idle', not evicted or treated as completed
+    const snapshots = antigravityRosterToSnapshots(roster)
+    expect(snapshots).toHaveLength(1)
+    expect(snapshots?.[0]?.id).toBe('forge-auditor')
+    expect(snapshots?.[0]?.state).toBe('idle')
+    expect(state.completedSubagents.has('forge-auditor')).toBe(false)
+
+    rmSync(testDir, { recursive: true, force: true })
+  })
+
   it('removes subagent when completion message is sent in Spanish', () => {
     const testDir = join(tmpdir(), `orca-agy-spanish-complete-${Date.now()}`)
     const brainDir = join(testDir, 'brain', 'parent-es')
