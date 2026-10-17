@@ -2,6 +2,20 @@ import type { UsageRateLimitFailureKind } from '../../shared/rate-limit-types'
 
 const AGY_ERROR_PREFIX = 'AGY_ERROR:'
 
+const AUTH_EXPIRED_PHRASES = [
+  'invalid_grant',
+  'token has been expired or revoked',
+  'token has been revoked',
+  'token has expired',
+  'token is expired',
+  'token revoked',
+  'token expired',
+  'auth-expired',
+  'session expired',
+  'credentials expired',
+  'authentication expired'
+] as const
+
 const SIGNED_OUT_PHRASES = [
   'not logged into antigravity',
   'not logged in',
@@ -23,7 +37,13 @@ export type AntigravityUsageFailure = {
   signedOut: boolean
 }
 
-type StructuredAgyError = { status?: unknown; error_code?: unknown }
+type StructuredAgyError = {
+  status?: unknown
+  error_code?: unknown
+  message?: unknown
+  short_error?: unknown
+  error?: unknown
+}
 
 function parseStructuredErrors(output: string): StructuredAgyError[] {
   const parsed: StructuredAgyError[] = []
@@ -51,6 +71,16 @@ function parseStructuredErrors(output: string): StructuredAgyError[] {
 function classifyStructured(error: StructuredAgyError): AntigravityUsageFailure | null {
   const status = typeof error.status === 'string' ? error.status.toUpperCase() : ''
   const code = typeof error.error_code === 'number' ? error.error_code : null
+  const detail = [
+    typeof error.message === 'string' ? error.message : '',
+    typeof error.short_error === 'string' ? error.short_error : '',
+    typeof error.error === 'string' ? error.error : ''
+  ]
+    .join(' ')
+    .toLowerCase()
+  if (AUTH_EXPIRED_PHRASES.some((phrase) => detail.includes(phrase))) {
+    return { failureKind: 'auth-expired', signedOut: true }
+  }
   if (status === 'UNAUTHENTICATED' || code === 401) {
     return { failureKind: 'missing-credentials', signedOut: true }
   }
@@ -69,13 +99,21 @@ function classifyStructured(error: StructuredAgyError): AntigravityUsageFailure 
 
 // Structured errors outrank prose; an unknown diagnostic supplies no failure cause.
 export function classifyAntigravityUsageFailure(output: string): AntigravityUsageFailure | null {
+  const lowered = output.toLowerCase()
+  const isAuthExpired = AUTH_EXPIRED_PHRASES.some((phrase) => lowered.includes(phrase))
+
   for (const error of parseStructuredErrors(output)) {
     const classified = classifyStructured(error)
     if (classified) {
+      if (isAuthExpired && classified.signedOut) {
+        return { failureKind: 'auth-expired', signedOut: true }
+      }
       return classified
     }
   }
-  const lowered = output.toLowerCase()
+  if (isAuthExpired) {
+    return { failureKind: 'auth-expired', signedOut: true }
+  }
   if (SIGNED_OUT_PHRASES.some((phrase) => lowered.includes(phrase))) {
     return { failureKind: 'missing-credentials', signedOut: true }
   }

@@ -5,6 +5,7 @@ import {
   parseAntigravityNativeCredential,
   type AntigravityNativeCredential
 } from './native-credential-codec'
+import { broadcastAntigravityAccountsChanged } from '../ipc/antigravity-accounts-broadcast'
 import type {
   AntigravityAccountStore,
   AntigravityAccountVault,
@@ -43,7 +44,10 @@ export class AntigravityAccountService {
   constructor(
     private readonly store: AntigravityAccountStore,
     private readonly backend: AntigravityCredentialBackend,
-    private readonly now: () => number = Date.now
+    private readonly now: () => number = Date.now,
+    private readonly broadcast: (
+      state: AntigravityAccountState
+    ) => void = broadcastAntigravityAccountsChanged
   ) {}
 
   listAccounts(): Promise<AntigravityAccountState> {
@@ -76,7 +80,9 @@ export class AntigravityAccountService {
         vault.accounts.push(account)
         this.store.write(vault)
       }
-      return this.state({ vault, current })
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -104,7 +110,9 @@ export class AntigravityAccountService {
       latest.selectedAccountId = id
       this.updateSnapshot(latest, readback)
       this.store.write(latest)
-      return this.state({ vault: latest, current: readback })
+      const nextState = this.state({ vault: latest, current: readback })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -132,7 +140,9 @@ export class AntigravityAccountService {
       }
       latest.accounts = latest.accounts.filter((entry) => entry.id !== id)
       this.store.write(latest)
-      return this.state({ vault: latest, current: readback })
+      const nextState = this.state({ vault: latest, current: readback })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -157,7 +167,9 @@ export class AntigravityAccountService {
       }
       account.updatedAt = this.now()
       this.store.write(vault)
-      return this.state({ vault, current })
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -174,7 +186,9 @@ export class AntigravityAccountService {
       account.lastUsage = usage
       account.lastUsageAt = this.now()
       this.store.write(vault)
-      return this.state({ vault, current })
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -213,6 +227,7 @@ export class AntigravityAccountService {
     const vault = this.store.read()
     if (current && this.updateSnapshot(vault, current)) {
       this.store.write(vault)
+      this.broadcast(this.state({ vault, current }))
     }
     return { vault, current }
   }

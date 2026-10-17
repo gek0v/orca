@@ -248,4 +248,25 @@ describe('Antigravity native account identity and selection', () => {
     await expect(h.service.prepareForLaunch()).resolves.toBeUndefined()
     expect(h.getVault().selectedAccountId).toBe(b)
   })
+
+  it('broadcasts accounts-changed event on recordUsageSnapshot', async () => {
+    const broadcast = vi.fn()
+    const h = harness()
+    const service = new AntigravityAccountService(h.store, h.backend, Date.now, broadcast)
+    const state = await service.addCurrentAccount()
+    expect(broadcast).toHaveBeenCalledWith(state)
+    broadcast.mockClear()
+
+    const usage = {
+      provider: 'antigravity' as const,
+      session: null,
+      weekly: null,
+      updatedAt: Date.now(),
+      error: null,
+      status: 'ok' as const
+    }
+    const updated = await service.recordUsageSnapshot(state.activeAccountId!, usage)
+    expect(broadcast).toHaveBeenCalledWith(updated)
+    expect(updated.accounts[0].lastUsage).toEqual(usage)
+  })
 })
