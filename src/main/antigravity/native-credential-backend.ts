@@ -1,7 +1,10 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { writeCredentialFileAtomic } from '../integration-credential-file'
-import { parseAntigravityNativeCredential } from './native-credential-codec'
+import {
+  parseAntigravityNativeCredential,
+  type AntigravityNativeCredential
+} from './native-credential-codec'
 import {
   readAntigravityMacOSCredential,
   writeAntigravityMacOSCredential
@@ -10,7 +13,11 @@ import {
   readAntigravityWindowsCredential,
   writeAntigravityWindowsCredential
 } from './native-windows-credentials'
-import type { AntigravityCredentialBackend } from './native-account-service'
+
+export type AntigravityCredentialBackend = {
+  read(): Promise<AntigravityNativeCredential | null>
+  write(contents: string, expected: string | null): Promise<void>
+}
 
 const CONFLICT =
   'The native Antigravity credential changed during selection; refresh before retrying.'

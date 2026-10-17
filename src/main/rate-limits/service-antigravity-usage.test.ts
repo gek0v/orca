@@ -348,12 +348,11 @@ describe('RateLimitService Antigravity multi-account background polling and IPC 
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([])
   })
 
-  it('iterates over all configured vault accounts and records usage snapshots', async () => {
-    const recordUsageSnapshot = vi.fn().mockResolvedValue({
-      accounts: [
-        { id: 'acc-1', email: 'one@example.com' },
-        { id: 'acc-2', email: 'two@example.com' }
-      ]
+  it('iterates sequentially over all configured vault accounts and records usage snapshots', async () => {
+    const callOrder: string[] = []
+    const recordUsageSnapshot = vi.fn().mockImplementation(async (accountId) => {
+      callOrder.push(`record:${accountId}`)
+      return {}
     })
     const listAccounts = vi.fn().mockResolvedValue({
       activeAccountId: 'acc-1',
@@ -369,6 +368,7 @@ describe('RateLimitService Antigravity multi-account background polling and IPC 
     } as unknown as ReturnType<typeof getAntigravityAccountService>)
 
     vi.mocked(fetchAntigravityAccountRateLimits).mockImplementation(async (options) => {
+      callOrder.push(`fetch:${options.accountId}`)
       if (options.accountId === 'acc-1') {
         return okProvider('antigravity', 25)
       }
@@ -379,32 +379,23 @@ describe('RateLimitService Antigravity multi-account background polling and IPC 
     await service.refresh()
 
     await vi.waitFor(() => {
-      expect(fetchAntigravityAccountRateLimits).toHaveBeenCalledWith(
-        expect.objectContaining({ accountId: 'acc-1' })
-      )
-      expect(fetchAntigravityAccountRateLimits).toHaveBeenCalledWith(
-        expect.objectContaining({ accountId: 'acc-2' })
-      )
+      expect(callOrder).toEqual(['fetch:acc-1', 'record:acc-1', 'fetch:acc-2', 'record:acc-2'])
       expect(recordUsageSnapshot).toHaveBeenCalledWith(
         'acc-1',
-        expect.objectContaining({ session: expect.objectContaining({ usedPercent: 25 }) })
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 25 })
+        })
       )
       expect(recordUsageSnapshot).toHaveBeenCalledWith(
         'acc-2',
-        expect.objectContaining({ session: expect.objectContaining({ usedPercent: 75 }) })
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 75 })
+        })
       )
     })
   })
 
-  it('emits antigravity-accounts-changed IPC notification when account snapshots update', async () => {
-    const mockSend = vi.fn()
-    const liveWindow = {
-      isDestroyed: vi.fn(() => false),
-      webContents: { send: mockSend }
-    }
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: synthetic BrowserWindow test double
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([liveWindow as unknown as BrowserWindow])
-
+  it('delegates account snapshot recording to AntigravityAccountService as single source of truth', async () => {
     const updatedState = {
       activeAccountId: 'acc-1',
       accounts: [{ id: 'acc-1', email: 'one@example.com' }]
@@ -426,9 +417,11 @@ describe('RateLimitService Antigravity multi-account background polling and IPC 
     await service.refresh()
 
     await vi.waitFor(() => {
-      expect(mockSend).toHaveBeenCalledWith(
-        'antigravity-accounts-changed',
-        expect.objectContaining({ activeAccountId: 'acc-1' })
+      expect(recordUsageSnapshot).toHaveBeenCalledWith(
+        'acc-1',
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 40 })
+        })
       )
     })
   })
