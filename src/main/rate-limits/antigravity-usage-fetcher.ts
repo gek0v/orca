@@ -5,6 +5,10 @@ import { runProcess } from '@orca/process-host'
 import { hasReachedAppVersion, parseCliVersion } from '../../shared/app-version'
 import { resolveCommandOnLocalPath } from '../ipc/command-path-resolver'
 import { resolveLoginShellEnvironment } from '../startup/login-shell-environment'
+import {
+  ensureAntigravityAccountProfile,
+  getAntigravityProfileDir
+} from '../antigravity/native-account-profile-manager'
 import type { ProviderRateLimits, UsageRateLimitFailureKind } from '../../shared/rate-limit-types'
 import {
   ANTIGRAVITY_MIN_USAGE_VERSION,
@@ -208,11 +212,11 @@ export async function fetchAntigravityRateLimits(
   if (!reading) {
     const failure = classifyAntigravityUsageFailure(`${result.stdout}\n${result.stderr}`)
     if (failure?.signedOut) {
-      return unavailable(
-        'Antigravity usage is not available. Sign in with `agy` to report this account’s quota.',
-        failure.failureKind,
-        now()
-      )
+      const message =
+        failure.failureKind === 'auth-expired'
+          ? 'Antigravity usage is not available. The authentication token has expired or was revoked. Sign in again with `agy`.'
+          : 'Antigravity usage is not available. Sign in with `agy` to report this account’s quota.'
+      return unavailable(message, failure.failureKind, now())
     }
     if (failure) {
       return failed(
@@ -247,6 +251,52 @@ export async function fetchAntigravityRateLimits(
       attemptedSources: ['cli'],
       lastSuccessfulSource: 'cli',
       credentialSource: 'antigravity-cli'
+    }
+  }
+}
+
+export type FetchAntigravityAccountRateLimitsOptions = FetchAntigravityRateLimitsOptions & {
+  accountId: string
+  profileDir?: string
+  homeDir?: string
+  credentialsJson?: string
+}
+
+export async function fetchAntigravityAccountRateLimits(
+  options: FetchAntigravityAccountRateLimitsOptions
+): Promise<ProviderRateLimits> {
+  const profileDir =
+    options.profileDir ??
+    (options.credentialsJson
+      ? ensureAntigravityAccountProfile(options.accountId, options.credentialsJson, {
+          homeDir: options.homeDir
+        }).profileDir
+      : getAntigravityProfileDir(options.accountId, options.homeDir))
+  const cliDir = join(profileDir, '.gemini', 'antigravity-cli')
+
+  const baseResolveEnv = options.resolveEnvironment ?? (() => resolveLoginShellEnvironment())
+  const resolveEnvironment = async () => {
+    const base = await baseResolveEnv()
+    return {
+      ...base,
+      ANTIGRAVITY_PROFILE_DIR: cliDir,
+      USERPROFILE: profileDir,
+      HOME: profileDir,
+      SSH_CLIENT: '127.0.0.1 0 0'
+    }
+  }
+
+  const result = await fetchAntigravityRateLimits({
+    ...options,
+    probeDir: profileDir,
+    resolveEnvironment
+  })
+
+  return {
+    ...result,
+    usageMetadata: {
+      ...result.usageMetadata,
+      authProvenance: options.accountId
     }
   }
 }

@@ -36,3 +36,5 @@ export type AntigravityAccountTarget = {
   runtime: 'host' | 'wsl'
   wslDistro?: string | null
 }
+
+export const ANTIGRAVITY_ACCOUNTS_CHANGED_CHANNEL = 'antigravity-accounts-changed' as const

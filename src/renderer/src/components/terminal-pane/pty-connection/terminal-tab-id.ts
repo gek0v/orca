@@ -26,9 +26,7 @@ type TerminalTabRecord = {
   launchAccountId?: string
 }
 type TerminalTabState = {
-  getTab?: (
-    tabId: string
-  ) =>
+  getTab?: (tabId: string) =>
     | ({
         contentType: string
         entityId: string

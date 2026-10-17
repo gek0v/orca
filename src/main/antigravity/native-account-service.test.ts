@@ -1,5 +1,9 @@
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { AntigravityAccountService } from './native-account-service'
+import { getAntigravityProfileDir } from './native-account-profile-manager'
 import { parseAntigravityNativeCredential } from './native-credential-codec'
 import { credential, harness } from './native-account-test-fixtures'
 
@@ -41,7 +45,7 @@ describe('Antigravity native account identity and selection', () => {
     const h = harness()
     const id = (await h.service.addCurrentAccount()).activeAccountId!
     await h.service.selectAccount(id)
-    const restarted = new AntigravityAccountService(h.store, h.backend)
+    const restarted = h.createService(h.store, h.backend)
     await restarted.prepareForLaunch()
     h.setNative(credential('another'))
     const state = await restarted.listAccounts()
@@ -247,5 +251,74 @@ describe('Antigravity native account identity and selection', () => {
 
     await expect(h.service.prepareForLaunch()).resolves.toBeUndefined()
     expect(h.getVault().selectedAccountId).toBe(b)
+  })
+
+  it('broadcasts accounts-changed event on recordUsageSnapshot', async () => {
+    const broadcast = vi.fn()
+    const h = harness()
+    const service = h.createService(h.store, h.backend, Date.now, broadcast)
+    const state = await service.addCurrentAccount()
+    expect(broadcast).toHaveBeenCalledWith(state)
+    broadcast.mockClear()
+
+    const usage = {
+      provider: 'antigravity' as const,
+      session: null,
+      weekly: null,
+      updatedAt: Date.now(),
+      error: null,
+      status: 'ok' as const
+    }
+    const updated = await service.recordUsageSnapshot(state.activeAccountId!, usage)
+    expect(broadcast).toHaveBeenCalledWith(updated)
+    expect(updated.accounts[0].lastUsage).toEqual(usage)
+  })
+
+  it('manages account profile lifecycle on addition, update and removal', async () => {
+    const h = harness()
+    const state = await h.service.addCurrentAccount()
+    const id = state.activeAccountId!
+    expect(h.ensureProfile).toHaveBeenCalledWith(id, credential('a'))
+
+    h.ensureProfile.mockClear()
+    const rotated = credential('a', 2)
+    h.setNative(rotated)
+    await h.service.listAccounts()
+    expect(h.ensureProfile).toHaveBeenCalledWith(id, rotated)
+
+    h.setNative(credential('b'))
+    const bState = await h.service.addCurrentAccount()
+    const bId = bState.activeAccountId!
+    expect(h.ensureProfile).toHaveBeenCalledWith(bId, credential('b'))
+
+    await h.service.selectAccount(bId)
+    await h.service.removeAccount(id)
+    expect(h.removeProfile).toHaveBeenCalledWith(id)
+  })
+
+  it('creates profile files in homeDir on addCurrentAccount and removes them on removeAccount', async () => {
+    const tempHome = mkdtempSync(join(tmpdir(), 'orca-service-profile-test-'))
+    try {
+      const h = harness(credential('a'), { homeDir: tempHome })
+      const service = new AntigravityAccountService(h.store, h.backend, Date.now, vi.fn(), {
+        homeDir: tempHome
+      })
+      const first = await service.addCurrentAccount()
+      const firstId = first.activeAccountId!
+      const firstProfile = getAntigravityProfileDir(firstId, tempHome)
+      expect(
+        existsSync(join(firstProfile, '.gemini', 'antigravity-cli', 'antigravity-oauth-token'))
+      ).toBe(true)
+
+      h.setNative(credential('b'))
+      const second = await service.addCurrentAccount()
+      const secondId = second.activeAccountId!
+      await service.selectAccount(secondId)
+
+      await service.removeAccount(firstId)
+      expect(existsSync(firstProfile)).toBe(false)
+    } finally {
+      rmSync(tempHome, { recursive: true, force: true })
+    }
   })
 })

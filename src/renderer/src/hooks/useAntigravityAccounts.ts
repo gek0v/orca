@@ -3,7 +3,9 @@ import type {
   AntigravityAccountState,
   AntigravityAccountSummary
 } from '../../../shared/antigravity-account-types'
+import type { Tab } from '../../../shared/tab-types'
 import type { ProviderRateLimits } from '../../../shared/rate-limit-types'
+import { getRepoIdFromWorktreeId } from '../../../shared/worktree/id'
 import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
 import { useAppStore } from '@/store'
 
@@ -113,8 +115,17 @@ export function useAntigravityAccounts(): {
     if (!cachedState) {
       void refreshAntigravityAccounts().catch(() => {})
     }
+
+    const unsubscribeIpc =
+      typeof window !== 'undefined'
+        ? window.api?.antigravityAccounts?.onAccountsChanged?.((nextState) => {
+            setCachedAntigravityAccountsState(nextState)
+          })
+        : undefined
+
     return () => {
       listeners.delete(setState)
+      unsubscribeIpc?.()
     }
   }, [])
 
@@ -130,23 +141,127 @@ export function useAntigravityAccounts(): {
 
 export function useActiveWindowAntigravityAccount(): AntigravityAccountSummary | null {
   const { activeAccount, getAccountById } = useAntigravityAccounts()
-  const activeTabLaunchAccountId = useAppStore((s) => {
-    if (!s.activeTabId) {
-      return null
-    }
-    for (const tabs of Object.values(s.tabsByWorktree)) {
-      const match = tabs.find((t) => t.id === s.activeTabId)
-      if (match) {
-        return match.launchAgent === 'antigravity' && match.launchAccountId
-          ? match.launchAccountId
-          : null
+  const targetAccountId = useAppStore((s) => {
+    // 1. Tier 1: Focused split pane (s.activePaneId in unifiedTabsByWorktree and tabsByWorktree)
+    if (s.activePaneId) {
+      const activePaneIdStr = String(s.activePaneId)
+      if (s.unifiedTabsByWorktree) {
+        for (const tabs of Object.values(s.unifiedTabsByWorktree)) {
+          const match = tabs.find(
+            (t) =>
+              String(t.id) === activePaneIdStr ||
+              ('entityId' in t && String(t.entityId) === activePaneIdStr)
+          )
+          if (match) {
+            if (match.launchAgent === 'antigravity' && match.launchAccountId) {
+              return match.launchAccountId
+            }
+            break
+          }
+        }
+      }
+      if (s.tabsByWorktree) {
+        for (const tabs of Object.values(s.tabsByWorktree)) {
+          const match = tabs.find((t) => String(t.id) === activePaneIdStr)
+          if (match) {
+            if (match.launchAgent === 'antigravity' && match.launchAccountId) {
+              return match.launchAccountId
+            }
+            break
+          }
+        }
+      }
+      if (s.sleepingAgentSessionsByPaneKey) {
+        const paneKey = s.activeTabId ? `${s.activeTabId}:${activePaneIdStr}` : activePaneIdStr
+        const session =
+          s.sleepingAgentSessionsByPaneKey[paneKey] ??
+          s.sleepingAgentSessionsByPaneKey[activePaneIdStr]
+        if (session?.launchAccountId) {
+          return session.launchAccountId
+        }
       }
     }
+
+    // 2. Tier 2: Active unified tab (s.unifiedTabsByWorktree / s.getTab(s.activeTabId))
+    if (s.activeTabId) {
+      let activeTab: Tab | null = null
+      if (typeof s.getTab === 'function') {
+        activeTab = s.getTab(s.activeTabId)
+      }
+      if (!activeTab && s.unifiedTabsByWorktree) {
+        for (const tabs of Object.values(s.unifiedTabsByWorktree)) {
+          const match = tabs.find((t) => t.id === s.activeTabId)
+          if (match) {
+            activeTab = match
+            break
+          }
+        }
+      }
+
+      if (activeTab) {
+        if (activeTab.launchAgent === 'antigravity' && activeTab.launchAccountId) {
+          return activeTab.launchAccountId
+        }
+
+        // If the active tab is a split container, inspect its active child leaf
+        const layout = s.terminalLayoutsByTabId?.[activeTab.id]
+        if (layout?.activeLeafId) {
+          const leafId = String(layout.activeLeafId)
+          if (s.unifiedTabsByWorktree) {
+            for (const tabs of Object.values(s.unifiedTabsByWorktree)) {
+              const match = tabs.find(
+                (t) => String(t.id) === leafId || ('entityId' in t && String(t.entityId) === leafId)
+              )
+              if (match?.launchAgent === 'antigravity' && match.launchAccountId) {
+                return match.launchAccountId
+              }
+            }
+          }
+          if (s.tabsByWorktree) {
+            for (const tabs of Object.values(s.tabsByWorktree)) {
+              const match = tabs.find((t) => String(t.id) === leafId)
+              if (match?.launchAgent === 'antigravity' && match.launchAccountId) {
+                return match.launchAccountId
+              }
+            }
+          }
+          const sleeping =
+            s.sleepingAgentSessionsByPaneKey?.[`${activeTab.id}:${leafId}`] ??
+            s.sleepingAgentSessionsByPaneKey?.[leafId]
+          if (sleeping?.launchAccountId) {
+            return sleeping.launchAccountId
+          }
+        }
+      }
+    }
+
+    // 3. Tier 3: Legacy tabs fallback
+    if (s.activeTabId && s.tabsByWorktree) {
+      for (const tabs of Object.values(s.tabsByWorktree)) {
+        const match = tabs.find((t) => t.id === s.activeTabId)
+        if (match) {
+          if (match.launchAgent === 'antigravity' && match.launchAccountId) {
+            return match.launchAccountId
+          }
+          break
+        }
+      }
+    }
+
+    // 4. Tier 4: Workspace repo binding or global default
+    const repoId = s.activeWorktreeId ? getRepoIdFromWorktreeId(s.activeWorktreeId) : s.activeRepoId
+    if (repoId && s.repos) {
+      const repo = s.repos.find((r) => r.id === repoId || r.id === s.activeRepoId)
+      if (repo?.antigravityAccountId) {
+        return repo.antigravityAccountId
+      }
+    }
+
     return null
   })
 
-  if (activeTabLaunchAccountId) {
-    const tabAccount = getAccountById(activeTabLaunchAccountId)
+  if (targetAccountId) {
+    const tabAccount = getAccountById(targetAccountId)
     if (tabAccount) {
       return tabAccount
     }

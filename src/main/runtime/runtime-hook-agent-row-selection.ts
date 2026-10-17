@@ -88,7 +88,8 @@ export function selectFreshExplicitAgentStatus(args: {
     ? {
         status: mapExplicitAgentStateToRuntimeTerminalStatus(row.state),
         updatedAt: row.receivedAt,
-        stateStartedAt: typeof row.stateStartedAt === 'number' ? row.stateStartedAt : row.receivedAt,
+        stateStartedAt:
+          typeof row.stateStartedAt === 'number' ? row.stateStartedAt : row.receivedAt,
         ...(row.agentType ? { agentType: row.agentType } : {})
       }
     : null

@@ -3,9 +3,14 @@ import { getAppEnvironment } from '../../shared/app-environment'
 import type { AntigravityAccountTarget } from '../../shared/antigravity-account-types'
 import { createEncryptedAntigravityAccountStore } from './native-account-store'
 import { createAntigravityHostCredentialBackend } from './native-credential-backend'
+import { broadcastAntigravityAccountsChanged } from '../ipc/antigravity-accounts-broadcast'
 import { AntigravityAccountService } from './native-account-service'
 
 let service: AntigravityAccountService | null = null
+
+export function _resetAntigravityAccountServiceForTests(): void {
+  service = null
+}
 
 export function getAntigravityAccountVaultPath(): string {
   return join(getAppEnvironment().getPath('userData'), 'antigravity-accounts', 'vault')
@@ -22,7 +27,10 @@ export function getAntigravityAccountService(
   const env = getAppEnvironment()
   service ??= new AntigravityAccountService(
     createEncryptedAntigravityAccountStore(getAntigravityAccountVaultPath()),
-    createAntigravityHostCredentialBackend(env.getPath('home'))
+    createAntigravityHostCredentialBackend(env.getPath('home')),
+    Date.now,
+    broadcastAntigravityAccountsChanged,
+    { homeDir: env.getPath('home') }
   )
   return service
 }

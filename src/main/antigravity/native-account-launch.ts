@@ -5,6 +5,7 @@ import { recognizeAgentProcessFromCommandLine } from '../../shared/agent-process
 import { isAntigravityFileStorageHost } from './native-credential-backend'
 import { createEncryptedAntigravityAccountStore } from './native-account-store'
 import { getAntigravityAccountService, getAntigravityAccountVaultPath } from './native-account-host'
+import { ensureAntigravityAccountProfile } from './native-account-profile-manager'
 
 export async function prepareAntigravityAccountForLaunch(args: {
   launchAgent?: string
@@ -45,10 +46,18 @@ export async function prepareAntigravityAccountForLaunch(args: {
       'This agy launch uses a different credential authority from the selected Antigravity account.'
     )
   }
-  const service = getAntigravityAccountService({ runtime: 'host' })
-  if (args.launchAccountId && vault.accounts.some((a) => a.id === args.launchAccountId)) {
-    await service.selectAccount(args.launchAccountId)
+  const targetAccount = args.launchAccountId
+    ? vault.accounts.find((a) => a.id === args.launchAccountId)
+    : undefined
+  if (targetAccount) {
+    const profile = ensureAntigravityAccountProfile(targetAccount.id, targetAccount.credentials)
+    if (args.env) {
+      Object.assign(args.env, profile.envPatch)
+    } else {
+      args.env = { ...profile.envPatch }
+    }
   } else if (vault.selectedAccountId) {
+    const service = getAntigravityAccountService({ runtime: 'host' })
     await service.prepareForLaunch()
   }
 }

@@ -97,10 +97,7 @@ const TAB_COLORS = [
 ] as const
 
 type SortableTabContextMenuProps = {
-  tab: Pick<
-    TerminalTab,
-    'id' | 'worktreeId' | 'color' | 'launchAgent' | 'launchAccountId'
-  >
+  tab: Pick<TerminalTab, 'id' | 'worktreeId' | 'color' | 'launchAgent' | 'launchAccountId'>
   unifiedTabId: string
   groupId: string
   isActive: boolean

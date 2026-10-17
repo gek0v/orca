@@ -2,49 +2,51 @@ import { randomUUID } from 'node:crypto'
 import type { AntigravityAccountState } from '../../shared/antigravity-account-types'
 import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import {
+  matchesAntigravityCredential as matches,
   parseAntigravityNativeCredential,
   type AntigravityNativeCredential
 } from './native-credential-codec'
-import type {
-  AntigravityAccountStore,
-  AntigravityAccountVault,
-  StoredAntigravityAccount
-} from './native-account-store'
+import { broadcastAntigravityAccountsChanged } from '../ipc/antigravity-accounts-broadcast'
+import {
+  ensureAntigravityAccountProfile,
+  removeAntigravityAccountProfile
+} from './native-account-profile-manager'
+import type { AntigravityAccountStore, AntigravityAccountVault } from './native-account-store'
 
-export type AntigravityCredentialBackend = {
-  read(): Promise<AntigravityNativeCredential | null>
-  write(contents: string, expected: string | null): Promise<void>
+export type AntigravityAccountServiceOptions = {
+  homeDir?: string
+  ensureProfile?: (accountId: string, credentialsJson: string) => void
+  removeProfile?: (accountId: string) => void
 }
 
-function extractRefreshToken(credentials: string): string | null {
-  try {
-    return parseAntigravityNativeCredential(credentials).refreshToken
-  } catch {
-    return null
-  }
-}
-
-function matches(account: StoredAntigravityAccount, current: AntigravityNativeCredential): boolean {
-  if (current.identity && account.subject) {
-    return account.subject === current.identity.subject && account.authMethod === current.authMethod
-  }
-  if (current.refreshToken) {
-    const storedRefreshToken = extractRefreshToken(account.credentials)
-    if (storedRefreshToken && storedRefreshToken === current.refreshToken) {
-      return account.authMethod === current.authMethod
-    }
-  }
-  return account.credentials === current.contents
-}
+import type { AntigravityCredentialBackend } from './native-credential-backend'
+export type { AntigravityCredentialBackend }
 
 export class AntigravityAccountService {
   private mutation: Promise<unknown> = Promise.resolve()
+  private readonly ensureProfile: (accountId: string, credentialsJson: string) => void
+  private readonly removeProfile: (accountId: string) => void
 
   constructor(
     private readonly store: AntigravityAccountStore,
     private readonly backend: AntigravityCredentialBackend,
-    private readonly now: () => number = Date.now
-  ) {}
+    private readonly now: () => number = Date.now,
+    private readonly broadcast: (
+      state: AntigravityAccountState
+    ) => void = broadcastAntigravityAccountsChanged,
+    options?: AntigravityAccountServiceOptions
+  ) {
+    const homeDir = options?.homeDir
+    this.ensureProfile =
+      options?.ensureProfile ??
+      ((accountId, credentialsJson) =>
+        ensureAntigravityAccountProfile(accountId, credentialsJson, {
+          homeDir
+        }))
+    this.removeProfile =
+      options?.removeProfile ??
+      ((accountId) => removeAntigravityAccountProfile(accountId, { homeDir }))
+  }
 
   listAccounts(): Promise<AntigravityAccountState> {
     return this.serialize(async () => this.state(await this.reconcile()))
@@ -76,7 +78,10 @@ export class AntigravityAccountService {
         vault.accounts.push(account)
         this.store.write(vault)
       }
-      return this.state({ vault, current })
+      this.ensureProfile(account.id, account.credentials)
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -104,7 +109,10 @@ export class AntigravityAccountService {
       latest.selectedAccountId = id
       this.updateSnapshot(latest, readback)
       this.store.write(latest)
-      return this.state({ vault: latest, current: readback })
+      this.ensureProfile(selected.id, selected.credentials)
+      const nextState = this.state({ vault: latest, current: readback })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -115,7 +123,12 @@ export class AntigravityAccountService {
       if (!account) {
         throw new Error('Antigravity account was not found.')
       }
-      if (vault.selectedAccountId === id || (current && matches(account, current))) {
+      const cannotRemove = (
+        acc: typeof account,
+        sel: string | null,
+        active: AntigravityNativeCredential | null
+      ) => sel === id || (active !== null && matches(acc, active))
+      if (cannotRemove(account, vault.selectedAccountId, current)) {
         throw new Error('Select another Antigravity account before removing this account.')
       }
       const readback = await this.backend.read()
@@ -124,7 +137,7 @@ export class AntigravityAccountService {
       if (!latestAccount) {
         throw new Error('Antigravity account snapshots changed; refresh before retrying.')
       }
-      if (latest.selectedAccountId === id || (readback && matches(latestAccount, readback))) {
+      if (cannotRemove(latestAccount, latest.selectedAccountId, readback)) {
         throw new Error('Select another Antigravity account before removing this account.')
       }
       if (readback) {
@@ -132,13 +145,20 @@ export class AntigravityAccountService {
       }
       latest.accounts = latest.accounts.filter((entry) => entry.id !== id)
       this.store.write(latest)
-      return this.state({ vault: latest, current: readback })
+      this.removeProfile(id)
+      const nextState = this.state({ vault: latest, current: readback })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
   updateAccountMetadata(
     id: string,
-    metadata: { alias?: string | null; color?: string | null; emoji?: string | null }
+    metadata: {
+      alias?: string | null
+      color?: string | null
+      emoji?: string | null
+    }
   ): Promise<AntigravityAccountState> {
     return this.serialize(async () => {
       const { vault, current } = await this.reconcile()
@@ -146,18 +166,16 @@ export class AntigravityAccountService {
       if (!account) {
         throw new Error('Antigravity account was not found.')
       }
-      if (metadata.alias !== undefined) {
-        account.alias = metadata.alias?.trim() || null
-      }
-      if (metadata.color !== undefined) {
-        account.color = metadata.color?.trim() || null
-      }
-      if (metadata.emoji !== undefined) {
-        account.emoji = metadata.emoji?.trim() || null
+      for (const key of ['alias', 'color', 'emoji'] as const) {
+        if (metadata[key] !== undefined) {
+          account[key] = metadata[key]?.trim() || null
+        }
       }
       account.updatedAt = this.now()
       this.store.write(vault)
-      return this.state({ vault, current })
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -174,7 +192,9 @@ export class AntigravityAccountService {
       account.lastUsage = usage
       account.lastUsageAt = this.now()
       this.store.write(vault)
-      return this.state({ vault, current })
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      return nextState
     })
   }
 
@@ -213,6 +233,7 @@ export class AntigravityAccountService {
     const vault = this.store.read()
     if (current && this.updateSnapshot(vault, current)) {
       this.store.write(vault)
+      this.broadcast(this.state({ vault, current }))
     }
     return { vault, current }
   }
@@ -228,6 +249,7 @@ export class AntigravityAccountService {
     account.credentials = current.contents
     account.email = current.identity?.email ?? account.email
     account.updatedAt = this.now()
+    this.ensureProfile(account.id, account.credentials)
     return true
   }
 
@@ -238,11 +260,10 @@ export class AntigravityAccountService {
     vault: AntigravityAccountVault
     current: AntigravityNativeCredential | null
   }): AntigravityAccountState {
+    const active = current ? vault.accounts.find((entry) => matches(entry, current)) : null
     return {
       accounts: vault.accounts.map(({ credentials: _credentials, ...account }) => account),
-      activeAccountId: current
-        ? (vault.accounts.find((entry) => matches(entry, current))?.id ?? null)
-        : null,
+      activeAccountId: active?.id ?? null,
       selectedAccountId: vault.selectedAccountId,
       currentAccount: current
         ? {

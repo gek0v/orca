@@ -122,3 +122,27 @@ export function parseAntigravityNativeCredential(contents: string): AntigravityN
         : null
   }
 }
+
+function extractRefreshToken(credentials: string): string | null {
+  try {
+    return parseAntigravityNativeCredential(credentials).refreshToken
+  } catch {
+    return null
+  }
+}
+
+export function matchesAntigravityCredential(
+  account: { subject: string | null; authMethod: string; credentials: string },
+  current: AntigravityNativeCredential
+): boolean {
+  if (current.identity && account.subject) {
+    return account.subject === current.identity.subject && account.authMethod === current.authMethod
+  }
+  if (current.refreshToken) {
+    const storedRefreshToken = extractRefreshToken(account.credentials)
+    if (storedRefreshToken && storedRefreshToken === current.refreshToken) {
+      return account.authMethod === current.authMethod
+    }
+  }
+  return account.credentials === current.contents
+}

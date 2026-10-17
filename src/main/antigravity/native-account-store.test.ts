@@ -8,7 +8,6 @@ import {
   setSecretStore
 } from '../../shared/secret-store'
 import { createEncryptedAntigravityAccountStore } from './native-account-store'
-import { AntigravityAccountService } from './native-account-service'
 import { credential, harness } from './native-account-test-fixtures'
 
 let dir: string
@@ -64,7 +63,7 @@ describe('protected Antigravity account snapshots', () => {
     const store = createEncryptedAntigravityAccountStore(path)
     store.write(vault)
     const before = readFileSync(path)
-    const service = new AntigravityAccountService(store, h.backend)
+    const service = h.createService(store)
     h.setNative(paddedCredential('new-account', 60000))
     await expect(service.addCurrentAccount()).rejects.toThrow('could not be saved')
     expect(readFileSync(path).equals(before)).toBe(true)

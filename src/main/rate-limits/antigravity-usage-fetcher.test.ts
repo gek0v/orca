@@ -1,6 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   fetchAntigravityRateLimits,
+  fetchAntigravityAccountRateLimits,
   resetAntigravityUsageSupportForTests
 } from './antigravity-usage-fetcher'
 import { ANTIGRAVITY_USAGE_ARGS, ANTIGRAVITY_VERSION_ARGS } from './antigravity-usage-command'
@@ -487,5 +491,121 @@ describe('quota read safety and diagnostic precedence', () => {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: verified mock call
     const lastCallEnv = runCommand.mock.calls[0][0].env as NodeJS.ProcessEnv
     expect(lastCallEnv.HOME).toBe('/Users/test')
+  })
+})
+
+describe('fetchAntigravityAccountRateLimits', () => {
+  let tempHome: string
+
+  beforeEach(() => {
+    resetAntigravityUsageSupportForTests()
+    tempHome = mkdtempSync(join(tmpdir(), 'orca-fetcher-test-'))
+  })
+
+  afterEach(() => {
+    try {
+      rmSync(tempHome, { recursive: true, force: true })
+    } catch {
+      // Best-effort cleanup
+    }
+  })
+
+  it('probes agy -p /usage with an account-scoped environment', async () => {
+    const runCommand = vi
+      .fn()
+      .mockImplementation(async (spec: { args?: readonly string[]; env?: NodeJS.ProcessEnv }) => {
+        if (spec.args?.[0] === '--version') {
+          return processResult({ stdout: 'agy version 1.2.16\n' })
+        }
+        return processResult({ stdout: USAGE_ENVELOPE })
+      })
+    const resolveCommand = vi.fn().mockResolvedValue('/usr/local/bin/agy')
+    const resolveEnvironment = vi.fn().mockResolvedValue({
+      PATH: '/usr/local/bin:/usr/bin',
+      HOME: '/Users/test'
+    })
+
+    const result = await fetchAntigravityAccountRateLimits({
+      accountId: 'account-alpha',
+      homeDir: tempHome,
+      credentialsJson: JSON.stringify({ token: 'test-token' }),
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      resolveCommand,
+      resolveEnvironment,
+      platform: 'darwin',
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('ok')
+    expect(result.usageMetadata?.authProvenance).toBe('account-alpha')
+    expect(runCommand).toHaveBeenCalledTimes(2)
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: verified mock call
+    const quotaCallEnv = runCommand.mock.calls[1][0].env as NodeJS.ProcessEnv
+    expect(quotaCallEnv.SSH_CLIENT).toBe('127.0.0.1 0 0')
+    expect(quotaCallEnv.HOME).toContain('account-alpha')
+    expect(quotaCallEnv.ANTIGRAVITY_PROFILE_DIR).toContain('account-alpha')
+  })
+
+  it('returns status unavailable with failureKind auth-expired when token is revoked or expired (Review Focus #4)', async () => {
+    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[] }) => {
+      if (spec.args?.[0] === '--version') {
+        return processResult({ stdout: 'agy version 1.2.16\n' })
+      }
+      return processResult({
+        code: 1,
+        stderr: 'invalid_grant: Token has been expired or revoked.'
+      })
+    })
+    const resolveCommand = vi.fn().mockResolvedValue('/usr/local/bin/agy')
+    const resolveEnvironment = vi.fn().mockResolvedValue({ PATH: '/usr/local/bin' })
+
+    const result = await fetchAntigravityAccountRateLimits({
+      accountId: 'account-revoked',
+      homeDir: tempHome,
+      credentialsJson: JSON.stringify({ token: 'revoked-token' }),
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      resolveCommand,
+      resolveEnvironment,
+      platform: 'darwin',
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('auth-expired')
+    expect(result.usageMetadata?.authProvenance).toBe('account-revoked')
+    expect(result.error).toMatch(/expired|revoked/i)
+  })
+
+  it('returns status unavailable with failureKind auth-expired for structured unauthenticated errors with revoked message (Review Focus #4)', async () => {
+    const runCommand = vi.fn().mockImplementation(async (spec: { args?: readonly string[] }) => {
+      if (spec.args?.[0] === '--version') {
+        return processResult({ stdout: 'agy version 1.2.16\n' })
+      }
+      return processResult({
+        code: 1,
+        stderr:
+          'AGY_ERROR: {"status":"UNAUTHENTICATED","error_code":401,"message":"Token has been revoked"}'
+      })
+    })
+    const resolveCommand = vi.fn().mockResolvedValue('/usr/local/bin/agy')
+    const resolveEnvironment = vi.fn().mockResolvedValue({ PATH: '/usr/local/bin' })
+
+    const result = await fetchAntigravityAccountRateLimits({
+      accountId: 'account-revoked-json',
+      homeDir: tempHome,
+      credentialsJson: JSON.stringify({ token: 'revoked-token' }),
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test mock
+      runCommand: runCommand as never,
+      resolveCommand,
+      resolveEnvironment,
+      platform: 'darwin',
+      now: () => 1_700_000_000_000
+    })
+
+    expect(result.status).toBe('unavailable')
+    expect(result.usageMetadata?.failureKind).toBe('auth-expired')
+    expect(result.usageMetadata?.authProvenance).toBe('account-revoked-json')
   })
 })

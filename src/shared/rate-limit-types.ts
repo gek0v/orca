@@ -51,6 +51,8 @@ export type UsageRateLimitFailureKind =
   | 'deferred-by-live-session'
   | 'keychain-unavailable'
   | 'missing-scope'
+  | 'auth-expired'
+  | 'signed-out'
   /** The account is authenticated but not entitled to the product being polled. */
   | 'no-subscription'
   | 'network'

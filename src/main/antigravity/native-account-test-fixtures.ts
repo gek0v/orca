@@ -1,6 +1,8 @@
 import { vi } from 'vitest'
+import type { AntigravityAccountState } from '../../shared/antigravity-account-types'
 import {
   AntigravityAccountService,
+  type AntigravityAccountServiceOptions,
   type AntigravityCredentialBackend
 } from './native-account-service'
 import type { AntigravityAccountStore, AntigravityAccountVault } from './native-account-store'
@@ -26,9 +28,15 @@ export function credential(subject: string, generation = 1, email = `${subject}@
   })
 }
 
-export function harness(initial: string | null = credential('a')) {
+export function harness(
+  initial: string | null = credential('a'),
+  options?: AntigravityAccountServiceOptions
+) {
   let native = initial
-  let vault: AntigravityAccountVault = { accounts: [], selectedAccountId: null }
+  let vault: AntigravityAccountVault = {
+    accounts: [],
+    selectedAccountId: null
+  }
   const store: AntigravityAccountStore = {
     read: vi.fn(() => structuredClone(vault)),
     write: vi.fn((next) => {
@@ -51,10 +59,29 @@ export function harness(initial: string | null = credential('a')) {
       native = contents
     })
   }
+  const ensureProfile = vi.fn<(accountId: string, credentialsJson: string) => void>(
+    options?.ensureProfile
+  )
+  const removeProfile = vi.fn<(accountId: string) => void>(options?.removeProfile)
+  const createService = (
+    customStore: AntigravityAccountStore = store,
+    customBackend: AntigravityCredentialBackend = backend,
+    now: () => number = Date.now,
+    broadcast?: (state: AntigravityAccountState) => void
+  ) =>
+    new AntigravityAccountService(customStore, customBackend, now, broadcast, {
+      homeDir: options?.homeDir,
+      ensureProfile,
+      removeProfile
+    })
+
   return {
     store,
     backend,
-    service: new AntigravityAccountService(store, backend),
+    ensureProfile,
+    removeProfile,
+    service: createService(),
+    createService,
     setNative: (contents: string | null) => {
       native = contents
     },

@@ -1,15 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { BrowserWindow } from 'electron'
 import { RateLimitService } from './service'
 import { fetchClaudeRateLimits } from './claude-fetcher'
 import { fetchCodexRateLimits } from './codex-fetcher'
 import { fetchGeminiRateLimits } from './gemini-usage-fetcher'
-import { fetchAntigravityRateLimits } from './antigravity-usage-fetcher'
+import {
+  fetchAntigravityRateLimits,
+  fetchAntigravityAccountRateLimits
+} from './antigravity-usage-fetcher'
 import { getAntigravityAccountService } from '../antigravity/native-account-host'
 import {
   errorProvider,
   okProvider,
   resetRateLimitProviderMocks
 } from './rate-limit-service-test-harness'
+
+vi.mock('electron', () => ({
+  BrowserWindow: {
+    getAllWindows: vi.fn(() => [])
+  }
+}))
 
 vi.mock('./claude-fetcher', () => ({
   fetchClaudeRateLimits: vi.fn(),
@@ -44,7 +54,8 @@ vi.mock('./grok-fetcher', () => ({
 vi.mock('./zcode-usage-fetcher', () => ({ fetchZcodeRateLimits: vi.fn() }))
 
 vi.mock('./antigravity-usage-fetcher', () => ({
-  fetchAntigravityRateLimits: vi.fn()
+  fetchAntigravityRateLimits: vi.fn(),
+  fetchAntigravityAccountRateLimits: vi.fn()
 }))
 
 vi.mock('./cursor-fetcher', () => ({
@@ -323,5 +334,95 @@ describe('Antigravity usage gating', () => {
     })
     // recordUsageSnapshot must NOT be called for acc-2 using acc-1's snapshot
     expect(recordUsageSnapshot).not.toHaveBeenCalled()
+  })
+})
+
+describe('RateLimitService Antigravity multi-account background polling and IPC broadcast', () => {
+  beforeEach(() => {
+    resetRateLimitProviderMocks()
+    vi.mocked(fetchClaudeRateLimits).mockResolvedValue(okProvider('claude', 7))
+    vi.mocked(fetchCodexRateLimits).mockResolvedValue(okProvider('codex', 20))
+    vi.mocked(fetchGeminiRateLimits).mockResolvedValue(okProvider('gemini', 0, Date.now()))
+    vi.mocked(fetchAntigravityRateLimits).mockResolvedValue(okProvider('antigravity', 30))
+    vi.mocked(fetchAntigravityAccountRateLimits).mockReset()
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([])
+  })
+
+  it('iterates sequentially over all configured vault accounts and records usage snapshots', async () => {
+    const callOrder: string[] = []
+    const recordUsageSnapshot = vi.fn().mockImplementation(async (accountId) => {
+      callOrder.push(`record:${accountId}`)
+      return {}
+    })
+    const listAccounts = vi.fn().mockResolvedValue({
+      activeAccountId: 'acc-1',
+      accounts: [
+        { id: 'acc-1', email: 'one@example.com' },
+        { id: 'acc-2', email: 'two@example.com' }
+      ]
+    })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+    vi.mocked(getAntigravityAccountService).mockReturnValue({
+      listAccounts,
+      recordUsageSnapshot
+    } as unknown as ReturnType<typeof getAntigravityAccountService>)
+
+    vi.mocked(fetchAntigravityAccountRateLimits).mockImplementation(async (options) => {
+      callOrder.push(`fetch:${options.accountId}`)
+      if (options.accountId === 'acc-1') {
+        return okProvider('antigravity', 25)
+      }
+      return okProvider('antigravity', 75)
+    })
+
+    const service = new RateLimitService()
+    await service.refresh()
+
+    await vi.waitFor(() => {
+      expect(callOrder).toEqual(['fetch:acc-1', 'record:acc-1', 'fetch:acc-2', 'record:acc-2'])
+      expect(recordUsageSnapshot).toHaveBeenCalledWith(
+        'acc-1',
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 25 })
+        })
+      )
+      expect(recordUsageSnapshot).toHaveBeenCalledWith(
+        'acc-2',
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 75 })
+        })
+      )
+    })
+  })
+
+  it('delegates account snapshot recording to AntigravityAccountService as single source of truth', async () => {
+    const updatedState = {
+      activeAccountId: 'acc-1',
+      accounts: [{ id: 'acc-1', email: 'one@example.com' }]
+    }
+    const recordUsageSnapshot = vi.fn().mockResolvedValue(updatedState)
+    const listAccounts = vi.fn().mockResolvedValue({
+      activeAccountId: 'acc-1',
+      accounts: [{ id: 'acc-1', email: 'one@example.com' }]
+    })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+    vi.mocked(getAntigravityAccountService).mockReturnValue({
+      listAccounts,
+      recordUsageSnapshot
+    } as unknown as ReturnType<typeof getAntigravityAccountService>)
+
+    vi.mocked(fetchAntigravityAccountRateLimits).mockResolvedValue(okProvider('antigravity', 40))
+
+    const service = new RateLimitService()
+    await service.refresh()
+
+    await vi.waitFor(() => {
+      expect(recordUsageSnapshot).toHaveBeenCalledWith(
+        'acc-1',
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 40 })
+        })
+      )
+    })
   })
 })

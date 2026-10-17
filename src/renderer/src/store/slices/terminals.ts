@@ -27,6 +27,7 @@ import { createWorkspaceTerminalReconnectActions } from '../terminals/workspace-
 export const createTerminalSlice: StateCreator<AppState, [], [], TerminalSlice> = (set, get) => ({
   tabsByWorktree: {},
   activeTabId: null,
+  activePaneId: null,
   activeTabIdByWorktree: {},
   ptyIdsByTabId: {},
   runtimePaneTitlesByTabId: {},

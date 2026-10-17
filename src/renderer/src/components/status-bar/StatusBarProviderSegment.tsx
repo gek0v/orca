@@ -197,7 +197,6 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
   }
 }
 
-
 export function ProviderSegment({
   p,
   compact,
@@ -219,18 +218,16 @@ export function ProviderSegment({
   let effectiveLimits = p
   if (isAntigravity) {
     if (displayedAccount) {
-      if (displayedAccount.id !== systemActiveAccount?.id) {
-        effectiveLimits = displayedAccount.lastUsage ?? null
+      if (displayedAccount.lastUsage) {
+        effectiveLimits = {
+          ...displayedAccount.lastUsage,
+          status: p?.status === 'fetching' ? 'fetching' : displayedAccount.lastUsage.status
+        }
       } else if (
-        p?.usageMetadata?.authProvenance &&
-        p.usageMetadata.authProvenance !== displayedAccount.id
+        displayedAccount.id !== systemActiveAccount?.id ||
+        (p?.usageMetadata?.authProvenance && p.usageMetadata.authProvenance !== displayedAccount.id)
       ) {
-        effectiveLimits = displayedAccount.lastUsage
-          ? {
-              ...displayedAccount.lastUsage,
-              status: p.status === 'fetching' ? 'fetching' : displayedAccount.lastUsage.status
-            }
-          : null
+        effectiveLimits = null
       } else {
         effectiveLimits = p
       }
