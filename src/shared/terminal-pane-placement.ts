@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { isTerminalLeafId } from './stable-pane-id'
-import { terminalPaneLayoutNodeSchema, terminalTabSchema } from './workspace-session-schema'
+import { terminalTabSchema } from './workspace-session-schema'
+import { terminalPaneLayoutNodeSchema } from './workspace-session-terminal-layout-schema'
 
 // The creation fields of the tab the renderer made, so main need not wait for its save.
 const NewTabRow = terminalTabSchema

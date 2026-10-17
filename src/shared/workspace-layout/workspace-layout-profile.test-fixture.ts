@@ -30,6 +30,7 @@ export function sleepingRecord(
     state: 'done',
     capturedAt: 1_700_000_500_000,
     updatedAt: 1_700_000_500_000,
+    launchAccountId: 'acc-test',
     origin: 'quit'
   }
 }

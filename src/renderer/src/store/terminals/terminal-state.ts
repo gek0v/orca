@@ -21,6 +21,7 @@ import type { AgentPaneLaunchRequest } from '../../../../shared/agent-pane-launc
 export type TerminalState = {
   tabsByWorktree: Record<string, TerminalTab[]>
   activeTabId: string | null
+  activePaneId?: string | number | null
   /** Per-worktree focus survives workspace switches independently of the global active tab. */
   activeTabIdByWorktree: Record<string, string | null>
   ptyIdsByTabId: Record<string, string[]>
