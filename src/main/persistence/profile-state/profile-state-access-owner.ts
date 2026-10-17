@@ -13,7 +13,7 @@ import {
 import { hostname } from 'node:os'
 import { dirname, join } from 'node:path'
 import { bestEffortFsyncDirectorySync, fsyncFileSync } from '../../../shared/secure-file'
-import { renameFileWithWindowsRetry } from '../../codex-accounts/fs-utils'
+import { renameFileWithWindowsRetry } from '../../../shared/windows-retry-file-operations'
 import {
   START_TIME_TOLERANCE_MS,
   startTimesWithinTolerance
