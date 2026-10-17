@@ -1,4 +1,9 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import SyncDatabase from '../sqlite/sync-database'
 import { createAntigravityWorkspaceResolver } from './session-scanner-antigravity-history'
 import {
   createAntigravitySessionResumeState,
@@ -201,5 +206,118 @@ describe('Antigravity opening prompt workspace association', () => {
       '/repo/original'
     )
     expect((await state.finalize('linux'))?.previewMessages).toHaveLength(1)
+  })
+})
+
+describe('Antigravity conversation_summaries.db workspace and title enrichment', () => {
+  it('enriches session cwd and generic title from conversation_summaries.db', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'orca-agy-db-test-'))
+    try {
+      const dbPath = join(root, 'conversation_summaries.db')
+      const targetWorkspace = join(root, 'workspace', 'my-project')
+      const targetUri = pathToFileURL(targetWorkspace).href
+
+      const db = new SyncDatabase(dbPath)
+      db.exec(`
+        CREATE TABLE conversation_summaries (
+          conversation_id TEXT PRIMARY KEY,
+          title TEXT,
+          workspace_uris TEXT
+        )
+      `)
+      db.prepare(
+        'INSERT INTO conversation_summaries (conversation_id, title, workspace_uris) VALUES (?, ?, ?)'
+      ).run('brain-id', 'Descriptive Task Title', JSON.stringify([targetUri]))
+      db.close()
+
+      const historyFile = join(root, 'history.jsonl')
+      const session = await parse('Test prompt')
+      // Modify session to have generated generic title
+      const genericSession = { ...session, title: 'Antigravity brain-id', cwd: null }
+
+      const testResolver = createAntigravityWorkspaceResolver(async () => null)
+      const enriched = await testResolver.enrich(genericSession, historyFile)
+
+      expect(enriched.cwd).toBe(targetWorkspace)
+      expect(enriched.title).toBe('Descriptive Task Title')
+    } finally {
+      try {
+        await rm(root, { recursive: true, force: true })
+      } catch {}
+    }
+  })
+
+  it('preserves existing non-generic session title when enriching cwd', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'orca-agy-db-test-'))
+    try {
+      const dbPath = join(root, 'conversation_summaries.db')
+      const targetWorkspace = join(root, 'workspace', 'my-project')
+      const targetUri = pathToFileURL(targetWorkspace).href
+
+      const db = new SyncDatabase(dbPath)
+      db.exec(`
+        CREATE TABLE conversation_summaries (
+          conversation_id TEXT PRIMARY KEY,
+          title TEXT,
+          workspace_uris TEXT
+        )
+      `)
+      db.prepare(
+        'INSERT INTO conversation_summaries (conversation_id, title, workspace_uris) VALUES (?, ?, ?)'
+      ).run('brain-id', 'DB Title', JSON.stringify([targetUri]))
+      db.close()
+
+      const historyFile = join(root, 'history.jsonl')
+      const session = await parse('Custom user title')
+      const testResolver = createAntigravityWorkspaceResolver(async () => null)
+      const enriched = await testResolver.enrich(session, historyFile)
+
+      expect(enriched.cwd).toBe(targetWorkspace)
+      expect(enriched.title).toBe('Custom user title')
+    } finally {
+      try {
+        await rm(root, { recursive: true, force: true })
+      } catch {}
+    }
+  })
+
+  it('keeps database workspace authoritative when history.jsonl has multiple turns', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'orca-agy-db-test-'))
+    try {
+      const dbPath = join(root, 'conversation_summaries.db')
+      const targetWorkspace = join(root, 'workspace', 'db-workspace')
+      const targetUri = pathToFileURL(targetWorkspace).href
+
+      const db = new SyncDatabase(dbPath)
+      db.exec(`
+        CREATE TABLE conversation_summaries (
+          conversation_id TEXT PRIMARY KEY,
+          title TEXT,
+          workspace_uris TEXT
+        )
+      `)
+      db.prepare(
+        'INSERT INTO conversation_summaries (conversation_id, title, workspace_uris) VALUES (?, ?, ?)'
+      ).run('brain-id', 'DB Title', JSON.stringify([targetUri]))
+      db.close()
+
+      const historyFile = join(root, 'history.jsonl')
+      const session = await parse('Opening prompt')
+      const testResolver = createAntigravityWorkspaceResolver(async (p) =>
+        p === historyFile
+          ? jsonLines([
+              historyRow('Prompt 1', '/other/one', 'brain-id'),
+              historyRow('Prompt 2', '/other/two', 'brain-id')
+            ])
+          : null
+      )
+      const enriched = await testResolver.enrich(session, historyFile)
+
+      expect(enriched.cwd).toBe(targetWorkspace)
+    } finally {
+      try {
+        await rm(root, { recursive: true, force: true })
+      } catch {}
+    }
   })
 })
