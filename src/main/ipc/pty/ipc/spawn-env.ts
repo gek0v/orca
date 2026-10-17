@@ -166,13 +166,20 @@ export async function assemblePtyIpcSpawnEnv(ctx: PtyIpcSpawnState): Promise<voi
   ctx.validatedLeafId = ctx.verifiedLeafId ?? ctx.metadataLeafId
   ctx.spawnTiming.mark('pane_env')
   await assemblePtyIpcSpawnCodexEnv(ctx)
+  const targetEnv = ctx.spawnEnv ?? ctx.baseEnv ?? (ctx.baseEnv = {})
   await prepareAntigravityAccountForLaunch({
     launchAgent: args.launchAgent,
     launchAccountId: args.launchAccountId,
     command: args.command ?? args.launchConfig?.agentCommand,
     connectionId: args.connectionId,
     isWsl: ctx.codexSelectionTarget.runtime === 'wsl',
-    env: ctx.spawnEnv ?? ctx.baseEnv,
+    env: targetEnv,
     envToDelete: args.envToDelete
   })
+  if (ctx.env && ctx.env !== targetEnv) {
+    Object.assign(ctx.env, targetEnv)
+  }
+  if (ctx.spawnEnv && ctx.spawnEnv !== targetEnv) {
+    Object.assign(ctx.spawnEnv, targetEnv)
+  }
 }
