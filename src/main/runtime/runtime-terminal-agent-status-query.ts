@@ -36,9 +36,7 @@ type Dependencies = {
   getLiveLeaf(handle: string): { leaf: RuntimeLeafRecord }
   getPrimaryLeaf(ptyId: string): RuntimeLeafRecord | null
   getTabTitle(tabId: string): string | null
-  getExplicitStatus(
-    handle: string
-  ): {
+  getExplicitStatus(handle: string): {
     status: NonNullable<RuntimeTerminalAgentStatus['status']>
     updatedAt: number
     agentType?: AgentType

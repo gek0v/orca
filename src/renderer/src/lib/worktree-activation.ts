@@ -50,7 +50,6 @@ export type ActivateAndRevealResult = {
   primaryTabId: string | null
 }
 
-
 function canInspectAgentActivationInventory(): boolean {
   return (
     typeof window !== 'undefined' &&

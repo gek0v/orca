@@ -1,10 +1,5 @@
 [workspace]
-members = [
-  "crates/orca-protocol",
-  "crates/orca-pty",
-  "crates/orcad",
-  "native/windows-agent-hook"
-]
+members = ["crates/orca-protocol", "crates/orca-pty", "crates/orcad", "native/windows-agent-hook"]
 exclude = ["native/windows-cli-launcher"]
 resolver = "2"
 

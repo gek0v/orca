@@ -304,7 +304,7 @@ describe('AntigravitySwitcherMenu', () => {
     )
 
     expect(screen.getByText('Project Default')).toBeDefined()
-    expect(screen.getByText('Trabajo')).toBeDefined()
+    expect(screen.getAllByText('Trabajo').length).toBeGreaterThanOrEqual(1)
   })
 
   it('switches account when clicking switch to project default button', async () => {

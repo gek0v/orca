@@ -11,7 +11,9 @@ export async function getTerminalHostsFullDiskAccessStatus(): Promise<DeveloperP
     return 'unknown'
   }
   const current = getCurrentDaemonAdapter(provider)
-  const adapters = current ? [current, ...getLegacyDaemonAdapters(provider)] : getLegacyDaemonAdapters(provider)
+  const adapters = current
+    ? [current, ...getLegacyDaemonAdapters(provider)]
+    : getLegacyDaemonAdapters(provider)
   const probes = adapters.map((adapter) => adapter.getFullDiskAccessStatus())
   if (provider instanceof DegradedDaemonPtyProvider) {
     probes.push(getMacosFullDiskAccessStatus())

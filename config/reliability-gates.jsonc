@@ -23,29 +23,12 @@
         "hidden terminal startup",
         "agent hooks and managed accounts"
       ],
-      "platforms": [
-        "macos",
-        "linux",
-        "windows"
-      ],
-      "providers": [
-        "local",
-        "daemon",
-        "ssh",
-        "remote-runtime",
-        "wsl"
-      ],
-      "coveredPlatforms": [
-        "macos"
-      ],
-      "coveredProviders": [
-        "local",
-        "daemon"
-      ],
+      "platforms": ["macos", "linux", "windows"],
+      "providers": ["local", "daemon", "ssh", "remote-runtime", "wsl"],
+      "coveredPlatforms": ["macos"],
+      "coveredProviders": ["local", "daemon"],
       "coverageNotes": "Shared preparation is exercised with real local plugin files and account environment plus mocked host spawn contracts. Captured real Claude startup title drives renderer recovery. Physical Linux, Windows, SSH and WSL delayed launches remain unproved.",
-      "motivatingLinks": [
-        "docs/bug-reproductions/delayed-agent-launch.md"
-      ],
+      "motivatingLinks": ["docs/bug-reproductions/delayed-agent-launch.md"],
       "invariant": "A literal sleep followed by && must not cause the later harness to lose hook/account preparation or hidden renderer query delivery. Preparation and typed-command hints are not live process evidence. Fresh agent startup output may request one bounded host confirmation after the initial command read window has expired.",
       "oracle": "All 45 configured harnesses keep hidden startup query eligibility. Delayed OpenCode 2 installs v2 hooks rather than v1, disabled harnesses do not fall back, selected managed accounts survive, and Pi/OMP/Prime preparation targets the requested harness. A captured Claude startup title at 30 seconds yields process-confirmed routing, never title-authorized routing. A title storm causes at most three additional reads; close and untrackable providers cause none.",
       "commands": [
@@ -66,15 +49,11 @@
       "assertionRefs": [
         {
           "file": "src/main/ipc/pty/host-env/opencode-hook-installation.test.ts",
-          "assertions": [
-            "explicit %s with disabled"
-          ]
+          "assertions": ["explicit %s with disabled"]
         },
         {
           "file": "src/renderer/src/components/terminal-pane/terminal-startup-command-classifier.test.ts",
-          "assertions": [
-            "keeps hidden %s startup queries live after sleep"
-          ]
+          "assertions": ["keeps hidden %s startup queries live after sleep"]
         },
         {
           "file": "src/renderer/src/components/terminal-pane/pane-delayed-agent-startup.test.ts",
