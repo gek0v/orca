@@ -404,17 +404,15 @@ describe('AntigravityHookService', () => {
       (definition.hooks ?? []).map((hook) => hook.command)
     )
     expect(preToolCommands).toHaveLength(1)
-    expect(preToolCommands[0]).toContain(
-      join(homeDir, '.orca', 'agent-hooks', ANTIGRAVITY_PRE_TOOL_USE_COMMAND)
-    )
+    expect(
+      createManagedCommandMatcher(ANTIGRAVITY_PRE_TOOL_USE_COMMAND)(preToolCommands[0])
+    ).toBe(true)
     expect(preToolCommands[0]).not.toContain('/tmp/old/agent-hooks/antigravity-hook.sh')
     const commands = config['orca-status'].PostToolUse.flatMap((definition) =>
       (definition.hooks ?? []).map((hook) => hook.command)
     )
     expect(commands).toHaveLength(1)
-    expect(commands[0]).toContain(
-      join(homeDir, '.orca', 'agent-hooks', ANTIGRAVITY_POST_TOOL_USE_COMMAND)
-    )
+    expect(createManagedCommandMatcher(ANTIGRAVITY_POST_TOOL_USE_COMMAND)(commands[0])).toBe(true)
   })
 
   it('detects disabled bundle in getStatus and removes enabled: false upon install', () => {
