@@ -1,5 +1,14 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, lstatSync } from 'node:fs'
+import {
+  mkdtempSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  lstatSync,
+  mkdirSync,
+  statSync
+} from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -71,6 +80,7 @@ describe('native-account-profile-manager', () => {
 
       expect(profileInfo.envPatch).toEqual({
         ANTIGRAVITY_PROFILE_DIR: profileInfo.cliDir,
+        ANTIGRAVITY_APP_DATA_DIR: profileInfo.cliDir,
         USERPROFILE: profileInfo.profileDir,
         HOME: profileInfo.profileDir,
         SSH_CLIENT: '127.0.0.1 0 0'
@@ -80,7 +90,7 @@ describe('native-account-profile-manager', () => {
       expect(readFileSync(profileInfo.tokenPath, 'utf8')).toBe(creds)
 
       const canonicalCliDir = join(tempHome, '.gemini', 'antigravity-cli')
-      const canonicalFolders = ['conversations', 'brain', 'skills', 'mcp']
+      const canonicalFolders = ['conversations', 'brain', 'skills', 'mcp', 'annotations']
       for (const folder of canonicalFolders) {
         const canonicalPath = join(canonicalCliDir, folder)
         const profilePath = join(profileInfo.cliDir, folder)
@@ -91,7 +101,13 @@ describe('native-account-profile-manager', () => {
         expect(stat.isSymbolicLink()).toBe(true)
       }
 
-      const canonicalFiles = ['conversation_summaries.db', 'history.jsonl']
+      const canonicalFiles = [
+        'conversation_summaries.db',
+        'conversation_summaries.db-wal',
+        'conversation_summaries.db-shm',
+        'jetbox_summaries_proto.pb',
+        'history.jsonl'
+      ]
       for (const file of canonicalFiles) {
         const canonicalPath = join(canonicalCliDir, file)
         const profilePath = join(profileInfo.cliDir, file)
@@ -152,6 +168,55 @@ describe('native-account-profile-manager', () => {
 
       expect(existsSync(profileTurn2Path)).toBe(true)
       expect(readFileSync(profileTurn2Path, 'utf8')).toBe(canonicalTurn2Payload)
+    })
+
+    it('migrates pre-existing ordinary directory from profile into canonical and replaces with junction', () => {
+      const creds = credential('account-pre-existing-dir')
+      const profileDir = getAntigravityProfileDir('account-pre-existing-dir', tempHome)
+      const profileCliDir = join(profileDir, '.gemini', 'antigravity-cli')
+      const profileConvDir = join(profileCliDir, 'conversations')
+
+      mkdirSync(profileConvDir, { recursive: true })
+      writeFileSync(
+        join(profileConvDir, 'orphan-conv.json'),
+        JSON.stringify({ orphan: true }),
+        'utf8'
+      )
+
+      const profileInfo = ensureAntigravityAccountProfile('account-pre-existing-dir', creds, {
+        homeDir: tempHome
+      })
+
+      const canonicalCliDir = join(tempHome, '.gemini', 'antigravity-cli')
+      const canonicalConvFile = join(canonicalCliDir, 'conversations', 'orphan-conv.json')
+
+      expect(existsSync(canonicalConvFile)).toBe(true)
+      expect(JSON.parse(readFileSync(canonicalConvFile, 'utf8'))).toEqual({ orphan: true })
+
+      const stat = lstatSync(join(profileInfo.cliDir, 'conversations'))
+      expect(stat.isSymbolicLink()).toBe(true)
+    })
+
+    it('migrates separate non-empty files into empty canonical files and hardlinks them', () => {
+      const creds = credential('account-pre-existing-file')
+      const profileDir = getAntigravityProfileDir('account-pre-existing-file', tempHome)
+      const profileCliDir = join(profileDir, '.gemini', 'antigravity-cli')
+      mkdirSync(profileCliDir, { recursive: true })
+
+      const historyPath = join(profileCliDir, 'history.jsonl')
+      writeFileSync(historyPath, '{"command":"test-history"}\n', 'utf8')
+
+      const profileInfo = ensureAntigravityAccountProfile('account-pre-existing-file', creds, {
+        homeDir: tempHome
+      })
+
+      const canonicalHistoryPath = join(tempHome, '.gemini', 'antigravity-cli', 'history.jsonl')
+      expect(existsSync(canonicalHistoryPath)).toBe(true)
+      expect(readFileSync(canonicalHistoryPath, 'utf8')).toBe('{"command":"test-history"}\n')
+
+      const canonicalStat = statSync(canonicalHistoryPath)
+      const profileStat = statSync(join(profileInfo.cliDir, 'history.jsonl'))
+      expect(profileStat.ino).toBe(canonicalStat.ino)
     })
   })
 

@@ -1,4 +1,5 @@
 import {
+  copyFileSync,
   existsSync,
   linkSync,
   lstatSync,
@@ -7,6 +8,7 @@ import {
   readlinkSync,
   readFileSync,
   rmdirSync,
+  rmSync,
   statSync,
   symlinkSync,
   unlinkSync,
@@ -25,8 +27,14 @@ export type AntigravityProfileInfo = {
   envPatch: NodeJS.ProcessEnv
 }
 
-const CANONICAL_FOLDERS = ['conversations', 'brain', 'skills', 'mcp'] as const
-const CANONICAL_FILES = ['conversation_summaries.db', 'history.jsonl'] as const
+const CANONICAL_FOLDERS = ['conversations', 'brain', 'skills', 'mcp', 'annotations'] as const
+const CANONICAL_FILES = [
+  'conversation_summaries.db',
+  'conversation_summaries.db-wal',
+  'conversation_summaries.db-shm',
+  'jetbox_summaries_proto.pb',
+  'history.jsonl'
+] as const
 
 function resolveHomeDir(homeDir?: string): string {
   if (homeDir) {
@@ -46,7 +54,36 @@ export function getAntigravityProfileDir(accountId: string, homeDir?: string): s
   return join(getAntigravityProfileBaseDir(homeDir), accountId)
 }
 
+function mergeDirectoryIntoTarget(sourceDir: string, targetDir: string): void {
+  if (!existsSync(sourceDir)) {
+    return
+  }
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true, mode: 0o700 })
+  }
+  const entries = readdirSync(sourceDir, { withFileTypes: true })
+  for (const entry of entries) {
+    const src = join(sourceDir, entry.name)
+    const dst = join(targetDir, entry.name)
+    if (entry.isDirectory()) {
+      mergeDirectoryIntoTarget(src, dst)
+    } else if (entry.isFile()) {
+      if (!existsSync(dst)) {
+        try {
+          copyFileSync(src, dst)
+        } catch {
+          // Best-effort file migration
+        }
+      }
+    }
+  }
+}
+
 function linkDirectory(target: string, linkPath: string): void {
+  if (!existsSync(target)) {
+    mkdirSync(target, { recursive: true, mode: 0o700 })
+  }
+
   try {
     const stat = lstatSync(linkPath)
     if (stat.isSymbolicLink()) {
@@ -67,8 +104,11 @@ function linkDirectory(target: string, linkPath: string): void {
       } catch {
         rmdirSync(linkPath)
       }
+    } else if (stat.isDirectory()) {
+      mergeDirectoryIntoTarget(linkPath, target)
+      rmSync(linkPath, { recursive: true, force: true })
     } else {
-      return
+      unlinkSync(linkPath)
     }
   } catch {
     // Path does not exist yet
@@ -79,8 +119,26 @@ function linkDirectory(target: string, linkPath: string): void {
 }
 
 function linkFile(target: string, linkPath: string): void {
-  if (!existsSync(target)) {
-    writeFileSync(target, '', 'utf8')
+  if (existsSync(linkPath) && existsSync(target)) {
+    try {
+      const targetStat = statSync(target)
+      const linkStat = statSync(linkPath)
+      if (targetStat.size === 0 && linkStat.size > 0) {
+        copyFileSync(linkPath, target)
+      }
+    } catch {
+      // Best-effort copy of non-empty file
+    }
+  } else if (!existsSync(target)) {
+    if (existsSync(linkPath)) {
+      try {
+        copyFileSync(linkPath, target)
+      } catch {
+        writeFileSync(target, '', 'utf8')
+      }
+    } else {
+      writeFileSync(target, '', 'utf8')
+    }
   }
 
   try {
@@ -108,7 +166,9 @@ function linkFile(target: string, linkPath: string): void {
       } catch {
         // Target stat failed
       }
-      return
+      unlinkSync(linkPath)
+    } else if (stat.isDirectory()) {
+      rmSync(linkPath, { recursive: true, force: true })
     }
   } catch {
     // Path does not exist yet
@@ -145,8 +205,17 @@ export function ensureAntigravityAccountProfile(
   }
   for (const file of CANONICAL_FILES) {
     const canonicalFile = join(canonicalCliDir, file)
+    const profileFile = join(cliDir, file)
     if (!existsSync(canonicalFile)) {
-      writeFileSync(canonicalFile, '', 'utf8')
+      if (existsSync(profileFile)) {
+        try {
+          copyFileSync(profileFile, canonicalFile)
+        } catch {
+          writeFileSync(canonicalFile, '', 'utf8')
+        }
+      } else {
+        writeFileSync(canonicalFile, '', 'utf8')
+      }
     }
   }
 
@@ -176,6 +245,7 @@ export function ensureAntigravityAccountProfile(
 
   const envPatch: NodeJS.ProcessEnv = {
     ANTIGRAVITY_PROFILE_DIR: cliDir,
+    ANTIGRAVITY_APP_DATA_DIR: cliDir,
     USERPROFILE: profileDir,
     HOME: profileDir,
     SSH_CLIENT: '127.0.0.1 0 0'
@@ -216,6 +286,8 @@ export function removeAntigravityAccountProfile(
             } catch {
               rmdirSync(entryPath)
             }
+          } else if (entryStat.isDirectory()) {
+            rmSync(entryPath, { recursive: true, force: true })
           } else {
             unlinkSync(entryPath)
           }

@@ -50,6 +50,7 @@ beforeEach(() => {
     tokenPath: `/task/profiles/${accountId}/.gemini/antigravity-cli/antigravity-oauth-token`,
     envPatch: {
       ANTIGRAVITY_PROFILE_DIR: `/task/profiles/${accountId}/.gemini/antigravity-cli`,
+      ANTIGRAVITY_APP_DATA_DIR: `/task/profiles/${accountId}/.gemini/antigravity-cli`,
       USERPROFILE: `/task/profiles/${accountId}`,
       HOME: `/task/profiles/${accountId}`,
       SSH_CLIENT: '127.0.0.1 0 0'
