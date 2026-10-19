@@ -20,6 +20,7 @@ export const AntigravityAccountUpdateParams = z
     accountId: z.string().min(1).max(128),
     alias: z.string().max(128).nullable().optional(),
     color: z.string().max(32).nullable().optional(),
-    emoji: z.string().max(16).nullable().optional()
+    emoji: z.string().max(16).nullable().optional(),
+    inTaskPool: z.boolean().optional()
   })
   .strict()

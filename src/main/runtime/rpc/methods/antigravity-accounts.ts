@@ -37,7 +37,15 @@ export const ANTIGRAVITY_ACCOUNT_METHODS = [
     name: 'accounts.antigravityUpdate',
     permission: 'accounts-admin',
     params: AntigravityAccountUpdateParams,
-    handler: async ({ target, accountId, alias, color, emoji }) =>
-      getAntigravityAccountService(target).updateAccountMetadata(accountId, { alias, color, emoji })
+    handler: async ({ target, accountId, alias, color, emoji, inTaskPool }) => {
+      const service = getAntigravityAccountService(target)
+      if (inTaskPool !== undefined) {
+        await service.setAccountPoolMembership(accountId, inTaskPool)
+      }
+      if (alias !== undefined || color !== undefined || emoji !== undefined) {
+        return service.updateAccountMetadata(accountId, { alias, color, emoji })
+      }
+      return service.listAccounts()
+    }
   })
 ]

@@ -367,4 +367,75 @@ describe('native Antigravity Accounts', () => {
     const grid = container.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3')
     expect(grid).not.toBeNull()
   })
+
+  it('renders task pool toggle switch with correct initial state and badge when in pool', async () => {
+    const poolState: AntigravityAccountState = {
+      ...state,
+      accounts: [
+        {
+          id: 'acc-in-pool',
+          email: 'pooled@example.com',
+          subject: 'sub-pool',
+          authMethod: 'consumer',
+          inTaskPool: true,
+          createdAt: 1,
+          updatedAt: 2
+        },
+        {
+          id: 'acc-not-in-pool',
+          email: 'notpooled@example.com',
+          subject: 'sub-not-pool',
+          authMethod: 'consumer',
+          inTaskPool: false,
+          createdAt: 3,
+          updatedAt: 4
+        }
+      ]
+    }
+    vi.mocked(callAntigravityAccounts).mockResolvedValue(poolState)
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+
+    await screen.findByText('pooled@example.com')
+    const switches = screen.getAllByRole('switch', { name: /pool de tareas|task pool/i })
+    expect(switches).toHaveLength(2)
+    expect(switches[0]).toBeChecked()
+    expect(switches[1]).not.toBeChecked()
+
+    const badges = screen.getAllByText(/task pool/i)
+    const taskPoolBadge = badges.find((el) => el.getAttribute('data-slot') === 'badge')
+    expect(taskPoolBadge).toBeTruthy()
+    expect(taskPoolBadge).toHaveClass('bg-primary/10', 'text-primary', 'border-primary/20')
+  })
+
+  it('calls callAntigravityAccounts with Update and inTaskPool when toggle is clicked', async () => {
+    const singleState: AntigravityAccountState = {
+      ...state,
+      accounts: [
+        {
+          id: 'acc-toggle',
+          email: 'toggle@example.com',
+          subject: 'sub-toggle',
+          authMethod: 'consumer',
+          inTaskPool: false,
+          createdAt: 1,
+          updatedAt: 2
+        }
+      ]
+    }
+    vi.mocked(callAntigravityAccounts).mockResolvedValue(singleState)
+    render(<AntigravityAccountsSection owner={owner} target={target} label="This device" />)
+
+    await screen.findByText('toggle@example.com')
+    const toggle = screen.getByRole('switch', { name: /pool de tareas|task pool/i })
+    expect(toggle).not.toBeChecked()
+
+    await userEvent.click(toggle)
+
+    expect(callAntigravityAccounts).toHaveBeenCalledWith(
+      owner,
+      target,
+      'Update',
+      expect.objectContaining({ accountId: 'acc-toggle', inTaskPool: true })
+    )
+  })
 })

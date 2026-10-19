@@ -24,7 +24,9 @@ const badgeVariants = cva(
           'h-4 rounded border-border bg-accent px-1.5 text-[10px] leading-none text-muted-foreground dark:border-border/50 dark:bg-accent/80',
         /** A skill or file sitting inline in the chat message box, ringed while selected. */
         promptPill:
-          'max-w-full border-border bg-secondary px-1.5 py-0 align-baseline text-muted-foreground data-[selected=true]:ring-1 data-[selected=true]:ring-ring'
+          'max-w-full border-border bg-secondary px-1.5 py-0 align-baseline text-muted-foreground data-[selected=true]:ring-1 data-[selected=true]:ring-ring',
+        /** A subtle primary badge indicating an account or resource active in a task pool. */
+        taskPool: 'bg-primary/10 text-primary border-primary/20'
       }
     },
     defaultVariants: {

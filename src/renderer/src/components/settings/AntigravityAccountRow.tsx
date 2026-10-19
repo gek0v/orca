@@ -5,6 +5,7 @@ import type { AntigravityAccountSummary } from '../../../../shared/antigravity-a
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
+import { Switch } from '../ui/switch'
 import { getQuotaBarColorClass, getQuotaTextColorClass } from '../status-bar/status-bar-quota-tones'
 import { formatResetCountdown } from '../../../../shared/rate-limit-reset-format'
 import { formatAccountTimestamp } from './accounts-pane-runtime'
@@ -21,7 +22,8 @@ export function AntigravityAccountRow({
   busy,
   onEdit,
   onSelect,
-  onRemove
+  onRemove,
+  onTogglePool
 }: {
   account: AntigravityAccountSummary
   isActive: boolean
@@ -34,6 +36,7 @@ export function AntigravityAccountRow({
   onEdit: () => void
   onSelect: () => void
   onRemove: () => void
+  onTogglePool: (inPool: boolean) => void
 }): React.JSX.Element {
   return (
     <div
@@ -64,6 +67,11 @@ export function AntigravityAccountRow({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          {account.inTaskPool && (
+            <Badge variant="taskPool">
+              {translate('accounts.antigravity.taskPool', 'Task pool')}
+            </Badge>
+          )}
           {isActive && (
             <Badge variant="secondary">
               {translate('accounts.antigravity.nativeActive', 'Native account')}
@@ -216,6 +224,21 @@ export function AntigravityAccountRow({
             {translate('accounts.antigravity.noUsageData', 'No usage data yet')}
           </p>
         )}
+      </div>
+      <div className="flex items-center justify-between border-t border-border/40 pt-2 text-[11px]">
+        <label
+          htmlFor={`task-pool-${account.id}`}
+          className="cursor-pointer font-medium text-muted-foreground"
+        >
+          {translate('accounts.antigravity.taskPool', 'Task pool')}
+        </label>
+        <Switch
+          id={`task-pool-${account.id}`}
+          checked={Boolean(account.inTaskPool)}
+          disabled={busy}
+          onCheckedChange={onTogglePool}
+          aria-label={translate('accounts.antigravity.taskPool', 'Task pool')}
+        />
       </div>
 
       <div className="mt-1 flex items-center justify-end border-t border-border/40 pt-2">
