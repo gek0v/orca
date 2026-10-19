@@ -206,4 +206,34 @@ describe('protected Antigravity account snapshots', () => {
     expect(readback.accounts).toHaveLength(1)
     expect(readback.accounts[0].id).toBe(vault.accounts[0].id)
   })
+
+  it('persists and updates inTaskPool flag on account records', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    vault.accounts[0].inTaskPool = true
+
+    const path = join(dir, 'vault-task-pool')
+    const store = createEncryptedAntigravityAccountStore(path)
+    store.write(vault)
+
+    const readback = store.read()
+    expect(readback.accounts[0].inTaskPool).toBe(true)
+
+    vault.accounts[0].inTaskPool = false
+    store.write(vault)
+    expect(store.read().accounts[0].inTaskPool).toBe(false)
+  })
+
+  it('rejects vault when inTaskPool has invalid non-boolean type', async () => {
+    const h = harness()
+    await h.service.addCurrentAccount()
+    const vault = h.getVault()
+    // @ts-expect-error testing invalid type validation
+    vault.accounts[0].inTaskPool = 'not-a-boolean'
+    const path = join(dir, 'vault-invalid-task-pool')
+    writeFileSync(path, JSON.stringify(vault), { mode: 0o600 })
+    const store = createEncryptedAntigravityAccountStore(path)
+    expect(() => store.read()).toThrow('preserved')
+  })
 })

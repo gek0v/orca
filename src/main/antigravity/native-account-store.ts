@@ -7,6 +7,7 @@ import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import { parseAntigravityNativeCredential } from './native-credential-codec'
 
 export type StoredAntigravityAccount = AntigravityAccountSummary & { credentials: string }
+export type AntigravityAccountRecord = StoredAntigravityAccount
 export type AntigravityAccountVault = {
   accounts: StoredAntigravityAccount[]
   selectedAccountId: string | null
@@ -34,10 +35,14 @@ function isAccount(value: unknown): value is StoredAntigravityAccount {
     (value.alias === undefined || value.alias === null || typeof value.alias === 'string') &&
     (value.color === undefined || value.color === null || typeof value.color === 'string') &&
     (value.emoji === undefined || value.emoji === null || typeof value.emoji === 'string') &&
+    (value.inTaskPool === undefined || typeof value.inTaskPool === 'boolean') &&
     (value.lastUsage === undefined || value.lastUsage === null || isRecord(value.lastUsage)) &&
     (value.lastUsageAt === undefined ||
       value.lastUsageAt === null ||
       typeof value.lastUsageAt === 'number') &&
+    (value.lastUsedAt === undefined ||
+      value.lastUsedAt === null ||
+      typeof value.lastUsedAt === 'number') &&
     typeof value.createdAt === 'number' &&
     typeof value.updatedAt === 'number' &&
     typeof value.credentials === 'string'

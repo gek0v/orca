@@ -14,11 +14,15 @@ export type AntigravityAccountSummary = {
   alias?: string | null
   color?: string | null
   emoji?: string | null
+  inTaskPool?: boolean
   createdAt: number
   updatedAt: number
   lastUsage?: ProviderRateLimits | null
   lastUsageAt?: number | null
+  lastUsedAt?: number | null
 }
+
+export type AntigravityAccountRecord = AntigravityAccountSummary
 
 export type AntigravityAccountState = {
   accounts: AntigravityAccountSummary[]

@@ -67,7 +67,8 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       timeoutMs: getOptionalPositiveIntegerValueFlag(flags, 'timeout-ms'),
       run: getOptionalStringFlag(flags, 'run'),
       from: await resolveCoordinatorTerminalHandle(flags, cwd, client),
-      devMode: isDevCliInvocation()
+      devMode: isDevCliInvocation(),
+      pool: flags.get('pool') === true ? true : undefined
     })
     if (result.result.state !== 'ready') {
       process.exitCode = 1

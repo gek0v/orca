@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import { AgentIcon } from '@/lib/agent-catalog'
-import { callAntigravityAccounts } from '@/runtime/runtime-antigravity-accounts-client'
+import {
+  callAntigravityAccounts,
+  type AntigravityAccountUpdateOptions
+} from '@/runtime/runtime-antigravity-accounts-client'
 import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
 import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import type {
@@ -78,11 +81,11 @@ export function AntigravityAccountsSection({
     if (!query) {
       return state.accounts
     }
-    return state.accounts.filter((acc) => {
-      const alias = acc.alias?.toLowerCase() ?? ''
-      const email = acc.email?.toLowerCase() ?? ''
-      return alias.includes(query) || email.includes(query)
-    })
+    return state.accounts.filter(
+      (acc) =>
+        (acc.alias?.toLowerCase() ?? '').includes(query) ||
+        (acc.email?.toLowerCase() ?? '').includes(query)
+    )
   }, [state?.accounts, searchQuery])
 
   useEffect(() => {
@@ -151,10 +154,7 @@ export function AntigravityAccountsSection({
             limits
           })
           if (before.activeAccountId && limits) {
-            setAccountUsageMap((prev) => ({
-              ...prev,
-              [before.activeAccountId!]: limits
-            }))
+            setAccountUsageMap((prev) => ({ ...prev, [before.activeAccountId!]: limits }))
           }
         }
       } else if (action === 'UsageAll') {
@@ -210,27 +210,30 @@ export function AntigravityAccountsSection({
     }
   }
 
-  async function handleUpdateMetadata(
-    accountId: string,
-    metadata: { alias?: string | null; color?: string | null; emoji?: string | null }
-  ) {
+  async function handleUpdate(payload: AntigravityAccountUpdateOptions, fallbackError: string) {
     setError(null)
     try {
-      const next = await callAntigravityAccounts(owner, target, 'Update', {
-        accountId,
-        alias: metadata.alias,
-        color: metadata.color,
-        emoji: metadata.emoji
-      })
+      const next = await callAntigravityAccounts(owner, target, 'Update', payload)
       if (mounted.current) {
         setState(next)
         setCachedAntigravityAccountsState(next)
       }
     } catch (cause) {
       if (mounted.current) {
-        setError(cause instanceof Error ? cause.message : 'Could not update account metadata.')
+        setError(cause instanceof Error ? cause.message : fallbackError)
       }
     }
+  }
+
+  function handleUpdateMetadata(
+    accountId: string,
+    metadata: { alias?: string | null; color?: string | null; emoji?: string | null }
+  ) {
+    return handleUpdate({ accountId, ...metadata }, 'Could not update account metadata.')
+  }
+
+  function handleTogglePool(accountId: string, inTaskPool: boolean) {
+    return handleUpdate({ accountId, inTaskPool }, 'Could not update task pool membership.')
   }
 
   return (
@@ -360,6 +363,7 @@ export function AntigravityAccountsSection({
                     onEdit={() => setEditingAccount(account)}
                     onSelect={() => void run('Select', account.id)}
                     onRemove={() => void run('Remove', account.id)}
+                    onTogglePool={(inPool) => void handleTogglePool(account.id, inPool)}
                   />
                 )
               })}

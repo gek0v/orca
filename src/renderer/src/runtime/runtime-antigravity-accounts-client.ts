@@ -11,6 +11,7 @@ export type AntigravityAccountUpdateOptions = {
   alias?: string | null
   color?: string | null
   emoji?: string | null
+  inTaskPool?: boolean
 }
 
 export async function callAntigravityAccounts(

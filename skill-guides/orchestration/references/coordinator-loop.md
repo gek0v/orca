@@ -1,7 +1,7 @@
 # Coordinator loop
 
 Load this reference for expanded DAG waves, per-invocation launch preferences,
-same-terminal reuse, or review ownership. The compact guide remains the source
+Antigravity task pool distribution, same-terminal reuse, or review ownership. The compact guide remains the source
 of truth for the loop order and completion boundary.
 
 ## Ready waves
@@ -42,6 +42,30 @@ override explicitly.
 connected worker server must advertise launch-preference support before Orca
 forwards either field. Compare `launch.requested` with `launch.effective`; never
 claim a model or effort from requested arguments alone.
+
+### Antigravity task pool and `task` alias
+
+When dispatching parallel sub-tasks or independent work waves, pass `--pool` with
+`--agent antigravity` to distribute workers across configured Google accounts in
+the user's Task Pool:
+
+```text
+ORCA orchestration worker-start --task <task_id> --worktree current --agent antigravity --pool --json
+```
+
+Orca automatically selects the account with the most available quota across
+both 5-hour and weekly rate limit windows, preventing quota exhaustion when
+running workers concurrently.
+
+`ORCA task` is a top-level alias for `ORCA orchestration worker-start`. When `--pool`
+is specified without `--agent`, it defaults to `antigravity`:
+
+```text
+ORCA task --task <task_id> --worktree current --pool --json
+```
+
+`--pool` is supported only for local worker execution; remote execution hosts (`--on`)
+reject it.
 
 ## Reuse after settlement
 

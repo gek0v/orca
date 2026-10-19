@@ -31,4 +31,13 @@ describe('AntigravityAccountUpdateParams', () => {
       })
     ).toThrow()
   })
+
+  it('accepts boolean inTaskPool', () => {
+    const parsed = AntigravityAccountUpdateParams.parse({
+      target: { runtime: 'host' },
+      accountId: 'acc-1',
+      inTaskPool: true
+    })
+    expect(parsed.inTaskPool).toBe(true)
+  })
 })

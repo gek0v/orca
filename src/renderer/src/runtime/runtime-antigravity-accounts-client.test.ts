@@ -77,4 +77,17 @@ describe('Antigravity account execution-host routing', () => {
       { timeoutMs: 20_000 }
     )
   })
+
+  it('forwards inTaskPool when updating an account', async () => {
+    await callAntigravityAccounts({ kind: 'local' }, { runtime: 'host' }, 'Update', {
+      accountId: 'account-1',
+      inTaskPool: true
+    })
+    expect(callRuntimeRpc).toHaveBeenCalledWith(
+      { kind: 'local' },
+      'accounts.antigravityUpdate',
+      { target: { runtime: 'host' }, accountId: 'account-1', inTaskPool: true },
+      { timeoutMs: 20_000 }
+    )
+  })
 })

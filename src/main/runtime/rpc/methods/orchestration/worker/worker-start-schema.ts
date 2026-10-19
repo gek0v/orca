@@ -4,3 +4,10 @@ export { OptionalWorkerLaunchPreference } from '../../../../../../shared/rpc-con
 export { WorkerStartParams }
 
 export type WorkerStartInput = z.infer<typeof WorkerStartParams>
+
+export type WorkerStartMutation = {
+  callerFingerprint: string
+  requestId: string
+  method: string
+  payloadHash: string
+}

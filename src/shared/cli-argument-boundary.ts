@@ -37,6 +37,7 @@ export const CLI_BOOLEAN_FLAGS = new Set([
   'no-pairing',
   'screen',
   'parent-current',
+  'pool',
   'provision',
   'ready',
   'recipe-json',

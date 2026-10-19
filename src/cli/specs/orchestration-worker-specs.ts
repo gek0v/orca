@@ -3,9 +3,10 @@ import { GLOBAL_FLAGS, type CommandSpec } from '../args'
 export const ORCHESTRATION_WORKER_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['orchestration', 'worker-start'],
+    aliases: [['task']],
     summary: 'Start one supervised worker on the Run home or a connected Orca server',
     usage:
-      'orca orchestration worker-start (--task <task_id> | --spec <text>) [--on <saved-environment>] [--worktree <current|selector|new-child|new-top-level>] (--agent <agent> | --terminal <handle>) [--task-title <text>] [--deps <json_array>] [--parent <task_id>] [--model <id>] [--effort <level>] [--name <name>] [--repo <selector>] [--base-branch <ref>] [--display-name <text>] [--comment <text>] [--setup <run|skip|inherit>] [--retry-of <dispatch_id>] [--timeout-ms <n>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
+      'orca orchestration worker-start (--task <task_id> | --spec <text>) [--on <saved-environment>] [--worktree <current|selector|new-child|new-top-level>] (--agent <agent> | --terminal <handle>) [--pool] [--task-title <text>] [--deps <json_array>] [--parent <task_id>] [--model <id>] [--effort <level>] [--name <name>] [--repo <selector>] [--base-branch <ref>] [--display-name <text>] [--comment <text>] [--setup <run|skip|inherit>] [--retry-of <dispatch_id>] [--timeout-ms <n>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'task',
@@ -22,6 +23,7 @@ export const ORCHESTRATION_WORKER_COMMAND_SPECS: CommandSpec[] = [
       'comment',
       'setup',
       'agent',
+      'pool',
       'model',
       'effort',
       'terminal',
@@ -36,6 +38,7 @@ export const ORCHESTRATION_WORKER_COMMAND_SPECS: CommandSpec[] = [
       'Current and existing worktrees never rerun setup; a fresh agent terminal is created unless --terminal is explicit.',
       'When reusing --terminal, pass --worktree for that terminal; current means the coordinator worktree.',
       '--agent takes an Orca agent id enabled on the worker server, such as claude, codex, cursor, antigravity, muse, zcode, opencode, or opencode2.',
+      'When --pool is specified with --agent antigravity, Orca automatically assigns the account from your configured Task Pool with the most available quota across 5h and weekly windows.',
       '--model supports Claude, Codex, Cursor, Antigravity, and Muse opaque provider model ids; --effort requires --model. OMP accepts --model only; --effort is unsupported. Neither can combine with --terminal. OpenCode model selection requires an existing worktree, a verified execution-host CLI, and an available model; effort is unsupported. Other agents, including zcode, launch with the model from their own config.',
       'New worktrees use agent-first creation and default --setup to run. Repository start-immediately runs setup beside the agent; wait-for-setup gates agent readiness and task input.',
       'Creation flags (--name, --repo, --base-branch, --display-name, --comment, --setup) are rejected for current/existing worktrees. Use exact --repo on the selected server; project/host convenience routing remains on worktree create.',

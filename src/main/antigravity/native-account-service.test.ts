@@ -321,4 +321,37 @@ describe('Antigravity native account identity and selection', () => {
       rmSync(tempHome, { recursive: true, force: true })
     }
   })
+
+  it('updates task pool membership, persists it, and broadcasts changes', async () => {
+    const broadcast = vi.fn()
+    const h = harness()
+    const service = h.createService(h.store, h.backend, Date.now, broadcast)
+    const state = await service.addCurrentAccount()
+    const id = state.activeAccountId!
+    broadcast.mockClear()
+
+    const summary = await service.setAccountPoolMembership(id, true)
+    expect(summary.id).toBe(id)
+    expect(summary.inTaskPool).toBe(true)
+    expect(broadcast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accounts: [expect.objectContaining({ id, inTaskPool: true })]
+      })
+    )
+
+    const listed = await service.listAccounts()
+    expect(listed.accounts[0].inTaskPool).toBe(true)
+
+    const updatedSummary = await service.setAccountPoolMembership(id, false)
+    expect(updatedSummary.inTaskPool).toBe(false)
+    const listedAfter = await service.listAccounts()
+    expect(listedAfter.accounts[0].inTaskPool).toBe(false)
+  })
+
+  it('fails to update task pool membership for unknown account', async () => {
+    const h = harness()
+    await expect(h.service.setAccountPoolMembership('unknown-id', true)).rejects.toThrow(
+      'Antigravity account was not found.'
+    )
+  })
 })

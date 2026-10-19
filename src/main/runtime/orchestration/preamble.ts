@@ -244,9 +244,11 @@ You may dispatch sub-workers for this task. Create your own Run first, then:
 \`\`\`sh
   ${cli} orchestration run-create --objective "<what the sub-workers are for>" --json
   ${cli} orchestration task-create --spec "<sub-task>" --json
-  ${cli} orchestration worker-start --task <task_id> --worktree current --agent <agent> --json
+  ${cli} orchestration worker-start --task <task_id> --worktree current --agent antigravity --pool --json
 \`\`\`
 
+Pass \`--pool\` with \`--agent antigravity\` to distribute parallel sub-tasks across
+available Google accounts in the user's task pool to prevent rate-limiting.
 Wait for every sub-worker's worker_done before reporting your own. Nesting is
 capped; your sub-workers may not be able to dispatch further.
 

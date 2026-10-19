@@ -2,16 +2,27 @@ import { getAntigravityAccountService } from '../../antigravity/native-account-h
 import { fetchAntigravityAccountRateLimits } from '../antigravity-usage-fetcher'
 import type { ProviderRateLimits } from './service-types'
 
+export type SyncAntigravityAccountsUsageOptions = {
+  antigravityUsageEnabled?: boolean
+}
+
 export async function syncAntigravityAccountsUsage(
   antigravity: ProviderRateLimits,
   antigravityAccount: string | undefined,
-  signal: AbortSignal
+  signal: AbortSignal,
+  options?: SyncAntigravityAccountsUsageOptions
 ): Promise<void> {
   try {
     const service = getAntigravityAccountService({ runtime: 'host' })
     const state = await service.listAccounts()
-    if (state.accounts.length > 0) {
-      for (const acc of state.accounts) {
+    const usageEnabled = options?.antigravityUsageEnabled ?? true
+    // Why: task pool accounts need fresh telemetry even when the status bar meter is hidden.
+    const accountsToProbe = usageEnabled
+      ? state.accounts
+      : state.accounts.filter((acc) => acc.inTaskPool === true)
+
+    if (accountsToProbe.length > 0) {
+      for (const acc of accountsToProbe) {
         if (signal.aborted) {
           break
         }
@@ -26,6 +37,7 @@ export async function syncAntigravityAccountsUsage(
         }
       }
     } else if (
+      usageEnabled &&
       state.activeAccountId &&
       (!antigravityAccount || antigravityAccount === state.activeAccountId) &&
       antigravity.status === 'ok'

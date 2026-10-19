@@ -176,3 +176,43 @@ function resolveWorkerStartAgent(args: {
     }
   }
 }
+
+export function buildLocalWorkerStartOptions(args: {
+  params: WorkerStartInput
+  requestedWorktree: string
+  mode: unknown
+  resolvedWorktreeId?: string | null
+  creationRepoId?: string | null
+  createsWorktree: boolean
+  agent: string | null | undefined
+  launchReceipt: unknown
+}) {
+  const {
+    params,
+    requestedWorktree,
+    mode,
+    resolvedWorktreeId,
+    creationRepoId,
+    createsWorktree,
+    agent,
+    launchReceipt
+  } = args
+  return {
+    worktree: requestedWorktree,
+    mode,
+    resolvedWorktreeId: resolvedWorktreeId ?? null,
+    name: params.name ?? null,
+    repo: params.repo ?? creationRepoId ?? null,
+    baseBranch: params.baseBranch ?? null,
+    terminal: params.terminal ?? null,
+    agent: agent ?? null,
+    launch: launchReceipt,
+    timeoutMs: params.timeoutMs ?? 60_000,
+    setup: createsWorktree ? (params.setup ?? 'run') : 'not_applicable',
+    setupSource: createsWorktree
+      ? params.setup
+        ? 'explicit_request'
+        : 'orchestration_default'
+      : 'existing_worktree'
+  }
+}
