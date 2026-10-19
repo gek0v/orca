@@ -19,6 +19,7 @@ export type AntigravityAccountSummary = {
   updatedAt: number
   lastUsage?: ProviderRateLimits | null
   lastUsageAt?: number | null
+  lastUsedAt?: number | null
 }
 
 export type AntigravityAccountRecord = AntigravityAccountSummary

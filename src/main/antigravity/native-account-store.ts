@@ -40,6 +40,9 @@ function isAccount(value: unknown): value is StoredAntigravityAccount {
     (value.lastUsageAt === undefined ||
       value.lastUsageAt === null ||
       typeof value.lastUsageAt === 'number') &&
+    (value.lastUsedAt === undefined ||
+      value.lastUsedAt === null ||
+      typeof value.lastUsedAt === 'number') &&
     typeof value.createdAt === 'number' &&
     typeof value.updatedAt === 'number' &&
     typeof value.credentials === 'string'
