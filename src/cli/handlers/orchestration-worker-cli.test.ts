@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const callMock = vi.fn()
 const originalExitCode = process.exitCode
 const originalCliCommand = process.env.ORCA_CLI_COMMAND
+const originalShell = process.env.ORCA_TERMINAL_WINDOWS_SHELL
 
 type RecoveryWorkerStartResult = {
   taskId: string
@@ -29,6 +30,7 @@ describe('orchestration worker-start CLI contract', () => {
     vi.mocked(printResult).mockReset()
     process.exitCode = undefined
     delete process.env.ORCA_CLI_COMMAND
+    process.env.ORCA_TERMINAL_WINDOWS_SHELL = 'bash'
   })
 
   afterEach(() => {
@@ -37,6 +39,11 @@ describe('orchestration worker-start CLI contract', () => {
       delete process.env.ORCA_CLI_COMMAND
     } else {
       process.env.ORCA_CLI_COMMAND = originalCliCommand
+    }
+    if (originalShell === undefined) {
+      delete process.env.ORCA_TERMINAL_WINDOWS_SHELL
+    } else {
+      process.env.ORCA_TERMINAL_WINDOWS_SHELL = originalShell
     }
   })
 

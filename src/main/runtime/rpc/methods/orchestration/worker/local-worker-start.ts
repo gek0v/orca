@@ -18,7 +18,7 @@ import {
 import { EXISTING_WORKTREE_SETUP, placeWorkerAgent } from './worker-start-agent-placement'
 import { awaitStructuredWorkerSetupGate } from './worker-start-structured-setup-gate'
 import { assertOrchestrationWorktreeCreationSupported } from './folder-worktree-placement'
-import type { WorkerStartInput } from './worker-start-schema'
+import type { WorkerStartInput, WorkerStartMutation } from './worker-start-schema'
 import {
   persistGatedSetupSpawnFailure,
   persistWorkerReadinessStage,
@@ -33,18 +33,12 @@ import { recordCreatedWorkerTerminalCustody } from './created-worker-terminal-cu
 import { tearDownFailedWorkerStart } from './failed-worker-start-teardown'
 import { releaseRetriedWorkerTerminal } from './retried-worker-terminal-release'
 import { requireWorkerAuthority, type WorkerEffect } from './worker-topology'
-import { prepareLocalWorkerStart } from './worker-start-validation'
+import { buildLocalWorkerStartOptions, prepareLocalWorkerStart } from './worker-start-validation'
 import { deliverAndSettleWorkerStartReadiness } from './worker-start-readiness-settlement'
-
-type WorkerStartMutation = {
-  callerFingerprint: string
-  requestId: string
-  method: string
-  payloadHash: string
-}
 
 export async function startLocalWorker(args: {
   params: WorkerStartInput
+  launchAccountId?: string
   runtime: OrcaRuntimeService
   db: OrchestrationDb
   run: RunRow
@@ -55,7 +49,16 @@ export async function startLocalWorker(args: {
   /** Settings-driven; the executing host still gets to refuse below. */
   mode: WorkerStartModeReceipt
 }): Promise<unknown> {
-  const { runtime, db, run, coordinator, callerSession, existingTask, orchestrationMutation } = args
+  const {
+    runtime,
+    db,
+    run,
+    coordinator,
+    callerSession,
+    existingTask,
+    orchestrationMutation,
+    launchAccountId
+  } = args
   // `--terminal` names a party: a chat by its `/clear` root address, as its Dispatch does.
   const terminal = args.params.terminal && resolveDispatchAssigneeParty(args.params.terminal, db)
   const params = terminal ? { ...args.params, terminal: terminal.address } : args.params
@@ -132,24 +135,16 @@ export async function startLocalWorker(args: {
   const hostMode = resolveWorkerStartModeOnHost(runtime, args.mode, resolvedWorktree?.id, agent)
   let mode = chatWorkerMode(await hostMode, chat)
 
-  const startOptions = {
-    worktree: requestedWorktree,
+  const startOptions = buildLocalWorkerStartOptions({
+    params,
+    requestedWorktree,
     mode,
-    resolvedWorktreeId: resolvedWorktree?.id ?? null,
-    name: params.name ?? null,
-    repo: params.repo ?? creationWorktree?.repoId ?? null,
-    baseBranch: params.baseBranch ?? null,
-    terminal: params.terminal ?? null,
-    agent: agent ?? null,
-    launch: launch.receipt,
-    timeoutMs: params.timeoutMs ?? 60_000,
-    setup: createsWorktree ? (params.setup ?? 'run') : 'not_applicable',
-    setupSource: createsWorktree
-      ? params.setup
-        ? 'explicit_request'
-        : 'orchestration_default'
-      : 'existing_worktree'
-  }
+    resolvedWorktreeId: resolvedWorktree?.id,
+    creationRepoId: creationWorktree?.repoId,
+    createsWorktree,
+    agent,
+    launchReceipt: launch.receipt
+  })
   const started = db.createStartingWorkerDispatch({
     creator: resolveDispatchCreator(runtime, params.from, callerSession),
     maxDepth: runtime.getNestedWorkerMaxDepth(),
@@ -190,6 +185,7 @@ export async function startLocalWorker(args: {
       dispatchId: started.dispatch.id,
       taskId: task.id,
       params,
+      launchAccountId,
       requestedWorktree,
       creationWorktree,
       resolvedWorktree,

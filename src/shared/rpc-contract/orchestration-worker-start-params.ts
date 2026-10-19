@@ -31,7 +31,8 @@ export const WorkerStartParams = z
     effort: OptionalWorkerLaunchPreference,
     retryOf: OptionalString,
     timeoutMs: OptionalFiniteNumber,
-    devMode: z.boolean().optional()
+    devMode: z.boolean().optional(),
+    pool: z.boolean().optional()
   })
   .superRefine((params, ctx) => {
     if (!params.task && !params.spec) {

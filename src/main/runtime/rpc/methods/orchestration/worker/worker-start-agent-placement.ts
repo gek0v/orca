@@ -54,6 +54,7 @@ type WorkerAgentPlacementArgs = {
   dispatchId: string
   taskId: string
   params: WorkerStartInput
+  launchAccountId?: string
   requestedWorktree: string
   /** The coordinator's worktree, present only when this start creates one. */
   creationWorktree: PlacedWorktree | undefined
@@ -112,6 +113,7 @@ async function launchWorkerAgent(
   try {
     launched = await executeAgentLaunch({
       runtime: args.runtime,
+      ...(args.launchAccountId ? { launchAccountId: args.launchAccountId } : {}),
       intent: {
         agent,
         // The worker's own factory builds the create from the dispatch, so the target carries none.

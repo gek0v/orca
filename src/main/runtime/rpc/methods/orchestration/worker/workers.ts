@@ -15,6 +15,13 @@ import {
 import { assertWorkerStartTaskSpecWithinPromptBudget } from './worker-start-prompt-budget'
 import { ORCA_SESSION_ADDRESS_PREFIX } from '../../../../../../shared/orca-session-address'
 import { ORCHESTRATION_SESSION_CALLER_ERROR_CODES as SESSION_CODES } from '../../../../../../shared/orchestration-session-caller-codes'
+import { selectAntigravityPoolAccount } from '../../../../../antigravity/antigravity-task-pool-selector'
+import {
+  getAntigravityAccountService,
+  getAntigravityAccountVaultPath
+} from '../../../../../antigravity/native-account-host'
+import { createEncryptedAntigravityAccountStore } from '../../../../../antigravity/native-account-store'
+import { fetchAntigravityAccountRateLimits } from '../../../../../rate-limits/antigravity-usage-fetcher'
 
 export const ORCHESTRATION_WORKER_START_METHODS = [
   defineMethod({
@@ -25,6 +32,22 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
       params,
       { runtime, orchestrationMutation, orchestrationCompatibilityEvidence, orchestrationCaller }
     ) => {
+      if (params.pool === true) {
+        if (params.on) {
+          throw new OrchestrationError(
+            'invalid_argument',
+            '--pool is only supported for local worker execution.'
+          )
+        }
+        if (!params.agent) {
+          params.agent = 'antigravity'
+        } else if (params.agent !== 'antigravity') {
+          throw new OrchestrationError(
+            'invalid_argument',
+            '--pool is currently only supported for --agent antigravity.'
+          )
+        }
+      }
       if (!isWorkerStartTimeoutWithinTimerLimit(params.timeoutMs)) {
         throw new OrchestrationError(
           'invalid_argument',
@@ -79,8 +102,39 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
         })
         return receipt && typeof receipt === 'object' ? { ...receipt, mode } : receipt
       }
+      let launchAccountId: string | undefined
+      if (params.pool === true) {
+        const service = getAntigravityAccountService({ runtime: 'host' })
+        const vaultPath = getAntigravityAccountVaultPath()
+        const store = createEncryptedAntigravityAccountStore(vaultPath)
+        const vault = store.read()
+        const selection = selectAntigravityPoolAccount({
+          vault,
+          getRateLimits: (id) => vault.accounts.find((a) => a.id === id)?.lastUsage,
+          onTriggerProbe: (id) => {
+            const acc = vault.accounts.find((a) => a.id === id)
+            if (acc) {
+              void fetchAntigravityAccountRateLimits({
+                accountId: acc.id,
+                credentialsJson: acc.credentials
+              })
+                .then((usage) => {
+                  void service.recordUsageSnapshot(acc.id, usage)
+                })
+                .catch(() => {})
+            }
+          }
+        })
+        launchAccountId = selection.accountId
+        const selectedAccount = vault.accounts.find((a) => a.id === launchAccountId)
+        if (selectedAccount) {
+          selectedAccount.lastUsedAt = Date.now()
+          store.write(vault)
+        }
+      }
       return startLocalWorker({
         params: { ...params, timeoutMs: readinessTimeoutMs },
+        launchAccountId,
         runtime,
         db,
         run,
