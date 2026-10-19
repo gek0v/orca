@@ -2,11 +2,14 @@ import { spawnSync } from 'node:child_process'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
 import { describe, expect, it } from 'vitest'
+import { resolveGitBashPath } from '../../git-bash'
 import {
   buildDispatchPreamble,
   CHAT_REDISPATCH_PARAGRAPH as CHAT_REDISPATCH,
   TERMINAL_REDISPATCH_PARAGRAPH as TERMINAL_REDISPATCH
 } from './preamble'
+
+const bashBinary = resolveGitBashPath() ?? 'bash'
 
 function baseParams(overrides: Partial<Parameters<typeof buildDispatchPreamble>[0]> = {}) {
   return {
@@ -81,7 +84,7 @@ describe('buildDispatchPreamble', () => {
     { timeout: 15_000 },
     () => {
       const result = buildDispatchPreamble(baseParams())
-      const check = spawnSync('bash', ['-n'], { input: cliFence(result), encoding: 'utf8' })
+      const check = spawnSync(bashBinary, ['-n'], { input: cliFence(result), encoding: 'utf8' })
       expect(check.status).toBe(0)
     }
   )
@@ -120,7 +123,9 @@ describe('buildDispatchPreamble', () => {
     expect(headings).toHaveLength(0)
     expect(codeBlocks).toHaveLength(2)
     expect(codeBlocks[1]).toMatchObject({ lang: 'sh' })
-    expect(codeBlocks[1].value).toContain('orchestration worker-start --task <task_id>')
+    expect(codeBlocks[1].value).toContain(
+      'orchestration worker-start --task <task_id> --worktree current --agent antigravity --pool --json'
+    )
     expect(result).toContain('able to dispatch further.\n\n---')
     expect(result).toContain('before starting.\n\n---')
   })
@@ -128,7 +133,7 @@ describe('buildDispatchPreamble', () => {
   it('sub-dispatch fence passes bash -n', { timeout: 15_000 }, () => {
     const result = buildDispatchPreamble(baseParams({ canDispatchSubWorkers: true }))
     const { codeBlocks } = markdownBlocks(result)
-    const check = spawnSync('bash', ['-n'], { input: codeBlocks[1].value, encoding: 'utf8' })
+    const check = spawnSync(bashBinary, ['-n'], { input: codeBlocks[1].value, encoding: 'utf8' })
     expect(check.status).toBe(0)
   })
 
@@ -392,6 +397,17 @@ describe('sub-dispatch section', () => {
     expect(preamble).toContain('=== SUB-DISPATCH ===')
     expect(preamble).toContain('orchestration run-create')
     expect(preamble).toContain('orchestration worker-start')
+    expect(preamble).toContain(
+      'orchestration worker-start --task <task_id> --worktree current --agent antigravity --pool --json'
+    )
+    expect(preamble).toContain('--pool')
+    expect(preamble).toContain('--agent antigravity')
+  })
+
+  it('explains distributing parallel sub-tasks across available task pool accounts', () => {
+    const preamble = buildDispatchPreamble({ ...base, canDispatchSubWorkers: true })
+    expect(preamble).toMatch(/task pool/i)
+    expect(preamble).toMatch(/rate[- ]limiting/i)
   })
 
   it('keeps the task block last so the spec is not buried', () => {
