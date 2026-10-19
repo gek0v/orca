@@ -215,6 +215,78 @@ describe('Antigravity usage gating', () => {
     expect(fetchAntigravityRateLimits).toHaveBeenCalledTimes(1)
   })
 
+  it('probes accounts in the task pool even when the usage meter is hidden', async () => {
+    const recordUsageSnapshot = vi.fn().mockResolvedValue({})
+    const listAccounts = vi.fn().mockResolvedValue({
+      activeAccountId: 'acc-1',
+      accounts: [
+        { id: 'acc-1', email: 'one@example.com', inTaskPool: false },
+        { id: 'acc-2', email: 'two@example.com', inTaskPool: true }
+      ]
+    })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+    vi.mocked(getAntigravityAccountService).mockReturnValue({
+      listAccounts,
+      recordUsageSnapshot
+    } as unknown as ReturnType<typeof getAntigravityAccountService>)
+
+    vi.mocked(fetchAntigravityAccountRateLimits).mockReset()
+    vi.mocked(fetchAntigravityAccountRateLimits).mockResolvedValue(okProvider('antigravity', 45))
+
+    const service = new RateLimitService()
+    service.setAntigravityUsageEnabledResolver(() => false)
+
+    await service.refresh()
+
+    // Why: global CLI fetch is skipped when meter is hidden
+    expect(fetchAntigravityRateLimits).not.toHaveBeenCalled()
+
+    await vi.waitFor(() => {
+      // Pool account must be probed and recorded
+      expect(fetchAntigravityAccountRateLimits).toHaveBeenCalledWith(
+        expect.objectContaining({ accountId: 'acc-2' })
+      )
+      expect(recordUsageSnapshot).toHaveBeenCalledWith(
+        'acc-2',
+        expect.objectContaining({
+          session: expect.objectContaining({ usedPercent: 45 })
+        })
+      )
+      // Non-pool account must not be probed when meter is hidden
+      expect(fetchAntigravityAccountRateLimits).not.toHaveBeenCalledWith(
+        expect.objectContaining({ accountId: 'acc-1' })
+      )
+      expect(recordUsageSnapshot).not.toHaveBeenCalledWith('acc-1', expect.anything())
+    })
+  })
+
+  it('skips account probes when usage meter is hidden and no accounts are in task pool', async () => {
+    const recordUsageSnapshot = vi.fn().mockResolvedValue({})
+    const listAccounts = vi.fn().mockResolvedValue({
+      activeAccountId: 'acc-1',
+      accounts: [
+        { id: 'acc-1', email: 'one@example.com', inTaskPool: false },
+        { id: 'acc-2', email: 'two@example.com' }
+      ]
+    })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: Test mock cast.
+    vi.mocked(getAntigravityAccountService).mockReturnValue({
+      listAccounts,
+      recordUsageSnapshot
+    } as unknown as ReturnType<typeof getAntigravityAccountService>)
+
+    vi.mocked(fetchAntigravityAccountRateLimits).mockReset()
+
+    const service = new RateLimitService()
+    service.setAntigravityUsageEnabledResolver(() => false)
+
+    await service.refresh()
+
+    expect(fetchAntigravityRateLimits).not.toHaveBeenCalled()
+    expect(fetchAntigravityAccountRateLimits).not.toHaveBeenCalled()
+    expect(recordUsageSnapshot).not.toHaveBeenCalled()
+  })
+
   it('records a snapshot for the active Antigravity account when usage succeeds', async () => {
     const recordUsageSnapshot = vi.fn().mockResolvedValue({})
     const listAccounts = vi.fn().mockResolvedValue({

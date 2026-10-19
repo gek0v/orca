@@ -246,7 +246,9 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       this.trackActiveFailureStreak('zcode', zcode)
     }
     this.trackActiveFailureStreak('antigravity', antigravity)
-    void syncAntigravityAccountsUsage(antigravity, antigravityAccount, signal)
+    void syncAntigravityAccountsUsage(antigravity, antigravityAccount, signal, {
+      antigravityUsageEnabled: this.antigravityUsageEnabledResolver?.() ?? true
+    })
     this.updateState({
       ...this.state,
       grok: this.applyStalePolicy(grok, previousState.grok),
