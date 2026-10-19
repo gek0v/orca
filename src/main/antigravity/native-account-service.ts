@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import type { AntigravityAccountState } from '../../shared/antigravity-account-types'
+import type {
+  AntigravityAccountState,
+  AntigravityAccountSummary
+} from '../../shared/antigravity-account-types'
 import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import {
   matchesAntigravityCredential as matches,
@@ -176,6 +179,26 @@ export class AntigravityAccountService {
       const nextState = this.state({ vault, current })
       this.broadcast(nextState)
       return nextState
+    })
+  }
+
+  setAccountPoolMembership(accountId: string, inPool: boolean): Promise<AntigravityAccountSummary> {
+    return this.serialize(async () => {
+      const { vault, current } = await this.reconcile()
+      const account = vault.accounts.find((entry) => entry.id === accountId)
+      if (!account) {
+        throw new Error('Antigravity account was not found.')
+      }
+      account.inTaskPool = inPool
+      account.updatedAt = this.now()
+      this.store.write(vault)
+      const nextState = this.state({ vault, current })
+      this.broadcast(nextState)
+      const summary = nextState.accounts.find((entry) => entry.id === accountId)
+      if (!summary) {
+        throw new Error('Antigravity account was not found.')
+      }
+      return summary
     })
   }
 
